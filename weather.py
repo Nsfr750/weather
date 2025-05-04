@@ -31,15 +31,22 @@ class Sponsor:
             import webbrowser
             webbrowser.open("https://discord.gg/q5Pcgrju")
 
+        def open_paypal():
+            import webbrowser
+            webbrowser.open("https://paypal.me/3dmga")    
+
         # Create and place buttons
         patreon_button = tk.Button(sponsor_root, text="Join the Patreon!", command=open_patreon)
-        patreon_button.pack(pady=10)
+        patreon_button.pack(pady=5)
 
         github_button = tk.Button(sponsor_root, text="GitHub", command=open_github)
-        github_button.pack(pady=10)
+        github_button.pack(pady=5)
 
         discord_button = tk.Button(sponsor_root, text="Discord", command=open_discord)
-        discord_button.pack(pady=10)
+        discord_button.pack(pady=5)
+
+        paypal_button = tk.Button(sponsor_root, text="Paypal", command=open_paypal)    
+        paypal_button.pack(pady=5)
 
         sponsor_root.mainloop()
 
@@ -180,7 +187,7 @@ def plot_forecast(dates, temps, winds, humids):
 
 # About Menu Callback
 def show_about():
-    messagebox.showinfo("About", "Enhanced Weather App\nVersion 1.2\nAuthor: Nsfr750\n\nThis app provides current and forecasted weather details, graphical visualizations, and supports detecting your location using your IP address.")
+    messagebox.showinfo("About", "Weather App\nVersion 1.3\nAuthor: Nsfr750\n\nThis app provides current and forecasted weather details, graphical visualizations, and supports detecting your location using your IP address.")
 
 
 # Help Menu Callback
@@ -190,8 +197,8 @@ def show_help():
 
 # GUI Setup
 root = tk.Tk()
-root.title("Enhanced Weather App with Error Handling")
-root.geometry("200x300")  # Set the start dialog size to 200x300
+root.title("Weather")
+root.geometry("300x300")  # Set the start dialog size to 300x300
 
 # Add Menu
 menu_bar = tk.Menu(root)

@@ -25,7 +25,7 @@ class Sponsor:
 
         def open_github():
             import webbrowser
-            webbrowser.open("https://github.com/Nsfr750")
+            webbrowser.open("https://github.com/sponsors/Nsfr750")
 
         def open_discord():
             import webbrowser
@@ -42,10 +42,10 @@ class Sponsor:
         github_button = tk.Button(sponsor_root, text="GitHub", command=open_github)
         github_button.pack(pady=5)
 
-        discord_button = tk.Button(sponsor_root, text="Discord", command=open_discord)
+        discord_button = tk.Button(sponsor_root, text="Join Discord", command=open_discord)
         discord_button.pack(pady=5)
 
-        paypal_button = tk.Button(sponsor_root, text="Paypal", command=open_paypal)    
+        paypal_button = tk.Button(sponsor_root, text="Pay me a Coffee", command=open_paypal)    
         paypal_button.pack(pady=5)
 
         sponsor_root.mainloop()

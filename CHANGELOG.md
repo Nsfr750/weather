@@ -27,7 +27,7 @@
 
 ---
 
-## [1.1.0-alpha] - 2025-05-22
+## [1.2.0-alpha] - 2025-05-21
 ### Initial Release
 - Modern, responsive GUI with Tkinter
 - Light/dark theme toggle
@@ -48,7 +48,7 @@
 ---
 *See previous versions in version.py if available.*
 
-## [1.1.0-alpha] - 2025-05-22
+## [1.1.0-alpha] - 2025-05-20
 ### Added
 - Modern, responsive GUI with Tkinter
 - Light and dark theme toggle

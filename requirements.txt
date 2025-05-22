@@ -1,0 +1,3 @@
+requests
+pillow
+# For GUI (tkinter is built-in, but Pillow is for weather icons)

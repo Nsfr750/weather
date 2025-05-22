@@ -1,5 +1,5 @@
 TRANSLATIONS = {
-    'en': {
+    'EN': {
         'city': 'City:',
         'search': 'Search',
         'theme': 'Theme',
@@ -22,7 +22,7 @@ TRANSLATIONS = {
         'units_imperial': 'Imperial',
         'language': 'Language',
     },
-    'es': {
+    'ES': {
         'city': 'Ciudad:',
         'search': 'Buscar',
         'theme': 'Tema',
@@ -45,7 +45,7 @@ TRANSLATIONS = {
         'units_imperial': 'Imperial',
         'language': 'Idioma',
     },
-    'it': {
+    'IT': {
         'city': 'Città:',
         'search': 'Cerca',
         'theme': 'Tema',
@@ -70,5 +70,5 @@ TRANSLATIONS = {
     }
 }
 
-def t(key, lang='en'):
-    return TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, key)
+def t(key, lang='EN'):
+    return TRANSLATIONS.get(lang, TRANSLATIONS['EN']).get(key, key)

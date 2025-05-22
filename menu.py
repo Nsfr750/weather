@@ -52,7 +52,7 @@ def create_menu_bar(root, app):
 
     # Help menu
     help_menu = tk.Menu(menubar, tearoff=0)
-    help_menu.add_command(label="Help", command=lambda: Help.show_help(root))
+    help_menu.add_command(label="Help", command=lambda: Help.show_help(root, app.translations_manager, app.language))
     help_menu.add_separator()
     help_menu.add_command(label="About", command=lambda: About.show_about(root))
     help_menu.add_command(label="Sponsor", command=lambda: Sponsor(root).show_sponsor())

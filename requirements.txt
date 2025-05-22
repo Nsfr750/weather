@@ -1,3 +1,4 @@
 requests
 pillow
 # For GUI (tkinter is built-in, but Pillow is for weather icons)
+# All translation and help dialog logic is handled in Python; no extra dependencies required for multi-language support

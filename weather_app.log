@@ -1,0 +1,32 @@
+2025-05-22 22:29:42,511 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 145, in refresh_weather
+    weather, forecast = self._fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 158, in _fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-05-22 22:30:08,923 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 145, in refresh_weather
+    weather, forecast = self._fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 158, in _fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-05-22 22:33:32,696 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 153, in refresh_weather
+    weather, forecast = self._fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 172, in _fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-05-22 22:35:06,448 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 155, in refresh_weather
+    weather, forecast = self._fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 174, in _fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.

@@ -10,6 +10,7 @@ from tkinter import messagebox
 from about import About
 from help import Help
 from sponsor import Sponsor
+from log_viewer import LogViewer
 
 
 def create_menu_bar(root, app):
@@ -41,7 +42,7 @@ def create_menu_bar(root, app):
 
     # Log menu (placeholder, implement log view if needed)
     log_menu = tk.Menu(menubar, tearoff=0)
-    log_menu.add_command(label="View Log", command=lambda: messagebox.showinfo("Log View", "Log viewing not yet implemented."))
+    log_menu.add_command(label="View Log", command=lambda: LogViewer.show_log(root))
     menubar.add_cascade(label="Log", menu=log_menu)
 
     # API menu (placeholder, implement API insert if needed)

@@ -4,8 +4,9 @@ import os
 CONFIG_FILE = 'config.json'
 DEFAULT_CONFIG = {
     'units': 'metric',  # or 'imperial'
-    'api_key': '',
-    'language': 'en'  # default language
+    'api_key': '1a5c879bc1d493f1458a50db471bcb2f',
+    'language': 'IT',  # default language
+    'theme': 'dark'    # default theme
 }
 
 def load_config():

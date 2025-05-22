@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0-beta] - 2025-05-22
+### Added
+- Help dialog is now fully multi-language (English, Spanish, Italian)
+- All help content and tab titles use the modularized translation system
+- UI updates instantly when language is changed
+- Improved documentation and modularity for translation logic
+
+### Changed
+- Version bumped to 1.2.0-beta to reflect major modularization and help dialog improvements
+
 # Changelog
 
 ## [1.2.0] - 2025-05-22

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0] - 2025-05-22
+### Added
+- Error logging to `weather_app.log`
+- Log viewer dialog in the app
+- Favorites: save and select favorite cities
+- Unit selection: metric (°C, m/s) and imperial (°F, mph)
+- Persistent API key storage in `config.json` and settings dialog
+- Multi-language support (English, Spanish, Italian) for UI and weather descriptions
+
+### Changed
+- Updated help and settings dialogs for new features
+
+---
+*See previous versions in version.py if available.*
+
 ## [1.1.0-alpha] - 2025-05-22
 ### Added
 - Modern, responsive GUI with Tkinter
@@ -15,6 +30,3 @@
 
 ### Removed
 - Removed references to map/location and favorites in help
-
----
-*See previous versions in version.py if available.*

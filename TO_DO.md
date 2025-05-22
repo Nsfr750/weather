@@ -6,6 +6,8 @@
 - [x] Option to save favorite cities
 - [x] Multi-language support (English, Spanish, Italian)
 - [x] Persistent API key in config.json
+- [x] Modularized translations and full multi-language Help dialog
+- [x] Persistent theme in config.json
 
 ## 🚧 In Progress
 - [ ] Add unit tests for weather fetching and UI components

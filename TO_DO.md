@@ -1,13 +1,22 @@
-# To-Do
+# Project To-Do List
 
+## ✅ Completed
+- [x] Support for imperial units (°F, mph)
+- [x] Error logging and log viewer
+- [x] Option to save favorite cities
+- [x] Multi-language support (English, Spanish, Italian)
+- [x] Persistent API key in config.json
+
+## 🚧 In Progress
 - [ ] Add unit tests for weather fetching and UI components
-- [x] Add support for imperial units (°F, mph)
-- [x] Add error logging and log viewer
+
+## 📝 Planned / Suggestions
 - [ ] Add weather icons fallback for offline use
-- [x] Add option to save favorite cities
 - [ ] Add desktop notifications for severe weather
 - [ ] Add animated transitions for theme switch
 - [ ] Improve accessibility (keyboard navigation, color contrast)
-- [x] Add multi-language support
-- [x] Persistent API key in config.json
 - [ ] Polish UI and add more customization options
+
+---
+
+Want to help? Open an issue or PR with your ideas!

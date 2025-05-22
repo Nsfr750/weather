@@ -6,8 +6,14 @@ A modern, responsive Python weather application with a graphical user interface 
 - **Current Weather:** Real-time temperature, humidity, wind speed, and weather icon
 - **5-Day Forecast:** Daily temperature, weather icon, and description
 - **Themes:** Light and dark mode support
+- **Units:** Metric (°C, m/s) and Imperial (°F, mph) selectable
+- **Favorites:** Save and quickly select favorite cities
+- **Multi-language Support:** English, Spanish, Italian (UI and weather descriptions)
+- **Persistent API Key:** API key stored securely in `config.json`
+- **Error Logging:** All errors logged to `weather_app.log`
+- **Log Viewer:** View logs directly from the app
 - **Responsive UI:** Clean interface that adapts to any screen size
-- **Menu Bar:** Quick access to About, Help, Sponsor, and Settings
+- **Menu Bar:** Quick access to About, Help, Sponsor, Log, and Settings
 - **API Key Management:** Easily set your OpenWeatherMap API key in Settings
 
 ## Getting Started

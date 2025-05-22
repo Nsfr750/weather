@@ -11,7 +11,8 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
 - **Themes:** Toggle between light and dark modes
 - **Units:** Choose between Metric (°C, m/s) and Imperial (°F, mph)
 - **Favorites:** Save and quickly select your favorite cities
-- **Multi-language Support:** English, Spanish, Italian (UI and weather descriptions)
+- **Multi-language Support:** English, Spanish, Italian (UI, weather descriptions, and Help dialog)
+- **Modularized Translations:** All major UI and help content are fully translatable and update instantly with the selected language
 - **Persistent API Key:** Securely stored in `config.json` via the Settings dialog
 - **Error Logging:** All errors recorded in `weather_app.log`
 - **Log Viewer:** Conveniently view logs from within the app
@@ -54,6 +55,12 @@ Example `config.json`:
 ```
 
 ---
+
+---
+
+## 🆕 Recent Improvements
+- The Help dialog is now fully multi-language and updates instantly when you change the language setting.
+- All translation logic is modularized for easy maintenance and extensibility.
 
 ## 📝 Usage Tips
 - **Favorites**: Click the star next to the city input to add/remove favorites. Use the dropdown to quickly switch.

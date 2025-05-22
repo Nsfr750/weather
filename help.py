@@ -18,7 +18,7 @@ class Help:
     """
     
     @staticmethod
-    def show_help(parent):
+    def show_help(parent, translations_manager, language):
         """
         Display the Help dialog.
         
@@ -31,7 +31,7 @@ class Help:
         """
         # Create and configure the help window
         help_window = tk.Toplevel(parent)
-        help_window.title("Weather App Help")
+        help_window.title(translations_manager.t('help_title', language))
         help_window.geometry("700x500")
         help_window.minsize(600, 400)
         
@@ -50,9 +50,9 @@ class Help:
         
         # ===== USAGE TAB =====
         usage_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(usage_frame, text="Usage")
+        notebook.add(usage_frame, text=translations_manager.t('help_usage_tab', language))
         
-        usage_text = """Welcome to Weather App Help\n\nGetting Started:\n1. Enter a city name in the search box\n2. Click the Search button to view current weather and 5-day forecast\n\nFeatures:\n- View real-time temperature, humidity, wind speed, and weather icon\n- See a 5-day forecast with daily temperature, icon, and description\n- Toggle between light and dark mode using the Theme button\n\nTips:\n- Use the menu bar for About, Help, Sponsor, and Settings\n- In Settings, you can set your OpenWeatherMap API key\n- The app is responsive and adapts to different window sizes\n\nNote: Country code can be included for more specific results (e.g., 'Paris, FR')\n"""
+        usage_text = translations_manager.t('help_usage_text', language)
         
         # Create a scrollable text area for usage instructions
         usage_canvas = tk.Canvas(usage_frame)
@@ -86,23 +86,9 @@ class Help:
         
         # ===== FEATURES TAB =====
         features_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(features_frame, text="Features")
+        notebook.add(features_frame, text=translations_manager.t('help_features_tab', language))
         
-        features_text = """Key Features:
-
-• Current Weather:
-  - Real-time temperature, humidity, and conditions
-  - Feels-like temperature and wind information
-  - Weather condition icons
-
-• 5-Day Forecast:
-  - Daily temperature highs and lows
-  - Weather conditions and precipitation chance
-  - Sunrise and sunset times
-
-• Customization:
-  - Choose between light and dark themes
-"""
+        features_text = translations_manager.t('help_features_text', language)
         
         features_label = ttk.Label(
             features_frame,
@@ -114,15 +100,9 @@ class Help:
         
         # ===== TIPS TAB =====
         tips_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(tips_frame, text="Tips & Tricks")
+        notebook.add(tips_frame, text=translations_manager.t('help_tips_tab', language))
         
-        tips_text = """Quick Tips:
-
-1. Troubleshooting:
-   - Check your internet connection if data doesn't load
-   - Ensure your API key is properly configured in settings
-   - Check the logs for detailed error information
-"""
+        tips_text = translations_manager.t('help_tips_text', language)
         
         tips_label = ttk.Label(
             tips_frame,
@@ -138,7 +118,7 @@ class Help:
         
         close_button = ttk.Button(
             button_frame,
-            text="Close",
+            text=translations_manager.t('help_close_btn', language),
             command=help_window.destroy,
             width=15
         )

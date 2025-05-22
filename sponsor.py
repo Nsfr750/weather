@@ -55,7 +55,7 @@ class Sponsor:
         dialog.resizable(False, False)
         
         # Center the dialog on screen
-        window_width = 600
+        window_width = 700
         window_height = 200
         screen_width = dialog.winfo_screenwidth()
         screen_height = dialog.winfo_screenheight()

@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import requests
+from weather_api import WeatherAPI
 from PIL import Image, ImageTk
+from icon_utils import get_icon_image
 import io
 import os
 import logging
@@ -11,9 +13,10 @@ from about import About
 from help import Help
 from sponsor import Sponsor
 from menu import create_menu_bar
-from favorites import load_favorites, save_favorites
-from config import load_config, save_config
-from translations import t, TRANSLATIONS
+from favorites_utils import FavoritesManager
+from config_utils import ConfigManager
+from translations import TRANSLATIONS
+from translations_utils import TranslationsManager
 
 # ----------- LOGGING SETUP -----------
 LOG_FILE = 'weather_app.log'
@@ -33,32 +36,28 @@ BASE_URL = 'https://api.openweathermap.org/data/2.5/'
 DEFAULT_CITY = 'London'
 
 # ----------- THEMES -----------
-LIGHT_THEME = {
-    'bg': '#f4f4f4',
-    'fg': '#222',
-    'accent': '#1976d2',
-    'panel': '#ffffff',
-}
-DARK_THEME = {
-    'bg': '#23272f',
-    'fg': '#f4f4f4',
-    'accent': '#90caf9',
-    'panel': '#2c313a',
-}
+from themes import LIGHT_THEME, DARK_THEME, apply_ttk_theme
 
 class WeatherApp:
     def __init__(self, root):
         self.root = root
         self.root.title('Weather App')
-        self.root.geometry('500x600')
-        self.root.resizable(False, False)
+        self.root.geometry('800x600')
+        self.root.resizable(True, True)
 
-        self.config = load_config()
-        self.units = self.config.get('units', 'metric')
-        self.language = self.config.get('language', 'en')
-        self.api_key = self.config.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
-        self.theme = self.config.get('theme', 'dark')
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.get_config()
+        self.units = self.config_manager.get('units', 'metric')
+        self.language = self.config_manager.get('language', 'en')
+        self.api_key = self.config_manager.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
+        self.theme = self.config_manager.get('theme', 'dark')
         self.city_var = tk.StringVar(value=DEFAULT_CITY)
+        self.translations_manager = TranslationsManager(TRANSLATIONS, default_lang=self.language)
+        self.weather_api = WeatherAPI(
+            api_key=self.api_key,
+            units=self.units,
+            language=self.language
+        )
 
         # Menu bar
         create_menu_bar(self.root, self)
@@ -76,13 +75,13 @@ class WeatherApp:
         # City input
         city_frame = ttk.Frame(self.main_frame)
         city_frame.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(city_frame, text=t('city', self.language)).pack(side=tk.LEFT)
+        ttk.Label(city_frame, text=self.translations_manager.t('city', self.language)).pack(side=tk.LEFT)
         self.city_entry = ttk.Entry(city_frame, textvariable=self.city_var, width=20)
         self.city_entry.pack(side=tk.LEFT, padx=5)
 
         # Language dropdown
         self.language_var = tk.StringVar(value=self.language)
-        langs = list(TRANSLATIONS.keys())
+        langs = self.translations_manager.available_languages()
         self.lang_menu = ttk.OptionMenu(city_frame, self.language_var, self.language, *langs, command=self._change_language)
         self.lang_menu.pack(side=tk.LEFT, padx=5)
 
@@ -92,21 +91,22 @@ class WeatherApp:
         self.units_menu.pack(side=tk.LEFT, padx=5)
 
         # Favorites dropdown
-        self.favorites = load_favorites()
+        self.favorites_manager = FavoritesManager()
+        self.favorites = self.favorites_manager.get_favorites()
         self.favorite_var = tk.StringVar(value='Favorites')
-        self.fav_menu = ttk.OptionMenu(city_frame, self.favorite_var, t('favorites', self.language), *self.favorites, command=self._select_favorite)
+        self.fav_menu = ttk.OptionMenu(city_frame, self.favorite_var, self.translations_manager.t('favorites', self.language), *self.favorites, command=self._select_favorite)
         self.fav_menu.pack(side=tk.LEFT, padx=5)
 
         # Add/Remove Favorite button
-        self.fav_btn = ttk.Button(city_frame, text=t('remove_favorite', self.language), width=3, command=self._toggle_favorite)
+        self.fav_btn = ttk.Button(city_frame, text=self.translations_manager.t('remove_favorite', self.language), width=3, command=self._toggle_favorite)
         self.fav_btn.pack(side=tk.LEFT, padx=2)
         self._update_fav_btn()
 
-        ttk.Button(city_frame, text=t('search', self.language), command=self.refresh_weather).pack(side=tk.LEFT)
-        ttk.Button(city_frame, text=t('theme', self.language), command=self.toggle_theme).pack(side=tk.RIGHT)
+        ttk.Button(city_frame, text=self.translations_manager.t('search', self.language), command=self.refresh_weather).pack(side=tk.LEFT)
+        ttk.Button(city_frame, text=self.translations_manager.t('theme', self.language), command=self.toggle_theme).pack(side=tk.RIGHT)
 
         # Current weather panel
-        self.current_panel = ttk.LabelFrame(self.main_frame, text=t('current_weather', self.language))
+        self.current_panel = ttk.LabelFrame(self.main_frame, text=self.translations_manager.t('current_weather', self.language))
         self.current_panel.pack(fill=tk.X, pady=5)
         self.weather_icon_label = ttk.Label(self.current_panel)
         self.weather_icon_label.grid(row=0, column=0, rowspan=3, padx=10, pady=10)
@@ -118,7 +118,7 @@ class WeatherApp:
         self.meta_label.grid(row=2, column=1, sticky='w')
 
         # Forecast panel
-        self.forecast_panel = ttk.LabelFrame(self.main_frame, text=t('forecast', self.language))
+        self.forecast_panel = ttk.LabelFrame(self.main_frame, text=self.translations_manager.t('forecast', self.language))
         self.forecast_panel.pack(fill=tk.BOTH, expand=True, pady=5)
         self.forecast_frames = []
         for i in range(5):
@@ -143,26 +143,17 @@ class WeatherApp:
     def apply_theme(self):
         theme = DARK_THEME if getattr(self, 'theme', 'dark') == 'dark' else LIGHT_THEME
         self.root.configure(bg=theme['bg'])
-        # self.main_frame.configure(bg=theme['bg'])  # Do NOT set bg for ttk.Frame
-        # Removed call to self._set_widget_theme; rely on ttk.Style for theming
         style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TLabel', background=theme['bg'], foreground=theme['fg'])
-        style.configure('TFrame', background=theme['bg'])
-        style.configure('Main.TFrame', background=theme['bg'])
-        style.configure('TButton', background=theme['accent'], foreground=theme['fg'])
-        style.configure('TLabelframe', background=theme['panel'], foreground=theme['fg'])
-        style.configure('TLabelframe.Label', background=theme['panel'], foreground=theme['fg'])
-        style.configure('TEntry', fieldbackground=theme['panel'], foreground=theme['fg'])
+        apply_ttk_theme(style, theme)
 
     def toggle_theme(self):
         self.theme = 'dark' if getattr(self, 'theme', 'light') == 'light' else 'light'
-        self.config['theme'] = self.theme
-        save_config(self.config)
+        self.config_manager.set('theme', self.theme)
+        self.config_manager.save_config()
         self.apply_theme()
         try:
             city = self.city_var.get()
-            weather, forecast = self._fetch_weather(city)
+            weather, forecast = self.weather_api.fetch_weather(city)
             self._update_current_weather(weather)
             self._update_forecast(forecast)
             self._update_fav_btn()
@@ -173,7 +164,7 @@ class WeatherApp:
     def refresh_weather(self):
         city = self.city_var.get()
         try:
-            weather, forecast = self._fetch_weather(city)
+            weather, forecast = self.weather_api.fetch_weather(city)
             self._update_current_weather(weather)
             self._update_forecast(forecast)
             self._update_fav_btn()
@@ -183,14 +174,16 @@ class WeatherApp:
 
     def _change_units(self, value):
         self.units = value
-        self.config['units'] = value
-        save_config(self.config)
+        self.config_manager.set('units', value)
+        self.config_manager.save_config()
+        self.weather_api.update_config(units=value)
         self.refresh_weather()
 
     def _change_language(self, value):
         self.language = value
-        self.config['language'] = value
-        save_config(self.config)
+        self.config_manager.set('language', value)
+        self.config_manager.save_config()
+        self.weather_api.update_config(language=value)
         # Rebuild UI to update all labels
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -198,19 +191,6 @@ class WeatherApp:
         self.apply_theme()
         self.refresh_weather()
 
-    def _fetch_weather(self, city):
-        params = {'q': city, 'appid': self.api_key, 'units': self.units, 'lang': self.language}
-        # Current weather
-        r = requests.get(BASE_URL + 'weather', params=params)
-        if r.status_code != 200:
-            raise Exception(r.json().get('message', 'API error'))
-        weather = r.json()
-        # Forecast (5 day, 3-hour intervals)
-        r2 = requests.get(BASE_URL + 'forecast', params=params)
-        if r2.status_code != 200:
-            raise Exception(r2.json().get('message', 'API error'))
-        forecast = r2.json()
-        return weather, forecast
 
     def _update_current_weather(self, data):
         temp = int(round(data['main']['temp']))
@@ -222,9 +202,9 @@ class WeatherApp:
         wind_unit = 'm/s' if self.units == 'metric' else 'mph'
         self.temp_label.config(text=f'{temp}{temp_unit}')
         self.desc_label.config(text=desc)
-        self.meta_label.config(text=f"{t('humidity', self.language)}: {humidity}%   {t('wind', self.language)}: {wind} {wind_unit}")
+        self.meta_label.config(text=f"{self.translations_manager.t('humidity', self.language)}: {humidity}%   {self.translations_manager.t('wind', self.language)}: {wind} {wind_unit}")
         # Icon
-        icon_img = self._get_icon_image(icon_code)
+        icon_img = get_icon_image(icon_code)
         self.weather_icon_label.config(image=icon_img)
         self.weather_icon_label.image = icon_img
 
@@ -247,7 +227,7 @@ class WeatherApp:
             desc = entry['weather'][0]['description'].capitalize()
             icon_code = entry['weather'][0]['icon']
             weekday = day.strftime('%A')
-            icon_img = self._get_icon_image(icon_code, size=(40, 40))
+            icon_img = get_icon_image(icon_code, size=(40, 40))
             frame = self.forecast_frames[i]
             frame['icon'].config(image=icon_img)
             frame['icon'].image = icon_img
@@ -255,25 +235,16 @@ class WeatherApp:
             frame['temp'].config(text=f'{temp}{temp_unit}')
             frame['desc'].config(text=desc)
 
-    def _get_icon_image(self, icon_code, size=(64, 64)):
-        url = f'http://openweathermap.org/img/wn/{icon_code}@2x.png'
-        try:
-            r = requests.get(url)
-            img = Image.open(io.BytesIO(r.content)).resize(size)
-            return ImageTk.PhotoImage(img)
-        except Exception as e:
-            logging.error(f'Failed to fetch or process icon {icon_code}: {e}', exc_info=True)
-            return None
 
     def _toggle_favorite(self):
         city = self.city_var.get().strip()
         if not city:
             return
-        if city in self.favorites:
-            self.favorites.remove(city)
+        if self.favorites_manager.is_favorite(city):
+            self.favorites_manager.remove_favorite(city)
         else:
-            self.favorites.append(city)
-        save_favorites(self.favorites)
+            self.favorites_manager.add_favorite(city)
+        self.favorites = self.favorites_manager.get_favorites()
         self._update_fav_menu()
         self._update_fav_btn()
 
@@ -287,32 +258,22 @@ class WeatherApp:
         for fav in self.favorites:
             menu.add_command(label=fav, command=lambda v=fav: self._select_favorite(v))
         if not self.favorites:
-            menu.add_command(label=t('no_favorites', self.language), command=lambda: None)
+            menu.add_command(label=self.translations_manager.t('no_favorites', self.language), command=lambda: None)
 
     def _update_fav_btn(self):
         city = self.city_var.get().strip()
-        if city in self.favorites:
-            self.fav_btn.config(text=t('remove_favorite', self.language))
+        if self.favorites_manager.is_favorite(city):
+            self.fav_btn.config(text=self.translations_manager.t('remove_favorite', self.language))
         else:
-            self.fav_btn.config(text=t('add_favorite', self.language))
-        self._update_fav_menu()
+            self.fav_btn.config(text=self.translations_manager.t('add_favorite', self.language))
 
 
     def _show_settings(self):
         # Settings dialog for API key
         settings = tk.Toplevel(self.root)
-        settings.title(t('settings', self.language))
+        settings.title(self.translations_manager.t('settings', self.language))
         settings.geometry('350x180')
-        tk.Label(settings, text=t('api_key', self.language)).pack(pady=10)
-        api_var = tk.StringVar(value=self.api_key)
-        entry = tk.Entry(settings, textvariable=api_var, width=40)
-        entry.pack(pady=5)
-        def save_key():
-            self.api_key = api_var.get()
-            self.config['api_key'] = self.api_key
-            save_config(self.config)
-            settings.destroy()
-        tk.Button(settings, text=t('save', self.language), command=save_key).pack(pady=10)
+        tk.Label(settings, text=self.translations_manager.t('api_key', self.language)).pack(pady=10)
 
 
 if __name__ == '__main__':

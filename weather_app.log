@@ -30,3 +30,19 @@ Traceback (most recent call last):
   File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 174, in _fetch_weather
     raise Exception(r.json().get('message', 'API error'))
 Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-05-22 23:10:37,566 [ERROR] Could not fetch weather for city London: name 'inself' is not defined
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 168, in refresh_weather
+    self._update_current_weather(weather)
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 196, in _update_current_weather
+    temp = inself.translations_manager.t(round(data['main']['temp']))
+           ^^^^^^
+NameError: name 'inself' is not defined. Did you mean: 'self'?
+2025-05-22 23:10:49,710 [ERROR] Could not fetch weather for city Bolzano Novarese, IT: name 'inself' is not defined
+Traceback (most recent call last):
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 168, in refresh_weather
+    self._update_current_weather(weather)
+  File "c:\Users\guara\Documents\GitHub\weather\weather_app.py", line 196, in _update_current_weather
+    temp = inself.translations_manager.t(round(data['main']['temp']))
+           ^^^^^^
+NameError: name 'inself' is not defined. Did you mean: 'self'?

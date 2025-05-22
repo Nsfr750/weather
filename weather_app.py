@@ -50,17 +50,19 @@ class WeatherApp:
     def __init__(self, root):
         self.root = root
         self.root.title('Weather App')
-        self.theme = 'light'
-        self.theme_colors = LIGHT_THEME.copy()
-        self.city_var = tk.StringVar(value=DEFAULT_CITY)
-
-        # Menu bar
-        create_menu_bar(self.root, self)
+        self.root.geometry('500x600')
+        self.root.resizable(False, False)
 
         self.config = load_config()
         self.units = self.config.get('units', 'metric')
         self.language = self.config.get('language', 'en')
         self.api_key = self.config.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
+        self.theme = self.config.get('theme', 'dark')
+        self.city_var = tk.StringVar(value=DEFAULT_CITY)
+
+        # Menu bar
+        create_menu_bar(self.root, self)
+
         self._build_ui()
         self.apply_theme()
         self.refresh_weather()
@@ -139,23 +141,34 @@ class WeatherApp:
         self.main_frame.columnconfigure(0, weight=1)
 
     def apply_theme(self):
-        colors = LIGHT_THEME if self.theme == 'light' else DARK_THEME
-        self.theme_colors = colors.copy()
-        self.root.configure(bg=colors['bg'])
-        self.main_frame.configure(style='Main.TFrame')
+        theme = DARK_THEME if getattr(self, 'theme', 'dark') == 'dark' else LIGHT_THEME
+        self.root.configure(bg=theme['bg'])
+        # self.main_frame.configure(bg=theme['bg'])  # Do NOT set bg for ttk.Frame
+        # Removed call to self._set_widget_theme; rely on ttk.Style for theming
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure('TLabel', background=colors['bg'], foreground=colors['fg'])
-        style.configure('TFrame', background=colors['bg'])
-        style.configure('Main.TFrame', background=colors['bg'])
-        style.configure('TButton', background=colors['accent'], foreground=colors['fg'])
-        style.configure('TLabelframe', background=colors['panel'], foreground=colors['fg'])
-        style.configure('TLabelframe.Label', background=colors['panel'], foreground=colors['fg'])
-        style.configure('TEntry', fieldbackground=colors['panel'], foreground=colors['fg'])
+        style.configure('TLabel', background=theme['bg'], foreground=theme['fg'])
+        style.configure('TFrame', background=theme['bg'])
+        style.configure('Main.TFrame', background=theme['bg'])
+        style.configure('TButton', background=theme['accent'], foreground=theme['fg'])
+        style.configure('TLabelframe', background=theme['panel'], foreground=theme['fg'])
+        style.configure('TLabelframe.Label', background=theme['panel'], foreground=theme['fg'])
+        style.configure('TEntry', fieldbackground=theme['panel'], foreground=theme['fg'])
 
     def toggle_theme(self):
-        self.theme = 'dark' if self.theme == 'light' else 'light'
+        self.theme = 'dark' if getattr(self, 'theme', 'light') == 'light' else 'light'
+        self.config['theme'] = self.theme
+        save_config(self.config)
         self.apply_theme()
+        try:
+            city = self.city_var.get()
+            weather, forecast = self._fetch_weather(city)
+            self._update_current_weather(weather)
+            self._update_forecast(forecast)
+            self._update_fav_btn()
+        except Exception as e:
+            logging.error(f'Could not fetch weather for city {city}: {e}', exc_info=True)
+            messagebox.showerror('Error', f'Could not fetch weather: {e}')
 
     def refresh_weather(self):
         city = self.city_var.get()

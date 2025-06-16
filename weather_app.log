@@ -46,3 +46,11 @@ Traceback (most recent call last):
     temp = inself.translations_manager.t(round(data['main']['temp']))
            ^^^^^^
 NameError: name 'inself' is not defined. Did you mean: 'self'?
+2025-06-07 09:03:01,267 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "X:\GitHub\weather\weather_app.py", line 167, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "X:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.

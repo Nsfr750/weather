@@ -1,6 +1,6 @@
 {
   "units": "metric",
-  "api_key": "INSERT_API_HERE",
+  "api_key": "API",
   "language": "IT",
-  "theme": "light"
+  "theme": "dark"
 }

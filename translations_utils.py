@@ -4,7 +4,7 @@ Utility class for managing translations and language switching in a modular way.
 """
 
 class TranslationsManager:
-    def __init__(self, translations_dict, default_lang='EN'):
+    def __init__(self, translations_dict, default_lang='IT'):
         self.translations = translations_dict
         self.default_lang = default_lang
 

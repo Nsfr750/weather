@@ -7,8 +7,10 @@ from icon_utils import get_icon_image
 import io
 import os
 import logging
+import threading
 
 from version import get_version
+from updates import check_for_updates
 from about import About
 from help import Help
 from sponsor import Sponsor
@@ -48,6 +50,9 @@ class WeatherApp:
         self.config_manager = ConfigManager()
         self.config = self.config_manager.get_config()
         self.units = self.config_manager.get('units', 'metric')
+        
+        # Check for updates on startup (in a separate thread to avoid blocking the UI)
+        self.check_updates_on_startup()
         self.language = self.config_manager.get('language', 'en')
         self.api_key = self.config_manager.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
         self.theme = self.config_manager.get('theme', 'dark')
@@ -59,13 +64,38 @@ class WeatherApp:
             language=self.language
         )
 
-        # Menu bar
-        create_menu_bar(self.root, self)
-
+        # Initialize UI
         self._build_ui()
+        
+        # Initialize menu bar
+        self.menu_bar = create_menu_bar(self.root, self)
+        
+        # Apply theme and initial data
         self.apply_theme()
         self.refresh_weather()
         self.city_var.trace_add('write', lambda *args: self._update_fav_btn())
+
+    def check_updates_on_startup(self):
+        """Check for updates when the app starts."""
+        def check():
+            try:
+                check_for_updates(self.root, get_version())
+            except Exception as e:
+                logging.error(f"Error checking for updates: {e}")
+        
+        # Run in a separate thread to avoid blocking the UI
+        threading.Thread(target=check, daemon=True).start()
+    
+    def check_for_updates(self):
+        """Manually check for updates from the menu."""
+        def check():
+            try:
+                check_for_updates(self.root, get_version(), force_check=True)
+            except Exception as e:
+                logging.error(f"Error checking for updates: {e}")
+                messagebox.showerror("Update Error", f"Failed to check for updates: {e}", parent=self.root)
+        
+        threading.Thread(target=check, daemon=True).start()
 
     def _build_ui(self):
         # Main frame
@@ -184,10 +214,20 @@ class WeatherApp:
         self.config_manager.set('language', value)
         self.config_manager.save_config()
         self.weather_api.update_config(language=value)
+        
+        # Store the current city and theme before rebuilding
+        current_city = self.city_var.get()
+        
         # Rebuild UI to update all labels
         for widget in self.root.winfo_children():
-            widget.destroy()
+            if widget != self.menu_bar:  # Don't destroy the menu bar
+                widget.destroy()
+        
+        # Rebuild the UI
         self._build_ui()
+        
+        # Restore the city and refresh
+        self.city_var.set(current_city)
         self.apply_theme()
         self.refresh_weather()
 
@@ -272,8 +312,74 @@ class WeatherApp:
         # Settings dialog for API key
         settings = tk.Toplevel(self.root)
         settings.title(self.translations_manager.t('settings', self.language))
-        settings.geometry('350x180')
-        tk.Label(settings, text=self.translations_manager.t('api_key', self.language)).pack(pady=10)
+        settings.geometry('400x200')
+        settings.resizable(False, False)
+        
+        # Make the settings window modal
+        settings.transient(self.root)
+        settings.grab_set()
+        
+        # API Key Frame
+        api_frame = ttk.Frame(settings, padding="10 10 10 10")
+        api_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # API Key Label and Entry
+        ttk.Label(api_frame, text=self.translations_manager.t('api_key', self.language)).pack(anchor='w')
+        api_key_var = tk.StringVar(value=self.api_key)
+        api_entry = ttk.Entry(api_frame, textvariable=api_key_var, width=40, show="*" if api_key_var.get() != 'YOUR_API_KEY_HERE' else "")
+        api_entry.pack(fill=tk.X, pady=5)
+        
+        # Show/Hide API Key Checkbutton
+        def toggle_api_key_visibility():
+            if show_var.get():
+                api_entry.config(show="")
+            else:
+                api_entry.config(show="*" if api_key_var.get() != 'YOUR_API_KEY_HERE' else "")
+        
+        show_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(api_frame, 
+                       text=self.translations_manager.t('show_api_key', self.language),
+                       variable=show_var,
+                       command=toggle_api_key_visibility).pack(anchor='w', pady=5)
+        
+        # Buttons Frame
+        btn_frame = ttk.Frame(settings, padding="10 10 10 10")
+        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        def save_settings():
+            new_api_key = api_key_var.get().strip()
+            if new_api_key and new_api_key != 'YOUR_API_KEY_HERE':
+                self.api_key = new_api_key
+                self.config_manager.set('api_key', new_api_key)
+                self.config_manager.save_config()
+                self.weather_api.update_config(api_key=new_api_key)
+                messagebox.showinfo(
+                    self.translations_manager.t('success', self.language),
+                    self.translations_manager.t('settings_saved', self.language),
+                    parent=settings
+                )
+                settings.destroy()
+                self.refresh_weather()
+            else:
+                messagebox.showerror(
+                    self.translations_manager.t('error', self.language),
+                    self.translations_manager.t('invalid_api_key', self.language),
+                    parent=settings
+                )
+        
+        ttk.Button(btn_frame, 
+                  text=self.translations_manager.t('save', self.language),
+                  command=save_settings).pack(side=tk.RIGHT, padx=5)
+        
+        ttk.Button(btn_frame, 
+                  text=self.translations_manager.t('cancel', self.language),
+                  command=settings.destroy).pack(side=tk.RIGHT, padx=5)
+        
+        # Set focus to API key entry
+        api_entry.focus_set()
+        
+        # Make the dialog modal
+        settings.wait_window()
 
 
 if __name__ == '__main__':

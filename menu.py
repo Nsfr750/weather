@@ -45,13 +45,10 @@ def create_menu_bar(root, app):
     log_menu.add_command(label="View Log", command=lambda: LogViewer.show_log(root))
     menubar.add_cascade(label="Log", menu=log_menu)
 
-    # API menu (placeholder, implement API insert if needed)
-    api_menu = tk.Menu(menubar, tearoff=0)
-    api_menu.add_command(label="Insert API Key", command=app._show_settings)
-    menubar.add_cascade(label="API", menu=api_menu)
-
     # Help menu
     help_menu = tk.Menu(menubar, tearoff=0)
+    help_menu.add_command(label="Check for Updates", command=app.check_for_updates)
+    help_menu.add_separator()
     help_menu.add_command(label="Help", command=lambda: Help.show_help(root, app.translations_manager, app.language))
     help_menu.add_separator()
     help_menu.add_command(label="About", command=lambda: About.show_about(root))

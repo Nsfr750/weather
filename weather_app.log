@@ -54,3 +54,65 @@ Traceback (most recent call last):
   File "X:\GitHub\weather\weather_api.py", line 25, in fetch_weather
     raise Exception(r.json().get('message', 'API error'))
 Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:51:08,332 [INFO] Checking for updates...
+2025-06-23 18:51:08,884 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:51:09,124 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
+2025-06-23 18:51:10,217 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 18:51:18,464 [INFO] Checking for updates...
+2025-06-23 18:51:18,927 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
+2025-06-23 18:51:26,502 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:51:32,056 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:52:11,779 [INFO] Checking for updates...
+2025-06-23 18:52:12,262 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:52:12,404 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
+2025-06-23 18:52:13,493 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 18:54:22,371 [INFO] Checking for updates...
+2025-06-23 18:54:22,891 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:54:23,044 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
+2025-06-23 18:54:24,125 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 18:55:47,650 [INFO] Checking for updates...
+2025-06-23 18:55:48,125 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 18:55:48,244 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
+2025-06-23 18:55:49,333 [ERROR] Error checking for updates: main thread is not in main loop

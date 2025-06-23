@@ -1,6 +1,6 @@
 # Weather App
 
-A modern, feature-rich Python weather application with a beautiful, responsive GUI built using Tkinter. Instantly view real-time weather conditions and a 5-day forecast for any city, with support for multiple languages, units, favorites, and more. Designed for usability, extensibility, and a delightful user experience.
+A modern, feature-rich Python weather application with a beautiful, responsive GUI built using Tkinter. Instantly view real-time weather conditions and a 5-day forecast for any city, with support for multiple languages, units, favorites, and more. Includes automatic update checking and a user-friendly settings interface. Designed for usability, extensibility, and a delightful user experience.
 
 ---
 
@@ -16,24 +16,33 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
 - **Persistent API Key:** Securely stored in `config.json` via the Settings dialog
 - **Error Logging:** All errors recorded in `weather_app.log`
 - **Log Viewer:** Conveniently view logs from within the app
+- **Automatic Updates:** Check for and install the latest version
+- **Secure API Key Management:** Store and manage your OpenWeatherMap API key securely
 - **Responsive UI:** Clean, adaptive interface for any screen size
-- **Menu Bar:** Quick access to About, Help, Sponsor, Log, and Settings
+- **Menu Bar:** Quick access to About, Help, Check for Updates, Log, and Settings
 
 ---
 
 ## 🛠️ Getting Started
 
 1. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
+
 2. **Get an API Key**
+
    - Register for a free API key at [OpenWeatherMap](https://openweathermap.org/api).
+
 3. **Run the app**
+
    ```bash
    python weather_app.py
    ```
+
 4. **Configure your API Key**
+
    - Enter your API key in the Settings dialog (recommended), or set the `OPENWEATHER_API_KEY` environment variable.
 
 ---
@@ -41,11 +50,13 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
 ## ⚙️ Configuration
 
 The app uses `config.json` for persistent settings:
+
 - **API Key**: Set in Settings or manually in `config.json` (`api_key` field)
 - **Units**: Choose "metric" or "imperial" (UI dropdown or `units` field)
 - **Language**: Select from English (`en`), Spanish (`es`), or Italian (`it`) (UI dropdown or `language` field)
 
 Example `config.json`:
+
 ```json
 {
   "units": "metric",
@@ -54,19 +65,32 @@ Example `config.json`:
 }
 ```
 
----
+## 🆕 Recent Improvements (v1.2.1)
 
----
+- Added automatic update checking on startup
+- Added manual update check option in Help menu
+- Redesigned Settings dialog with secure API key management
+- Added show/hide toggle for API key in settings
+- Improved error handling and user feedback
+- Fixed menu bar disappearing when changing language
+- Enhanced settings dialog layout and usability
+- Better error messages for API key validation
 
-## 🆕 Recent Improvements
-- The Help dialog is now fully multi-language and updates instantly when you change the language setting.
-- All translation logic is modularized for easy maintenance and extensibility.
+### Previous Improvements
+
+- Fully multi-language Help dialog that updates instantly
+- Modularized translation system for easy maintenance
+- Persistent settings for theme, language, and units
+- Built-in error logging and log viewer
 
 ## 📝 Usage Tips
+
 - **Favorites**: Click the star next to the city input to add/remove favorites. Use the dropdown to quickly switch.
 - **Units & Language**: Change units or language at any time from the top bar. All labels and weather descriptions update instantly.
+- **API Key**: Set your OpenWeatherMap API key in Settings. It will be saved securely.
+- **Update Check**: The app checks for updates on startup. You can also check manually from the Help menu.
 - **Logs**: Use the Log menu to view error logs for troubleshooting.
-- **Settings**: Access API key and other settings from the menu.
+- **Settings**: Access all settings including API key, theme, units, and language from the menu.
 
 ---
 

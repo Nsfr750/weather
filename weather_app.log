@@ -116,3 +116,44 @@ Traceback (most recent call last):
 Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
 2025-06-23 18:55:48,244 [ERROR] Error checking for updates: 404 Client Error: Not Found for url: https://api.github.com/repos/Nsfr750/weather/releases/latest
 2025-06-23 18:55:49,333 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 19:02:42,935 [INFO] Checking for updates...
+2025-06-23 19:02:43,485 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 19:02:43,572 [INFO] No updates available
+2025-06-23 19:02:44,654 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 19:02:55,103 [INFO] Checking for updates...
+2025-06-23 19:02:55,603 [INFO] No updates available
+2025-06-23 19:03:02,419 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "x:\GitHub\weather\weather_app.py", line 197, in refresh_weather
+    weather, forecast = self.weather_api.fetch_weather(city)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "x:\GitHub\weather\weather_api.py", line 25, in fetch_weather
+    raise Exception(r.json().get('message', 'API error'))
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 19:11:20,090 [INFO] Checking for updates...
+2025-06-23 19:11:20,605 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_app.py", line 197, in refresh_weather
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_api.py", line 25, in fetch_weather
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 19:11:20,733 [INFO] No updates available
+2025-06-23 19:11:21,819 [ERROR] Error checking for updates: main thread is not in main loop
+2025-06-23 19:11:48,601 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_app.py", line 197, in refresh_weather
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_api.py", line 25, in fetch_weather
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 19:11:57,044 [ERROR] Could not fetch weather for city London: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+Traceback (most recent call last):
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_app.py", line 197, in refresh_weather
+  File "C:\Users\guara\AppData\Local\Temp\onefile_16472_133951722786859178\weather_api.py", line 25, in fetch_weather
+Exception: Invalid API key. Please see https://openweathermap.org/faq#error401 for more info.
+2025-06-23 19:12:01,664 [INFO] Checking for updates...
+2025-06-23 19:12:02,169 [INFO] No updates available

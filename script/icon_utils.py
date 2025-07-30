@@ -9,7 +9,8 @@ import requests
 from wand.image import Image as WandImage
 from wand.drawing import Drawing
 from wand.color import Color
-import tkinter as tk
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QFontMetrics
+from PyQt6.QtCore import QByteArray, QIODevice, QBuffer, Qt
 
 _icon_cache = {}
 _offline_mode = False
@@ -43,61 +44,95 @@ def set_offline_mode(enabled=True):
     logging.info(f'Offline mode for icons: {enabled}')
 
 def _create_emoji_icon(emoji, size):
-    """Create an image from an emoji character"""
+    """Create a QPixmap from an emoji character"""
     try:
-        with WandImage(width=size[0], height=size[1], background=Color('transparent')) as img:
-            with Drawing() as draw:
-                draw.font_size = min(size) * 0.8
-                draw.text(0, int(size[1] * 0.8), emoji)
-                draw(img)
-            # Convert to Tkinter PhotoImage
-            img_binary = img.make_blob('png')
-            return tk.PhotoImage(data=img_binary)
+        width, height = size
+        
+        # Create a transparent pixmap
+        pixmap = QPixmap(width, height)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        
+        # Set up painter
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        
+        # Set font (use system emoji font if available)
+        font = QFont("Segoe UI Emoji", min(width, height) * 0.8)
+        painter.setFont(font)
+        
+        # Draw emoji centered
+        font_metrics = QFontMetrics(font)
+        text_rect = font_metrics.boundingRect(emoji)
+        x = (width - text_rect.width()) / 2
+        y = (height + text_rect.height()) / 2 - font_metrics.descent()
+        
+        painter.drawText(int(x), int(y), emoji)
+        painter.end()
+        
+        return pixmap
     except Exception as e:
         logging.error(f'Failed to create emoji icon: {e}', exc_info=True)
-        return None
+        return QPixmap()
 
 def get_icon_image(icon_code, size=(64, 64)):
     """
     Fetch and cache weather icon images from OpenWeatherMap.
     If offline or fetch fails, falls back to emoji representation.
-    Returns a Tkinter-compatible PhotoImage.
+    Returns a QPixmap.
     """
     if not isinstance(size, (tuple, list)) or len(size) != 2:
         size = (64, 64)
     
     cache_key = (icon_code, size[0], size[1])
     if cache_key in _icon_cache:
-        return _icon_cache[cache_key]
+        # Return a copy to avoid issues with pixmap modification
+        return _icon_cache[cache_key].copy()
     
     # If in offline mode or we've had previous failures, use emoji fallback
     if _offline_mode or not _check_internet_connection():
-        emoji = EMOJI_ICONS.get(icon_code, '❓')
-        emoji_img = _create_emoji_icon(emoji, size)
-        if emoji_img:
-            _icon_cache[cache_key] = emoji_img
-            return emoji_img
+        emoji = EMOJI_ICONS.get(icon_code, '')
+        emoji_pixmap = _create_emoji_icon(emoji, size)
+        if not emoji_pixmap.isNull():
+            _icon_cache[cache_key] = emoji_pixmap
+            return emoji_pixmap.copy()
     
     # Try to fetch the online icon
     url = f'http://openweathermap.org/img/wn/{icon_code}@2x.png'
     try:
-        r = requests.get(url, timeout=5)
-        r.raise_for_status()
-        with WandImage(blob=r.content) as img:
-            img.resize(size[0], size[1])
-            img_binary = img.make_blob('png')
-            tk_img = tk.PhotoImage(data=img_binary)
-            _icon_cache[cache_key] = tk_img
-            return tk_img
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        
+        # Load image data into QPixmap
+        pixmap = QPixmap()
+        pixmap.loadFromData(response.content)
+        
+        # Resize if needed
+        if pixmap.size() != size:
+            pixmap = pixmap.scaled(
+                size[0], size[1],
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+        
+        if not pixmap.isNull():
+            _icon_cache[cache_key] = pixmap
+            return pixmap.copy()
+        
     except Exception as e:
         logging.warning(f'Failed to fetch online icon {icon_code}, using emoji fallback: {e}')
         set_offline_mode(True)
-        emoji = EMOJI_ICONS.get(icon_code, '❓')
-        emoji_img = _create_emoji_icon(emoji, size)
-        if emoji_img:
-            _icon_cache[cache_key] = emoji_img
-            return emoji_img
-        return None
+    
+    # Fallback to emoji if anything went wrong
+    emoji = EMOJI_ICONS.get(icon_code, '')
+    emoji_pixmap = _create_emoji_icon(emoji, size)
+    if not emoji_pixmap.isNull():
+        _icon_cache[cache_key] = emoji_pixmap
+        return emoji_pixmap.copy()
+    
+    # Return empty QPixmap as last resort
+    return QPixmap()
 
 def _check_internet_connection(timeout=5):
     """Check if we have an active internet connection"""

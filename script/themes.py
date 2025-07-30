@@ -3,13 +3,6 @@
 Centralized theme definitions and theming utilities for the Weather App.
 """
 
-LIGHT_THEME = {
-    'bg': '#f6caa5',
-    'fg': '#222',
-    'accent': '#1976d2',
-    'panel': '#ffffff',
-}
-
 DARK_THEME = {
     'bg': '#23272f',
     'fg': '#f4f4f4',

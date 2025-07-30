@@ -1,6 +1,35 @@
 {
   "units": "metric",
+  "language": "it",
+  "theme": "dark",
+  "provider": "openweathermap",
+  "providers": {
+    "openweathermap": {
+      "api_key": "1a5c879bc1d493f1458a50db471bcb2f",
+      "username": "nsfr750@yandex.com",
+      "password": "mvBBv5yvPQkQc3u"
+    },
+    "open-meteo": {
+      "api_key": ""
+    },
+    "weather.com": {
+      "api_key": ""
+    },
+    "breezy-weather": {
+      "api_key": ""
+    },
+    "quickweather": {
+      "api_key": ""
+    },
+    "weathercompany": {
+      "api_key": "",
+      "username": "",
+      "password": ""
+    },
+    "alliander": {
+      "api_key": ""
+    }
+  },
   "api_key": "1a5c879bc1d493f1458a50db471bcb2f",
-  "language": "IT",
-  "theme": "dark"
+  "last_city": "Tokio"
 }

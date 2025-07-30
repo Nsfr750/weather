@@ -2,13 +2,19 @@
 Update checking functionality for the Weather application.
 """
 import logging
-import tkinter as tk
-from tkinter import messagebox
-from typing import Optional, Tuple, Callable
+from typing import Optional, Tuple, Callable, Dict, Any
 import requests
 import json
 from pathlib import Path
 import os
+from datetime import datetime, timedelta
+
+# PyQt6 imports
+from PyQt6.QtWidgets import (
+    QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton, QCheckBox, QDialogButtonBox,
+    QProgressDialog, QApplication
+)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject
 
 # Get the application directory
 APP_DIR = Path(__file__).parent.parent
@@ -21,8 +27,11 @@ UPDATES_FILE = CONFIG_DIR / 'updates.json'
 # Configure logger
 logger = logging.getLogger(__name__)
 
-class UpdateChecker:
+class UpdateChecker(QObject):
     """Handles checking for application updates."""
+    
+    # Signal emitted when update check is complete
+    update_check_complete = pyqtSignal(dict, bool)
     
     def __init__(self, current_version: str, config_path: Optional[Path] = None):
         """Initialize the update checker.
@@ -31,6 +40,7 @@ class UpdateChecker:
             current_version: The current version of the application.
             config_path: Path to the configuration file (optional).
         """
+        super().__init__()
         self.current_version = current_version
         self.config_path = config_path or UPDATES_FILE
         self.config = self._load_config()
@@ -50,158 +60,182 @@ class UpdateChecker:
             'dont_ask_until': None
         }
     
-    def _save_config(self) -> None:
+    def _save_config(self):
         """Save the update configuration."""
         try:
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_path, 'w') as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving update config: {e}")
     
-    def check_for_updates(self, parent: Optional[tk.Tk] = None, force_check: bool = False) -> Tuple[bool, Optional[dict]]:
-        """Check for available updates.
+    def check_for_updates(self, force: bool = False) -> Tuple[bool, Optional[dict]]:
+        """Check for updates.
         
         Args:
-            parent: Parent window for dialogs.
-            force_check: If True, skip the cache and force a check.
+            force: If True, skip the cache and force a check.
             
         Returns:
-            Tuple of (update_available, update_info, error_message)
-            where error_message is None if no error, or a tuple of (title, message) if there was an error
+            A tuple of (update_available, update_info).
+            update_available is True if an update is available.
+            update_info contains information about the update if available.
         """
+        now = datetime.utcnow()
+        
+        # Check if we should skip the update check
+        if not force and self.config.get('dont_ask_until'):
+            try:
+                dont_ask_until = datetime.fromisoformat(self.config['dont_ask_until'])
+                if now < dont_ask_until:
+                    logger.info("Skipping update check: user asked not to check until %s", 
+                               self.config['dont_ask_until'])
+                    return False, None
+            except (ValueError, KeyError) as e:
+                logger.warning("Error parsing don't ask until date: %s", e)
+        
+        # Check if we've checked recently (within 1 day)
+        if not force and self.config.get('last_checked'):
+            try:
+                last_checked = datetime.fromisoformat(self.config['last_checked'])
+                if (now - last_checked) < timedelta(days=1):
+                    logger.info("Skipping update check: checked recently at %s", 
+                               self.config['last_checked'])
+                    return False, None
+            except (ValueError, KeyError) as e:
+                logger.warning("Error parsing last checked date: %s", e)
+        
+        # Update last checked time
+        self.config['last_checked'] = now.isoformat()
+        self._save_config()
+        
         try:
+            # Make the API request
             logger.info("Checking for updates...")
-            response = requests.get(self.update_url, timeout=10)
+            response = requests.get(
+                self.update_url,
+                headers={"Accept": "application/vnd.github.v3+json"},
+                timeout=10
+            )
             response.raise_for_status()
-            release = response.json()
             
-            latest_version = release['tag_name'].lstrip('v')
-            self.config['last_checked'] = release['published_at']
+            release_info = response.json()
+            latest_version = release_info.get('tag_name', '').lstrip('v')
+            
+            if not latest_version:
+                logger.warning("No version information in release data")
+                return False, None
+            
+            # Update last known version
             self.config['last_version'] = latest_version
             self._save_config()
             
-            if self._version_compare(latest_version, self.current_version) > 0:
-                logger.info(f"Update available: {latest_version}")
+            # Check if the latest version is newer than current
+            if self._is_newer_version(latest_version, self.current_version):
+                logger.info("Update available: %s (current: %s)", latest_version, self.current_version)
                 return True, {
                     'version': latest_version,
-                    'url': release['html_url'],
-                    'notes': release['body'],
-                    'published_at': release['published_at']
-                }, None
+                    'url': release_info.get('html_url', ''),
+                    'changelog': release_info.get('body', ''),
+                    'prerelease': release_info.get('prerelease', False),
+                    'published_at': release_info.get('published_at', '')
+                }
             else:
-                logger.info("No updates available")
-                return False, None, ('No Updates', 'You are using the latest version.')
+                logger.info("No updates available (current: %s, latest: %s)", 
+                           self.current_version, latest_version)
+                return False, None
                 
         except requests.RequestException as e:
-            error_msg = f'Failed to check for updates: {str(e)}'
-            logger.error(error_msg)
-            return False, None, ('Update Error', error_msg)
+            logger.error("Error checking for updates: %s", e)
+            return False, None
         except Exception as e:
-            error_msg = f'An unexpected error occurred: {str(e)}'
-            logger.exception("Unexpected error during update check")
-            return False, None, ('Update Error', error_msg)
+            logger.exception("Unexpected error checking for updates: %s", e)
+            return False, None
     
-    def _version_compare(self, v1: str, v2: str) -> int:
-        """Compare two version strings.
-        
-        Returns:
-            1 if v1 > v2, -1 if v1 < v2, 0 if equal
-        """
-        def parse_version(v: str) -> list:
-            return [int(x) for x in v.split('.')]
-            
+    def _is_newer_version(self, version1: str, version2: str) -> bool:
+        """Check if version1 is newer than version2."""
         try:
-            v1_parts = parse_version(v1)
-            v2_parts = parse_version(v2)
-            
-            # Pad with zeros if versions have different lengths
-            max_len = max(len(v1_parts), len(v2_parts))
-            v1_parts += [0] * (max_len - len(v1_parts))
-            v2_parts += [0] * (max_len - len(v2_parts))
-            
-            for i in range(max_len):
-                if v1_parts[i] > v2_parts[i]:
-                    return 1
-                elif v1_parts[i] < v2_parts[i]:
-                    return -1
-            return 0
-            
-        except (ValueError, AttributeError):
-            # Fallback to string comparison if version format is invalid
-            return (v1 > v2) - (v1 < v2)
+            from packaging import version
+            return version.parse(version1) > version.parse(version2)
+        except ImportError:
+            # Fallback simple comparison if packaging is not available
+            return version1 > version2
     
-    def show_update_dialog(self, parent: tk.Tk, update_info: dict) -> None:
-        """Show a dialog with update information."""
-        from tkinter import ttk
+    def show_update_dialog(self, parent=None, update_info=None):
+        """Show the update dialog.
         
-        dialog = tk.Toplevel(parent)
-        dialog.title("Update Available")
-        dialog.transient(parent)
-        dialog.grab_set()
+        Args:
+            parent: Parent widget for the dialog.
+            update_info: Update information from check_for_updates().
+        """
+        if not update_info:
+            return
+            
+        dialog = QDialog(parent)
+        dialog.setWindowTitle("Update Available")
+        dialog.setMinimumWidth(400)
         
-        # Center the dialog
-        dialog.update_idletasks()
-        width = 500
-        height = 300
-        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
-        y = (dialog.winfo_screenheight() // 2) - (height // 2)
-        dialog.geometry(f'{width}x{height}+{x}+{y}')
+        layout = QVBoxLayout(dialog)
         
-        # Create main frame
-        main_frame = ttk.Frame(dialog, padding=10)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # Add update message
+        message = f"<b>Version {update_info['version']} is available!</b>"
+        if update_info.get('prerelease'):
+            message += " (Pre-release)"
+        message += "<br><br>"
         
-        # Update info
-        ttk.Label(
-            main_frame,
-            text=f"Version {update_info['version']} is available!",
-            font=('TkDefaultFont', 12, 'bold')
-        ).pack(pady=(0, 10))
+        if update_info.get('changelog'):
+            # Limit changelog length
+            changelog = update_info['changelog']
+            if len(changelog) > 500:
+                changelog = changelog[:497] + "..."
+            message += f"<b>What's new:</b><br>{changelog}"
         
-        # Release notes
-        notes_frame = ttk.LabelFrame(main_frame, text="Release Notes", padding=5)
-        notes_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        label = QLabel(message)
+        label.setWordWrap(True)
+        label.setOpenExternalLinks(True)
+        layout.addWidget(label)
         
-        text = tk.Text(
-            notes_frame,
-            wrap=tk.WORD,
-            width=60,
-            height=10,
-            font=('TkDefaultFont', 9)
-        )
-        text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        text.insert('1.0', update_info['notes'])
-        text.config(state='disabled')
+        # Add "Don't ask again" checkbox
+        dont_ask_checkbox = QCheckBox("Don't ask me again for this version")
+        layout.addWidget(dont_ask_checkbox)
         
-        # Button frame
-        btn_frame = ttk.Frame(main_frame)
-        btn_frame.pack(fill=tk.X, pady=(5, 0))
+        # Add buttons
+        buttons = QDialogButtonBox()
+        download_btn = buttons.addButton("Download", QDialogButtonBox.ButtonRole.AcceptRole)
+        later_btn = buttons.addButton("Remind Me Later", QDialogButtonBox.ButtonRole.RejectRole)
         
-        # Buttons
-        ttk.Button(
-            btn_frame,
-            text="Download Now",
-            command=lambda: self._open_download(update_info['url'])
-        ).pack(side=tk.RIGHT, padx=5)
+        download_btn.clicked.connect(lambda: self._on_download_clicked(dialog, update_info['url']))
+        later_btn.clicked.connect(dialog.reject)
         
-        ttk.Button(
-            btn_frame,
-            text="Remind Me Later",
-            command=dialog.destroy
-        ).pack(side=tk.RIGHT, padx=5)
+        layout.addWidget(buttons)
         
-        # Make the dialog modal
-        dialog.wait_window()
+        # Handle dialog result
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            if dont_ask_checkbox.isChecked():
+                # Set don't ask until next version
+                self.config['dont_ask_until'] = None
+                self._save_config()
+        else:
+            if dont_ask_checkbox.isChecked():
+                # Set don't ask until tomorrow
+                tomorrow = datetime.utcnow() + timedelta(days=1)
+                self.config['dont_ask_until'] = tomorrow.isoformat()
+                self._save_config()
     
-    def _open_download(self, url: str) -> None:
-        """Open the download URL in the default browser."""
-        import webbrowser
-        webbrowser.open(url)
-        self.dialog.destroy()
+    def _on_download_clicked(self, dialog, url):
+        """Handle download button click."""
+        try:
+            import webbrowser
+            webbrowser.open(url)
+            dialog.accept()
+        except Exception as e:
+            logger.error("Error opening download URL: %s", e)
+            QMessageBox.critical(
+                dialog,
+                "Error",
+                f"Could not open the download page. Please visit {url} manually."
+            )
 
 
-def check_for_updates(parent: Optional[tk.Tk] = None, current_version: str = "__version__", force_check: bool = False) -> None:
+def check_for_updates(parent=None, current_version: str = "1.0.0", force_check: bool = False):
     """Check for application updates and show a dialog if an update is available.
     
     Args:
@@ -209,52 +243,65 @@ def check_for_updates(parent: Optional[tk.Tk] = None, current_version: str = "__
         current_version: Current application version.
         force_check: If True, skip the cache and force a check.
     """
-    def show_message(title: str, message: str, is_error: bool = False) -> None:
-        """Helper to show a message box in the main thread."""
-        if parent and parent.winfo_exists():
-            try:
-                if is_error or title == 'No Updates':
-                    parent.after(0, lambda t=title, m=message: messagebox.showinfo(t, m, parent=parent))
-                else:
-                    parent.after(0, lambda t=title, m=message: messagebox.showerror(t, m, parent=parent))
-            except RuntimeError as e:
-                logging.error(f"Failed to show message: {e}")
+    def show_update_dialog(update_info):
+        checker.show_update_dialog(parent, update_info)
     
-    def perform_check():
-        try:
-            checker = UpdateChecker(current_version)
-            update_available, update_info, error_info = None, None, None
-            
+    def show_error(message):
+        QMessageBox.warning(
+            parent,
+            "Update Check Failed",
+            message,
+            QMessageBox.StandardButton.Ok
+        )
+    
+    # Create a progress dialog
+    progress = QProgressDialog(
+        "Checking for updates...",
+        "Cancel",
+        0,
+        0,
+        parent
+    )
+    progress.setWindowTitle("Checking for Updates")
+    progress.setWindowModality(Qt.WindowModality.WindowModal)
+    progress.setCancelButton(None)  # No cancel button for now
+    progress.setMinimumDuration(1000)  # Show after 1 second if not done
+    
+    # Create and start the update checker
+    checker = UpdateChecker(current_version)
+    
+    # Use a thread to avoid freezing the UI
+    class UpdateThread(QThread):
+        finished_signal = pyqtSignal(tuple)
+        
+        def run(self):
             try:
-                update_available, update_info, error_info = checker.check_for_updates(parent, force_check=force_check)
+                result = checker.check_for_updates(force_check)
+                self.finished_signal.emit(result)
             except Exception as e:
-                error_msg = f"Error checking for updates: {e}"
-                logging.exception(error_msg)
-                show_message("Update Error", error_msg, is_error=True)
-                return
-            
-            if not parent or not parent.winfo_exists():
-                return
-                
-            if update_available and update_info:
-                try:
-                    parent.after(0, lambda: checker.show_update_dialog(parent, update_info))
-                except Exception as e:
-                    logging.exception("Failed to show update dialog")
-            elif error_info:
-                show_message(error_info[0], error_info[1], is_error=True)
-                
-        except Exception as e:
-            error_msg = f"An unexpected error occurred while checking for updates: {e}"
-            logging.exception(error_msg)
-            if parent and parent.winfo_exists():
-                parent.after(0, lambda: show_message("Update Error", error_msg, is_error=True))
+                logger.exception("Error in update thread: %s", e)
+                self.finished_signal.emit((False, None))
     
-    # Only start the thread if we have a parent window
-    if parent and parent.winfo_exists():
-        import threading
-        try:
-            thread = threading.Thread(target=perform_check, daemon=True, name="UpdateCheckThread")
-            thread.start()
-        except Exception as e:
-            logging.exception("Failed to start update check thread")
+    def on_finished(result):
+        progress.close()
+        update_available, update_info = result
+        
+        if update_available and update_info:
+            show_update_dialog(update_info)
+        elif force_check:
+            QMessageBox.information(
+                parent,
+                "No Updates",
+                "You are already using the latest version.",
+                QMessageBox.StandardButton.Ok
+            )
+    
+    thread = UpdateThread()
+    thread.finished_signal.connect(on_finished)
+    thread.start()
+    
+    # Keep the progress dialog open until the thread is done
+    while thread.isRunning():
+        QApplication.processEvents()
+    
+    return thread

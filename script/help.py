@@ -6,15 +6,19 @@ It displays a tabbed interface with usage instructions, features,
 and tips for using the application effectively.
 """
 
-import tkinter as tk
-from tkinter import ttk, messagebox
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
+    QPushButton, QWidget, QScrollArea, QFrame, QSizePolicy
+)
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QFont
 
-class Help:
+class HelpDialog(QDialog):
     """
-    A class to display the Help dialog for the Weather application.
+    A dialog to display help information for the Weather application.
     
-    This class provides a static method to show a modal dialog with
-    help information organized in tabs for different topics.
+    This class provides a tabbed interface with help information organized
+    into different sections such as usage, features, and tips.
     """
     
     @staticmethod
@@ -27,104 +31,228 @@ class Help:
         features, and tips.
         
         Args:
-            parent (tk.Tk): The parent window for the dialog
+            parent: The parent widget (main window)
+            translations_manager: The translations manager instance
+            language: The current language code
         """
-        # Create and configure the help window
-        help_window = tk.Toplevel(parent)
-        help_window.title(translations_manager.t('help_title', language))
-        help_window.geometry("700x500")
-        help_window.minsize(600, 400)
+        dialog = HelpDialog(parent, translations_manager, language)
+        dialog.exec()
+    
+    def __init__(self, parent, translations_manager, language):
+        """
+        Initialize the Help dialog.
         
-        # Center the window on screen
-        window_width = 700
-        window_height = 500
-        screen_width = help_window.winfo_screenwidth()
-        screen_height = help_window.winfo_screenheight()
-        x = (screen_width // 2) - (window_width // 2)
-        y = (screen_height // 2) - (window_height // 2)
-        help_window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+        Args:
+            parent: The parent widget
+            translations_manager: The translations manager instance
+            language: The current language code
+        """
+        super().__init__(parent)
+        self.translations_manager = translations_manager
+        self.language = language
         
-        # Create a notebook (tabbed interface)
-        notebook = ttk.Notebook(help_window)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.setWindowTitle(self.translations_manager.t('help_title', self.language))
+        self.setMinimumSize(700, 500)
         
-        # ===== USAGE TAB =====
-        usage_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(usage_frame, text=translations_manager.t('help_usage_tab', language))
+        # Set window flags to make it a dialog
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         
-        usage_text = translations_manager.t('help_usage_text', language)
+        # Set up the UI
+        self._setup_ui()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Set up the user interface components."""
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        # Create a scrollable text area for usage instructions
-        usage_canvas = tk.Canvas(usage_frame)
-        scrollbar = ttk.Scrollbar(usage_frame, orient="vertical", command=usage_canvas.yview)
-        scrollable_frame = ttk.Frame(usage_canvas)
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setDocumentMode(True)
+        self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
+        self.tab_widget.setMovable(False)
         
-        # Configure the canvas scrolling
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: usage_canvas.configure(
-                scrollregion=usage_canvas.bbox("all")
-            )
+        # Add tabs
+        self._create_usage_tab()
+        self._create_features_tab()
+        self._create_tips_tab()
+        
+        # Add tab widget to main layout
+        main_layout.addWidget(self.tab_widget, 1)
+        
+        # Add close button
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(10, 0, 10, 10)
+        
+        close_button = QPushButton(self.translations_manager.t('help_close_btn', self.language))
+        close_button.clicked.connect(self.accept)
+        close_button.setFixedWidth(120)
+        
+        button_layout.addStretch()
+        button_layout.addWidget(close_button)
+        
+        main_layout.addLayout(button_layout)
+    
+    def _create_scrollable_tab_content(self, text):
+        """
+        Create a scrollable widget with the given text content.
+        
+        Args:
+            text: The text to display in the scrollable area
+            
+        Returns:
+            QWidget: The scrollable widget
+        """
+        # Create the scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        
+        # Create the content widget
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.setSpacing(10)
+        
+        # Create the label with the text
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setTextFormat(Qt.TextFormat.RichText)
+        label.setOpenExternalLinks(True)
+        label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse |
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
         )
         
-        usage_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        usage_canvas.configure(yscrollcommand=scrollbar.set)
+        # Add label to layout with stretch to push content to the top
+        content_layout.addWidget(label)
+        content_layout.addStretch()
         
-        # Add usage text
-        usage_label = ttk.Label(
-            scrollable_frame,
-            text=usage_text,
-            justify=tk.LEFT,
-            wraplength=600,
-            padding=10
-        )
-        usage_label.pack(anchor="w", fill=tk.X)
+        # Set the content widget to the scroll area
+        scroll_area.setWidget(content_widget)
         
-        # Pack the scrollable area
-        usage_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Create a container widget to hold the scroll area
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(scroll_area)
         
-        # ===== FEATURES TAB =====
-        features_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(features_frame, text=translations_manager.t('help_features_tab', language))
+        return container
+    
+    def _create_usage_tab(self):
+        """Create the Usage tab with instructions."""
+        usage_text = self.translations_manager.t('help_usage_text', self.language)
+        usage_widget = self._create_scrollable_tab_content(usage_text)
+        self.tab_widget.addTab(usage_widget, self.translations_manager.t('help_usage_tab', self.language))
+    
+    def _create_features_tab(self):
+        """Create the Features tab with application features."""
+        features_text = self.translations_manager.t('help_features_text', self.language)
+        features_widget = self._create_scrollable_tab_content(features_text)
+        self.tab_widget.addTab(features_widget, self.translations_manager.t('help_features_tab', self.language))
+    
+    def _create_tips_tab(self):
+        """Create the Tips tab with usage tips."""
+        tips_text = self.translations_manager.t('help_tips_text', self.language)
+        tips_widget = self._create_scrollable_tab_content(tips_text)
+        self.tab_widget.addTab(tips_widget, self.translations_manager.t('help_tips_tab', self.language))
+    
+    def _apply_styling(self):
+        """Apply styling to the dialog and its components."""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+            }
+            
+            QTabWidget::pane {
+                border: 1px solid #c4c4c4;
+                border-top: none;
+                border-radius: 0 0 4px 4px;
+                background: white;
+            }
+            
+            QTabBar::tab {
+                background: #aad8ff;
+                border: 1px solid #c4c4c4;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                padding: 8px 16px;
+                margin-right: 2px;
+            }
+            
+            QTabBar::tab:selected {
+                background: #4c93cf;
+                border-bottom: 1px solid white;
+                margin-bottom: -1px;
+            }
+            
+            QTabBar::tab:!selected {
+                margin-top: 2px;
+            }
+            
+            QLabel {
+                color: #333333;
+                line-height: 1.5;
+            }
+            
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #c4c4c4;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 80px;
+            }
+            
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+            
+            QPushButton:pressed {
+                background-color: #d0d0d0;
+            }
+            
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 12px;
+                margin: 0px;
+            }
+            
+            QScrollBar::handle:vertical {
+                background: #c4c4c4;
+                border-radius: 6px;
+                min-height: 20px;
+                margin: 3px;
+            }
+            
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
         
-        features_text = translations_manager.t('help_features_text', language)
+        # Set font for better readability
+        font = QFont("Segoe UI", 10)
+        self.setFont(font)
         
-        features_label = ttk.Label(
-            features_frame,
-            text=features_text,
-            justify=tk.LEFT,
-            wraplength=600
-        )
-        features_label.pack(anchor="w", fill=tk.BOTH, expand=True)
-        
-        # ===== TIPS TAB =====
-        tips_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(tips_frame, text=translations_manager.t('help_tips_tab', language))
-        
-        tips_text = translations_manager.t('help_tips_text', language)
-        
-        tips_label = ttk.Label(
-            tips_frame,
-            text=tips_text,
-            justify=tk.LEFT,
-            wraplength=600
-        )
-        tips_label.pack(anchor="w", fill=tk.BOTH, expand=True)
-        
-        # Add close button at the bottom
-        button_frame = ttk.Frame(help_window)
-        button_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        close_button = ttk.Button(
-            button_frame,
-            text=translations_manager.t('help_close_btn', language),
-            command=help_window.destroy,
-            width=15
-        )
-        close_button.pack(side=tk.RIGHT, padx=10)
-        
-        # Make the window modal
-        help_window.transient(parent)
-        help_window.grab_set()
-        parent.wait_window(help_window)
+        # Set tab bar font to be slightly larger and bold
+        tab_bar = self.tab_widget.tabBar()
+        tab_font = QFont(font)
+        tab_font.setBold(True)
+        tab_bar.setFont(tab_font)
+
+
+# Alias for backward compatibility
+Help = HelpDialog

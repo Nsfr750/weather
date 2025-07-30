@@ -6,19 +6,25 @@ It displays information about the application including version number,
 copyright information, dependencies, and system information.
 """
 
-import tkinter as tk
-from tkinter import ttk
 import platform
 import sys
 import webbrowser
 from pathlib import Path
 from datetime import datetime
-from script.version import get_version
-from script.icon_utils import get_icon_image
 
-class About:
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QFrame, QScrollArea, QSizePolicy, QWidget, QSpacerItem
+)
+from PyQt6.QtCore import Qt, QSize, QUrl
+from PyQt6.QtGui import QFont, QDesktopServices, QIcon, QPixmap
+
+from script.version import get_version
+
+
+class AboutDialog(QDialog):
     """
-    A class to display the About dialog for the Weather application.
+    A dialog to display information about the Weather application.
     
     This class provides a static method to show a modal dialog with
     application information including version, description, copyright,
@@ -29,7 +35,7 @@ class About:
     def open_url(url):
         """Open a URL in the default web browser."""
         try:
-            webbrowser.open_new_tab(url)
+            QDesktopServices.openUrl(QUrl(url))
         except Exception as e:
             print(f"Error opening URL: {e}")
     
@@ -55,159 +61,276 @@ class About:
             'Author': 'Nsfr750',
             'GitHub': 'https://github.com/Nsfr750/weather',
             'License': 'GNU General Public License v3.0',
-            'Copyright': f'© 2023-{datetime.now().year} Nsfr750. All rights reserved.'
+            'Copyright': f' 2023-{datetime.now().year} Nsfr750. All rights reserved.'
         }
     
     @classmethod
-    def show_about(cls, root):
+    def show_about(cls, parent=None):
         """
         Display the About dialog.
         
         Args:
-            root: The parent window for the dialog
+            parent: The parent widget (main window)
         """
-        # Create and configure the about dialog window
-        about_dialog = tk.Toplevel(root)
-        about_dialog.title('About Weather')
-        about_dialog.geometry('500x600')
-        about_dialog.transient(root)
-        about_dialog.grab_set()
-        about_dialog.resizable(False, False)
+        dialog = cls(parent)
+        dialog.exec()
+    
+    def __init__(self, parent=None):
+        """Initialize the About dialog."""
+        super().__init__(parent)
         
-        # Center the dialog on screen
-        window_width = 500
-        window_height = 600
-        screen_width = about_dialog.winfo_screenwidth()
-        screen_height = about_dialog.winfo_screenheight()
-        x = (screen_width // 2) - (window_width // 2)
-        y = (screen_height // 2) - (window_height // 2)
-        about_dialog.geometry(f'{window_width}x{window_height}+{x}+{y}')
+        self.setWindowTitle('About Weather')
+        self.setMinimumSize(500, 600)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         
-        # Apply theme colors
-        bg_color = '#f0f0f0' if 'light' in root.tk.call('ttk::style', 'theme', 'use') else '#2c3e50'
-        fg_color = '#000000' if 'light' in root.tk.call('ttk::style', 'theme', 'use') else '#ffffff'
-        about_dialog.configure(bg=bg_color)
+        # Get application and system information
+        self.app_info = self.get_app_info()
+        self.sys_info = self.get_system_info()
         
-        # Main container
-        container = ttk.Frame(about_dialog, style='Card.TFrame')
-        container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        # Set up the UI
+        self._setup_ui()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Set up the user interface components."""
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        # Application icon
-        try:
-            icon_path = Path('assets/weather.ico')
-            if icon_path.exists():
-                about_dialog.iconbitmap(str(icon_path))
-        except Exception as e:
-            print(f"Error loading icon: {e}")
+        # Create a scroll area for the content
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         
-        # Application title
-        title_frame = ttk.Frame(container)
-        title_frame.pack(fill=tk.X, pady=(20, 10))
+        # Content widget
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
         
-        app_icon = ttk.Label(
-            title_frame,
-            text='🌤️',
-            font=('Segoe UI', 24)
-        )
-        app_icon.pack(side=tk.LEFT, padx=10)
+        # Application header
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(15)
         
-        title = ttk.Label(
-            title_frame,
-            text='Weather Application',
-            font=('Segoe UI', 18, 'bold')
-        )
-        title.pack(side=tk.LEFT, pady=5)
+        # App icon
+        icon_label = QLabel()
+        icon_label.setPixmap(QPixmap('assets/meteo.png').scaled(64, 64, 
+            Qt.AspectRatioMode.KeepAspectRatio, 
+            Qt.TransformationMode.SmoothTransformation))
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_layout.addWidget(icon_label)
         
-        # Version info
-        app_info = cls.get_app_info()
-        version = ttk.Label(
-            container,
-            text=f"Version: {app_info['Version']}",
-            font=('Segoe UI', 10)
-        )
-        version.pack(pady=(0, 20))
+        # App title and version
+        title_layout = QVBoxLayout()
+        title_layout.setSpacing(5)
+        
+        title_label = QLabel('Weather Application')
+        title_label.setObjectName('titleLabel')
+        
+        version_label = QLabel(f'Version {self.app_info["Version"]}')
+        version_label.setObjectName('versionLabel')
+        
+        title_layout.addWidget(title_label)
+        title_layout.addWidget(version_label)
+        title_layout.addStretch()
+        
+        header_layout.addLayout(title_layout)
+        content_layout.addLayout(header_layout)
         
         # Description
-        desc_frame = ttk.LabelFrame(
-            container,
-            text='About',
-            padding=10
+        desc_label = QLabel(
+            'A feature-rich weather application providing current conditions, '
+            'forecasts, and weather alerts. Built with Python and PyQt6.'
         )
-        desc_frame.pack(fill=tk.X, padx=20, pady=5)
+        desc_label.setWordWrap(True)
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(desc_label)
         
-        description = ttk.Label(
-            desc_frame,
-            text=(
-                'A feature-rich weather application providing current conditions, '
-                'forecasts, and weather alerts. Built with Python and Tkinter.'
-            ),
-            wraplength=400,
-            justify=tk.CENTER
-        )
-        description.pack(pady=5)
+        # System information section
+        sys_group = QFrame()
+        sys_group.setObjectName('sysGroup')
+        sys_layout = QVBoxLayout(sys_group)
+        sys_layout.setContentsMargins(15, 10, 15, 10)
+        sys_layout.setSpacing(8)
         
-        # System information
-        sys_frame = ttk.LabelFrame(
-            container,
-            text='System Information',
-            padding=10
-        )
-        sys_frame.pack(fill=tk.X, padx=20, pady=5)
+        sys_title = QLabel('System Information')
+        sys_title.setObjectName('sectionTitle')
+        sys_layout.addWidget(sys_title)
         
-        for key, value in cls.get_system_info().items():
-            frame = ttk.Frame(sys_frame)
-            frame.pack(fill=tk.X, pady=2)
+        # Add system info items
+        for key, value in self.sys_info.items():
+            item_layout = QHBoxLayout()
             
-            ttk.Label(
-                frame,
-                text=f"{key}:",
-                font=('Segoe UI', 9, 'bold'),
-                width=20,
-                anchor=tk.W
-            ).pack(side=tk.LEFT)
+            key_label = QLabel(f"{key}:")
+            key_label.setObjectName('infoKey')
             
-            ttk.Label(
-                frame,
-                text=value,
-                font=('Segoe UI', 9)
-            ).pack(side=tk.LEFT)
+            value_label = QLabel(value)
+            value_label.setObjectName('infoValue')
+            value_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            
+            item_layout.addWidget(key_label, 1)
+            item_layout.addWidget(value_label, 2)
+            sys_layout.addLayout(item_layout)
+        
+        content_layout.addWidget(sys_group)
         
         # Links
-        links_frame = ttk.Frame(container)
-        links_frame.pack(pady=15)
+        links_layout = QHBoxLayout()
+        links_layout.setSpacing(15)
+        links_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        github_btn = ttk.Button(
-            links_frame,
-            text='GitHub Repository',
-            command=lambda: cls.open_url(app_info['GitHub']),
-            style='Link.TButton'
-        )
-        github_btn.pack(side=tk.LEFT, padx=5)
+        github_btn = QPushButton('GitHub Repository')
+        github_btn.setObjectName('linkButton')
+        github_btn.clicked.connect(lambda: self.open_url(self.app_info['GitHub']))
+        links_layout.addWidget(github_btn)
+        
+        content_layout.addLayout(links_layout)
+        
+        # Spacer to push content up
+        content_layout.addStretch()
         
         # Copyright
-        copyright_frame = ttk.Frame(container)
-        copyright_frame.pack(fill=tk.X, pady=(10, 5))
-        
-        ttk.Label(
-            copyright_frame,
-            text=app_info['Copyright'],
-            font=('Segoe UI', 8),
-            foreground='#666666'
-        ).pack()
+        copyright_label = QLabel(self.app_info['Copyright'])
+        copyright_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        copyright_label.setObjectName('copyrightLabel')
+        content_layout.addWidget(copyright_label)
         
         # Close button
-        btn_frame = ttk.Frame(container)
-        btn_frame.pack(fill=tk.X, pady=(10, 0))
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 15, 0, 0)
         
-        close_btn = ttk.Button(
-            btn_frame,
-            text='Close',
-            command=about_dialog.destroy,
-            width=15
-        )
-        close_btn.pack(pady=10)
+        close_btn = QPushButton('Close')
+        close_btn.setFixedWidth(120)
+        close_btn.clicked.connect(self.accept)
         
-        # Make the dialog modal
-        about_dialog.transient(root)
-        about_dialog.grab_set()
-        root.wait_window(about_dialog)
+        button_layout.addStretch()
+        button_layout.addWidget(close_btn)
+        button_layout.addStretch()
+        
+        content_layout.addLayout(button_layout)
+        
+        # Set the content widget to the scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Add the scroll area to the main layout
+        main_layout.addWidget(scroll_area)
+    
+    def _apply_styling(self):
+        """Apply styling to the dialog and its components."""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #aad8ff;
+            }
+            
+            QLabel#titleLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+            
+            QLabel#versionLabel {
+                font-size: 12px;
+                color: #7f8c8d;
+            }
+            
+            QFrame#sysGroup {
+                background-color: #f6caa5;
+                border-radius: 8px;
+                border: 1px solid #e0e0e0;
+            }
+            
+            QLabel#sectionTitle {
+                font-weight: bold;
+                font-size: 14px;
+                color: #2c3e50;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #e0e0e0;
+                margin-bottom: 5px;
+            }
+            
+            QLabel#infoKey {
+                font-weight: bold;
+                color: #2c3e50;
+            }
+            
+            QLabel#infoValue {
+                color: #34495e;
+            }
+            
+            QPushButton {
+                background-color: #3498db;  
+                color: white;  
+                border: 1px solid #2980b9;  
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 80px;
+                font-weight: bold;
+            }
+            
+            QPushButton:hover {
+                background-color: #5dade2;  
+            }
+            
+            QPushButton:pressed {
+                background-color: #2980b9;  
+            }
+            
+            QPushButton#linkButton {
+                background-color: transparent;
+                border: none;
+                color: #3498db;
+                text-decoration: underline;
+                padding: 2px 5px;
+                min-width: 0;
+            }
+            
+            QPushButton#linkButton:hover {
+                color: #2980b9;
+                background-color: transparent;
+            }
+            
+            QLabel#copyrightLabel {
+                color: #7f8c8d;
+                font-size: 11px;
+                margin-top: 10px;
+            }
+            
+            QScrollArea, QWidget#scrollAreaWidgetContents {
+                background-color: transparent;
+                border: none;
+            }
+            
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 12px;
+                margin: 0px;
+            }
+            
+            QScrollBar::handle:vertical {
+                background: #c4c4c4;
+                border-radius: 6px;
+                min-height: 20px;
+                margin: 3px;
+            }
+            
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
+        
+        # Set font for better readability
+        font = self.font()
+        font.setFamily('Segoe UI')
+        font.setPointSize(10)
+        self.setFont(font)
+
+
+# Alias for backward compatibility
+About = AboutDialog

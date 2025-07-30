@@ -15,7 +15,7 @@ CONFIG_FILE = CONFIG_DIR / 'config.json'
 DEFAULT_CONFIG = {
     'units': 'metric',
     'language': 'en',  # Default to English
-    'theme': 'dark',
+    'theme': 'dark',   # Only dark theme is supported
     'provider': 'openweathermap',  # Default provider
     'providers': {
         'openweathermap': {

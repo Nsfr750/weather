@@ -5,9 +5,9 @@
   "provider": "openweathermap",
   "providers": {
     "openweathermap": {
-      "api_key": "1a5c879bc1d493f1458a50db471bcb2f",
-      "username": "nsfr750@yandex.com",
-      "password": "mvBBv5yvPQkQc3u"
+      "api_key": "",
+      "username": "",
+      "password": ""
     },
     "open-meteo": {
       "api_key": ""
@@ -28,9 +28,12 @@
     },
     "alliander": {
       "api_key": ""
+    },
+    "accuweather": {
+      "api_key": ""
     }
   },
-  "api_key": "1a5c879bc1d493f1458a50db471bcb2f",
+  "api_key": "",
   "last_city": "Bolzano Novarese",
-  "weather_provider": "accuweather"
+  "weather_provider": "open-meteo"
 }

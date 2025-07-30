@@ -12,6 +12,10 @@ Welcome to the Weather App documentation! This application provides real-time we
 - ⭐ Favorite locations
 - ⚙️ Customizable settings
 
+## Recent Updates
+
+For a detailed list of changes, see the [CHANGELOG.md](CHANGELOG.md) file.
+
 ## Getting Started
 
 1. [Installation Guide](installation.md) - How to install and set up the application

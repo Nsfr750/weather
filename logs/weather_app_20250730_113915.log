@@ -1,4 +1,0 @@
-2025-07-30 11:39:15,683 [INFO] Logging to file: logs\weather_app_20250730_113915.log
-2025-07-30 11:39:16,035 [INFO] Offline mode for icons: False
-2025-07-30 11:39:16,035 [INFO] Using weather provider: openweathermap
-2025-07-30 11:39:16,352 [INFO] Checking for updates...

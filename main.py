@@ -183,6 +183,7 @@ class WeatherApp(QMainWindow):
         menubar.units_changed.connect(self.on_units_changed)
         menubar.language_changed.connect(self.on_language_changed)
         menubar.theme_changed.connect(self.on_theme_changed)
+        menubar.provider_changed.connect(self.update_weather_provider)
         
         # Set initial values
         menubar.set_units(self.units)
@@ -497,6 +498,38 @@ class WeatherApp(QMainWindow):
             app = QApplication.instance()
             app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
             app.setPalette(app.style().standardPalette())
+
+    def update_weather_provider(self, provider_name: str) -> None:
+        """Update the weather provider dynamically.
+        
+        Args:
+            provider_name: Name of the weather provider to switch to
+        """
+        logger.info(f"Switching to weather provider: {provider_name}")
+        
+        try:
+            # Save the new provider to config
+            self.config_manager.set('weather_provider', provider_name)
+            
+            # Re-initialize the weather provider
+            self.initialize_weather_provider()
+            
+            # Update the UI with the new provider
+            if hasattr(self.ui, 'weather_provider'):
+                self.ui.weather_provider = self.weather_provider
+            
+            # Refresh the weather data
+            self.refresh_weather()
+            
+            logger.info(f"Successfully switched to {provider_name} provider")
+            
+        except Exception as e:
+            logger.error(f"Failed to switch to {provider_name} provider: {str(e)}")
+            QMessageBox.critical(
+                self,
+                self.tr('Provider Error'),
+                self.tr(f'Failed to switch to {provider_name} provider: {str(e)}')
+            )
 
 
 class _CallbackEvent(QEvent):

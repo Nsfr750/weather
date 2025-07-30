@@ -164,55 +164,70 @@ class HelpDialog(QDialog):
         """Apply styling to the dialog and its components."""
         self.setStyleSheet("""
             QDialog {
-                background-color: #f5f5f5;
+                background-color: #2c3e50;
+                color: #ffffff;
             }
             
             QTabWidget::pane {
-                border: 1px solid #c4c4c4;
+                border: 1px solid #1a2634;
                 border-top: none;
-                border-radius: 0 0 4px 4px;
-                background: white;
+                border-radius: 0 0 6px 6px;
+                background: #34495e;
+                padding: 15px;
             }
             
             QTabBar::tab {
-                background: #aad8ff;
-                border: 1px solid #c4c4c4;
+                background: #3498db;
+                color: #ffffff;
+                border: 1px solid #2980b9;
                 border-bottom: none;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                padding: 8px 16px;
-                margin-right: 2px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                padding: 8px 20px;
+                margin-right: 4px;
+                font-weight: 500;
             }
             
             QTabBar::tab:selected {
-                background: #4c93cf;
-                border-bottom: 1px solid white;
+                background: #2980b9;
+                color: #ffffff;
+                border-color: #1a2634 #1a2634 #34495e;
                 margin-bottom: -1px;
             }
             
             QTabBar::tab:!selected {
                 margin-top: 2px;
+                border-bottom: 1px solid #1a2634;
+            }
+            
+            QTabBar::tab:hover:!selected {
+                background: #3fa7f0;
             }
             
             QLabel {
-                color: #333333;
-                line-height: 1.5;
+                color: #ffffff;
+                line-height: 1.6;
+                padding: 4px 0;
             }
             
             QPushButton {
-                background-color: #f0f0f0;
-                border: 1px solid #c4c4c4;
-                border-radius: 4px;
-                padding: 6px 12px;
-                min-width: 80px;
+                background-color: #3498db;
+                color: #ffffff;
+                border: 1px solid #2980b9;
+                border-radius: 6px;
+                padding: 8px 20px;
+                min-width: 100px;
+                font-weight: 500;
             }
             
             QPushButton:hover {
-                background-color: #e0e0e0;
+                background-color: #2980b9;
+                border-color: #2472a4;
             }
             
             QPushButton:pressed {
-                background-color: #d0d0d0;
+                background-color: #2472a4;
+                border-color: #1c5d84;
             }
             
             QScrollArea {
@@ -222,23 +237,29 @@ class HelpDialog(QDialog):
             
             QScrollBar:vertical {
                 border: none;
-                background: #f0f0f0;
-                width: 12px;
+                background: #2c3e50;
+                width: 10px;
                 margin: 0px;
             }
             
             QScrollBar::handle:vertical {
-                background: #c4c4c4;
-                border-radius: 6px;
-                min-height: 20px;
-                margin: 3px;
+                background: #7f8c8d;
+                border-radius: 5px;
+                min-height: 30px;
+                margin: 2px;
             }
             
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
+            }
+            
+            QScrollBar::add-line:vertical, 
+            QScrollBar::sub-line:vertical {
                 height: 0px;
             }
             
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            QScrollBar::add-page:vertical, 
+            QScrollBar::sub-page:vertical {
                 background: none;
             }
         """)
@@ -248,10 +269,8 @@ class HelpDialog(QDialog):
         self.setFont(font)
         
         # Set tab bar font to be slightly larger and bold
-        tab_bar = self.tab_widget.tabBar()
-        tab_font = QFont(font)
-        tab_font.setBold(True)
-        tab_bar.setFont(tab_font)
+        tab_font = QFont("Segoe UI", 10, QFont.Weight.Bold)
+        self.tab_widget.setFont(tab_font)
 
 
 # Alias for backward compatibility

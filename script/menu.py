@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QObject, pyqtSignal, QUrl, QSettings
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QIcon
 from PyQt6.QtWidgets import (
     QMenuBar, QMenu, QMessageBox, QFileDialog, QDialog, QVBoxLayout, 
-    QLabel, QLineEdit, QDialogButtonBox, QWidget, QStyle
+    QLabel, QLineEdit, QDialogButtonBox, QWidget, QStyle, QCheckBox
 )
 
 # Local application imports
@@ -50,6 +50,7 @@ class MenuBar(QMenuBar):
     theme_changed = pyqtSignal(str)
     offline_mode_changed = pyqtSignal(bool)  # New signal for offline mode
     settings_updated = pyqtSignal()  # New signal for settings updates
+    provider_changed = pyqtSignal(str)  # New signal for provider changes
     
     def __init__(self, parent: Optional[QWidget] = None, 
                  translations: Optional[Dict[str, str]] = None) -> None:
@@ -84,6 +85,7 @@ class MenuBar(QMenuBar):
         # Create menus
         self._create_file_menu()
         self._create_view_menu()
+        self._create_settings_menu()  # Add this line to create the settings menu
         self._create_language_menu()
         self._create_help_menu()
         
@@ -156,35 +158,23 @@ class MenuBar(QMenuBar):
     def _create_settings_menu(self) -> None:
         """Create the Settings menu with configuration options."""
         settings_menu = self.addMenu(self._tr('&Settings'))
-        
-        # API Key Manager
-        api_key_action = QAction(self._tr("&API Key Manager..."), self)
-        api_key_action.triggered.connect(self._show_api_key_manager)
-        api_key_action.setStatusTip(self._tr("Manage API keys for weather providers"))
-        settings_menu.addAction(api_key_action)
-        
-        # Add separator
-        settings_menu.addSeparator()
+        settings_menu.setObjectName("settingsMenu")  # Add this line
         
         # Units submenu
-        units_menu = settings_menu.addMenu(self._tr("&Units"))
-        
-        # Create action group for units
+        units_menu = settings_menu.addMenu(self._tr('&Units'))
         self.unit_group = QActionGroup(self)
         
-        # Metric units (Celsius, km/h, etc.)
-        metric_action = QAction(self._tr("&Metric"), self)
-        metric_action.setCheckable(True)
-        metric_action.setData("metric")
-        metric_action.triggered.connect(lambda: self._on_units_changed("metric"))
+        # Metric units
+        metric_action = QAction(self._tr('&Metric (C, m/s)'), self, checkable=True)
+        metric_action.setData('metric')
+        metric_action.triggered.connect(lambda: self._on_units_changed('metric'))
         self.unit_group.addAction(metric_action)
         units_menu.addAction(metric_action)
         
-        # Imperial units (Fahrenheit, mph, etc.)
-        imperial_action = QAction(self._tr("&Imperial"), self)
-        imperial_action.setCheckable(True)
-        imperial_action.setData("imperial")
-        imperial_action.triggered.connect(lambda: self._on_units_changed("imperial"))
+        # Imperial units
+        imperial_action = QAction(self._tr('&Imperial (F, mph)'), self, checkable=True)
+        imperial_action.setData('imperial')
+        imperial_action.triggered.connect(lambda: self._on_units_changed('imperial'))
         self.unit_group.addAction(imperial_action)
         units_menu.addAction(imperial_action)
         
@@ -197,23 +187,41 @@ class MenuBar(QMenuBar):
         
         # Provider selection
         provider_menu = settings_menu.addMenu(self._tr('Weather Provider'))
+        provider_menu.setObjectName("providerMenu")  # Add this line
         self.provider_group = QActionGroup(self)
         
         # Add available providers
-        providers = ["OpenWeatherMap", "WeatherAPI", "AccuWeather"]
-        current_provider = "OpenWeatherMap"  # Should come from config
+        providers = [
+            "OpenWeatherMap",
+            "WeatherAPI",
+            "AccuWeather",
+            "Alliander",
+            "BreezyWeather",
+            "OpenMeteo",
+            "QuickWeather",
+            "WeatherCompany",
+            "Weather.com"
+        ]
+        current_provider = self.settings.value("weather_provider", "OpenWeatherMap", str)
         
         for provider in providers:
-            action = QAction(provider, self, checkable=True, data=provider)
+            action = QAction(provider, self, checkable=True)
             action.setChecked(provider == current_provider)
             action.triggered.connect(
                 lambda checked, p=provider: self._on_provider_changed(p)
             )
             self.provider_group.addAction(action)
             provider_menu.addAction(action)
+            action.setData(provider)
         
         # Separator
         settings_menu.addSeparator()
+        
+        # API Key Manager
+        api_key_action = QAction(self._tr("&API Key Manager..."), self)
+        api_key_action.triggered.connect(self._show_api_key_manager)
+        api_key_action.setStatusTip(self._tr("Manage API keys for weather providers"))
+        settings_menu.addAction(api_key_action)
         
         # Application settings
         app_settings_action = QAction(
@@ -322,11 +330,11 @@ class MenuBar(QMenuBar):
         
         # Help actions
         actions = [
-            (self._tr('&About'), 'F1', self._show_about_dialog),
+            (self._tr('&About'), None, self._show_about_dialog),
             (self._tr('&Help'), 'F1', self._show_help_dialog),
             (self._tr('&Documentation'), 'F2', self._show_documentation),
-            (self._tr('View &Logs'), None, self._show_log_viewer),
-            (self._tr('&Sponsor'), None, self._show_sponsor_dialog),
+            (self._tr('View &Logs'), 'F3', self._show_log_viewer),
+            (self._tr('&Sponsor'), 'F4', self._show_sponsor_dialog),
             (self._tr('Check for &Updates'), None, self._check_for_updates)
         ]
         
@@ -545,6 +553,46 @@ class MenuBar(QMenuBar):
                 action.setChecked(True)
                 break
     
+    def set_providers(self, providers: List[str], current_provider: str) -> None:
+        """Set the available weather providers and select the current one.
+        
+        Args:
+            providers: List of available weather provider names
+            current_provider: Name of the currently selected provider
+        """
+        # Find the Weather Provider submenu
+        settings_menu = self.findChild(QMenu, "settingsMenu")
+        if not settings_menu:
+            logger.warning("Could not find settings menu")
+            return
+            
+        # Find the provider menu
+        provider_menu = None
+        for action in settings_menu.actions():
+            if action.text() == self._tr('Weather Provider'):
+                provider_menu = action.menu()
+                break
+                
+        if not provider_menu:
+            logger.warning("Could not find Weather Provider menu")
+            return
+            
+        # Clear existing provider actions
+        for action in self.provider_group.actions():
+            provider_menu.removeAction(action)
+            self.provider_group.removeAction(action)
+        
+        # Add the new providers
+        for provider in providers:
+            action = QAction(provider, self, checkable=True)
+            action.setChecked(provider == current_provider)
+            action.triggered.connect(
+                lambda checked, p=provider: self._on_provider_changed(p)
+            )
+            self.provider_group.addAction(action)
+            provider_menu.addAction(action)
+            action.setData(provider)
+    
     def _on_units_changed(self, units: str) -> None:
         """Handle units change."""
         self.units_changed.emit(units)
@@ -645,21 +693,21 @@ class MenuBar(QMenuBar):
         try:
             from script.weather_providers.api_key_manager import ApiKeyManagerDialog
             
-            dialog = ApiKeyManagerDialog(self.parent())
+            dialog = ApiKeyManagerDialog(self.parent)  # Use self.parent directly instead of self.parent()
             dialog.api_keys_updated.connect(self._on_api_keys_updated)
             dialog.exec()
             
         except ImportError as e:
             logger.error(f"Failed to import API key manager: {e}")
             QMessageBox.critical(
-                self.parent(),
+                self.parent,
                 self._tr("Error"),
                 self._tr("Failed to load API key manager: {}".format(str(e)))
             )
         except Exception as e:
             logger.error(f"Error showing API key manager: {e}")
             QMessageBox.critical(
-                self.parent(),
+                self.parent,
                 self._tr("Error"),
                 self._tr("An error occurred while opening the API key manager: {}".format(str(e)))
             )
@@ -743,7 +791,15 @@ class MenuBar(QMenuBar):
     
     def _show_help_dialog(self) -> None:
         """Show the help dialog."""
-        help_dialog = Help(self)
+        from script.help import Help
+        from script.translations_utils import TranslationsManager
+        from script.translations import TRANSLATIONS
+        
+        # Get the translations manager and current language
+        translations_manager = TranslationsManager(TRANSLATIONS)
+        current_language = self.current_language  # Assuming this is stored in the class
+        
+        help_dialog = Help(self, translations_manager, current_language)
         help_dialog.exec()
     
     def _show_sponsor_dialog(self) -> None:
@@ -771,14 +827,19 @@ class MenuBar(QMenuBar):
             provider: The selected weather provider
         """
         logger.info(f"Weather provider changed to: {provider}")
-        # Save to config and update application state
-        # self.config_manager.set('provider', provider.lower())
         
-        # Show a message to the user
+        # Save the selected provider to settings
+        settings = QSettings("WeatherApp", "WeatherApp")
+        settings.setValue("weather_provider", provider.lower())
+        
+        # Emit the provider_changed signal
+        self.provider_changed.emit(provider.lower())
+        
+        # Show a success message
         QMessageBox.information(
             self,
             self._tr('Provider Changed'),
-            self._tr(f'Weather provider changed to {provider}. Restart may be required for changes to take effect.')
+            self._tr(f'Weather provider changed to {provider}.')
         )
     
     def _on_mode_changed(self, offline: bool) -> None:
@@ -835,6 +896,19 @@ class MenuBar(QMenuBar):
             if hasattr(self, 'fullscreen_action'):
                 self.fullscreen_action.setChecked(True)
             logger.debug("Entered fullscreen mode")
+    
+    def _on_layout_changed(self, layout: str) -> None:
+        """Handle layout change in the view menu.
+        
+        Args:
+            layout: The selected layout name (e.g., 'standard', 'compact', 'detailed')
+        """
+        logger.info(f"Layout changed to: {layout}")
+        self.settings.setValue("layout", layout)
+        
+        # Emit a signal if needed (uncomment if you want to connect this to other components)
+        # if hasattr(self.parent(), 'on_layout_changed'):
+        #     self.parent().on_layout_changed(layout)
     
 def create_menu_bar(parent: Optional[QWidget] = None, 
                     translations: Optional[Dict[str, str]] = None) -> MenuBar:

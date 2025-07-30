@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.4.0] - Unreleased
+
+### Added
+
+- Comprehensive documentation in the `/docs` directory, including:
+  - User guide with detailed instructions
+  - Developer documentation with code style guidelines
+  - API documentation for weather providers
+  - Troubleshooting guide with common issues and solutions
+- Improved error handling and user feedback
+- Enhanced logging system with better debugging capabilities
+- Automated testing framework with pytest
+- Pre-commit hooks for code quality checks
+
+### Changed
+
+- Updated minimum Python version requirement to 3.10+
+- Refactored codebase for better maintainability
+- Improved performance and reduced memory usage
+- Enhanced security for API key management
+- Better handling of network connectivity issues
+
+### Fixed
+
+- Fixed issues with language switching
+- Resolved threading problems in the update checker
+- Addressed various UI glitches and performance bottlenecks
+- Fixed compatibility issues with different operating systems
+- Resolved caching issues with weather data
+
 ## [1.3.0] - 2025-07-30
 
 ### Added

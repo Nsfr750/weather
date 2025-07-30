@@ -1,120 +1,242 @@
 # Translation Guide
 
-This guide explains how to add or modify translations in the Weather App.
-
-## Overview
-
-The application uses a translation system that supports multiple languages. All translations are stored in `script/translations.py`.
+This guide explains how to add or modify translations in the Weather App. The application uses a comprehensive translation system that supports multiple languages and right-to-left (RTL) text direction.
 
 ## Available Languages
 
-- English (EN)
-- Italian (IT)
-- Spanish (ES)
-- Portuguese (PT)
-- German (DE)
-- French (FR)
-- Russian (RU)
-- Arabic (AR)
-- Japanese (JA)
+The Weather App currently supports the following languages:
+
+| Language | Code | Native Name | RTL | Status |
+|----------|------|-------------|-----|--------|
+| English | en   | English     | No  | Complete |
+| Spanish | es   | Español     | No  | Complete |
+| French  | fr   | Français    | No  | Complete |
+| German  | de   | Deutsch     | No  | Complete |
+| Italian | it   | Italiano    | No  | Complete |
+| Portuguese | pt   | Português | No  | Complete |
+| Russian | ru   | Русский     | No  | Complete |
+| Japanese | ja   | 日本語      | No  | Complete |
+| Chinese (Simplified) | zh-CN | 简体中文 | No  | In Progress  |
+| Arabic  | ar   | اَلْعَرَبِيَّةُ | Yes | Complete |
+| Hindi   | hi   | हिन्दी      | No  | In Progress |
+| Korean  | ko   | 한국어      | No  | In Progress |
+| Turkish | tr   | Türkçe      | No  | In Progress |
+| Dutch   | nl   | Nederlands  | No  | In Progress |
+| Polish  | pl   | Polski      | No  | In Progress |
+
+## Translation System
+
+The translation system is based on Python dictionaries and supports:
+- String interpolation with variables
+- Pluralization
+- Gender agreement
+- Right-to-left (RTL) languages
+- Fallback to English for missing translations
+
+### File Structure
+
+```
+script/
+  ├── lang/
+  │   ├── __init__.py      # Language manager
+  │   ├── translations.py  # All translation strings
+  │   └── rtl.py           # RTL language support
+  └── ...
+```
 
 ## Adding a New Language
 
-1. Open `script/translations.py`
-2. Add a new language dictionary with the language code (ISO 639-1) as the key
-3. Copy all translation keys from the English dictionary
-4. Translate each value to the target language
-5. Update the `available_languages` list in the `TranslationsManager` class
+1. **Add Language Code**
+   - Add a new language code to the `LANGUAGES` dictionary in `script/lang/__init__.py`
+   - Specify if the language is RTL
 
-### Example:
+2. **Create Translations**
+   - Add a new language dictionary in `script/lang/translations.py`
+   - Copy all keys from the English dictionary
+   - Translate all values to the target language
+
+3. **Register the Language**
+   - Add the language to the `available_languages` list in the `LanguageManager` class
+
+### Example: Adding German
 
 ```python
-'FR': {  # French
-    'city': 'Ville:',
-    'search': 'Rechercher',
-    # ... other translations
+# In script/lang/translations.py
+
+translations = {
+    # ... other languages
+    
+    'de': {  # German
+        'app_name': 'Wetter App',
+        'search': 'Suchen',
+        'current_weather': 'Aktuelles Wetter',
+        'forecast': 'Vorhersage',
+        'temperature': 'Temperatur',
+        'humidity': 'Luftfeuchtigkeit',
+        'wind_speed': 'Windgeschwindigkeit',
+        'pressure': 'Luftdruck',
+        # ... more translations
+    },
 }
 ```
 
 ## Translation Keys
 
-Each key in the translation dictionary corresponds to a UI element or message. The keys are organized by functionality:
-
 ### UI Elements
-- `city`: City input label
-- `search`: Search button text
-- `theme`: Theme selection label
-- `favorites`: Favorites menu label
-- `current_weather`: Current weather section header
-- `forecast`: Forecast section header
 
-### Messages
-- `invalid_city_warning`: Invalid city name message
-- `settings_saved`: Confirmation when settings are saved
-- `could_not_fetch`: Error when weather data cannot be retrieved
+```python
+{
+    'search_placeholder': 'Search for a city...',
+    'current_location': 'Current Location',
+    'settings': 'Settings',
+    'favorites': 'Favorites',
+    'add_to_favorites': 'Add to Favorites',
+    'remove_from_favorites': 'Remove from Favorites',
+    'refresh': 'Refresh',
+    'close': 'Close',
+    'save': 'Save',
+    'cancel': 'Cancel',
+}
+```
 
-### Help System
-- `help_title`: Help window title
-- `help_usage_text`: Main help text
-- `help_features_text`: Features description
-- `help_tips_text`: Tips and troubleshooting
+### Weather Data
+
+```python
+{
+    'feels_like': 'Feels like',
+    'wind': 'Wind',
+    'precipitation': 'Precipitation',
+    'visibility': 'Visibility',
+    'uv_index': 'UV Index',
+    'sunrise': 'Sunrise',
+    'sunset': 'Sunset',
+    'moon_phase': 'Moon Phase',
+    'air_quality': 'Air Quality',
+    'humidity': 'Humidity',
+}
+```
+
+### Weather Conditions
+
+```python
+{
+    'weather_clear': 'Clear',
+    'weather_clouds': 'Clouds',
+    'weather_rain': 'Rain',
+    'weather_snow': 'Snow',
+    'weather_thunderstorm': 'Thunderstorm',
+    'weather_drizzle': 'Drizzle',
+    'weather_mist': 'Mist',
+    'weather_fog': 'Fog',
+    'weather_tornado': 'Tornado',
+}
+```
+
+### Days and Months
+
+```python
+{
+    'monday': 'Monday',
+    'tuesday': 'Tuesday',
+    'wednesday': 'Wednesday',
+    'thursday': 'Thursday',
+    'friday': 'Friday',
+    'saturday': 'Saturday',
+    'sunday': 'Sunday',
+    
+    'january': 'January',
+    'february': 'February',
+    # ... other months
+}
+```
 
 ## Best Practices
 
-1. **Consistency**: Use consistent terminology throughout the translation
-2. **Context**: Maintain the same level of formality as the original text
-3. **Variables**: Preserve any variables (like `{0}`, `{1}`) in their original positions
-4. **Special Characters**: Ensure proper encoding for special characters
-5. **Length**: Be mindful of text expansion/contraction in different languages
+1. **Consistency**
+   - Use consistent terminology throughout the app
+   - Maintain the same tone and style
+   - Follow the language's standard date/time/number formats
 
-## Testing Translations
+2. **Variables**
+   - Use `{variable}` syntax for dynamic content
+   - Keep variables in the same position as the source language when possible
+   - Document expected variable types and formats
 
-1. After adding or modifying translations, test the application in the target language
-2. Check for:
-   - Text overflow in UI elements
-   - Proper alignment of right-to-left (RTL) languages like Arabic
-   - Correct display of special characters
-   - Proper date/number formatting
+3. **Pluralization**
+   - Use the `_plural` key for plural forms
+   - Follow the language's plural rules
+
+   ```python
+   {
+       'hour': '{count} hour',
+       'hour_plural': '{count} hours',
+       'minute': '{count} minute',
+       'minute_plural': '{count} minutes',
+   }
+   ```
+
+4. **Special Characters**
+   - Use proper Unicode characters for accented letters and symbols
+   - Ensure proper encoding (UTF-8)
+   - Test special characters on all platforms
+
+5. **Length Considerations**
+   - Account for text expansion (some languages are 30-40% longer than English)
+   - Keep UI elements flexible to accommodate different text lengths
+   - Test UI with the longest translations
 
 ## Right-to-Left (RTL) Support
 
 For RTL languages like Arabic and Hebrew:
 
-1. The application automatically detects RTL languages
-2. UI elements are mirrored for RTL languages
-3. Text alignment is set to right-aligned
+1. Set `is_rtl = True` in the language configuration
+2. The application will automatically:
+   - Mirror the UI layout
+   - Set text alignment to right
+   - Adjust scrollbars and other UI elements
+
+## Testing Translations
+
+1. **Visual Testing**
+   - Check for text overflow
+   - Verify proper alignment
+   - Test with different font sizes
+
+2. **Functional Testing**
+   - Test all UI elements with the target language
+   - Verify date, time, and number formatting
+   - Check RTL support if applicable
+
+3. **Automated Tests**
+   - Run the test suite with the new language
+   - Check for missing translations
+   - Verify variable substitution
 
 ## Contributing Translations
 
 1. Fork the repository
-2. Add or update translations
-3. Submit a pull request with a clear description of the changes
-4. Include the language code in the PR title (e.g., "[FR] Update French translations")
+2. Create a new branch for your translation
+3. Add or update the translation files
+4. Submit a pull request with a clear description
+
+## Translation Tools
+
+- [Poedit](https://poedit.net/): Popular translation editor
+- [Transifex](https://www.transifex.com/): Collaborative translation platform
+- [Crowdin](https://crowdin.com/): Localization management platform
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **Missing Translations**: If a key is missing, the English text will be shown
-- **Encoding Issues**: Ensure the file is saved with UTF-8 encoding
-- **Special Characters**: Use proper Unicode characters for accented letters and symbols
+- **Missing Translations**: Fall back to English
+- **Text Overflow**: Adjust UI elements or shorten translations
+- **RTL Issues**: Check the `rtl.py` module and CSS styles
+- **Special Characters**: Ensure proper encoding and font support
 
-### Debugging
+## Getting Help
 
-To see which translation keys are being used:
-
-1. Set the log level to DEBUG
-2. Look for log messages containing "Translation key"
-3. Missing keys will be logged as warnings
-
-## Translation Tools
-
-Consider using these tools for managing translations:
-
-- [Poedit](https://poedit.net/) - Translation editor
-- [OmegaT](https://omegat.org/) - Computer-assisted translation tool
-- [Crowdin](https://crowdin.com/) - Cloud-based localization platform
-
-## License
-
-By contributing translations, you agree to license your work under the same [GPLv3 license](LICENSE) as the rest of the project.
+For translation-related questions or issues:
+1. Check the [GitHub Issues](https://github.com/Nsfr750/weather/issues)
+2. Join our [Discord](https://discord.gg/ryqNeuRYjD)
+3. Contact the maintainers

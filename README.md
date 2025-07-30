@@ -1,12 +1,17 @@
-# Weather App
+# 🌦️ Weather App
 
-A modern, feature-rich Python weather application with a beautiful, responsive GUI built using Tkinter. Instantly view real-time weather conditions and a 5-day forecast for any city, with support for multiple weather providers, languages, units, favorites, and more. Includes automatic update checking, comprehensive documentation, and a user-friendly settings interface. Designed for usability, extensibility, and a delightful user experience.
+A modern, feature-rich Python weather application with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, and alerts for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
 
----
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Discord](https://img.shields.io/discord/1234567890123456789?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/ryqNeuRYjD)
 
-## 🚀 Features
+![Weather App Screenshot](assets/screenshot.png)
 
-- **Multiple Weather Providers:** Choose from 7 different weather data sources
+## ✨ Features
+
+- **Multiple Weather Providers**: Choose from 8 different weather data sources
   - OpenWeatherMap (default)
   - Open-Meteo
   - Weather.com
@@ -14,120 +19,122 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
   - QuickWeather
   - Weather Company (IBM)
   - Alliander
-- **Current Weather:** Real-time temperature, humidity, wind speed, and weather icon
-- **5-Day Forecast:** Daily temperature, icon, and weather description
-- **Themes:** Toggle between light and dark modes
-- **Units:** Choose between Metric (°C, m/s) and Imperial (°F, mph)
-- **Favorites:** Save and quickly select your favorite cities
-- **Multi-language Support:** English, Spanish, Italian, French, German, Portuguese, Russian, Arabic, and Japanese
-- **Comprehensive Documentation:** Detailed guides for users and developers in the `/docs` directory
-- **Modularized Translations:** All major UI and help content are fully translatable and update instantly with the selected language
-- **Persistent Configuration:** All settings saved to `config.json`
-- **Error Logging:** All errors recorded in `weather_app.log`
-- **Log Viewer:** Conveniently view and filter logs from within the app
-- **Automatic Updates:** Check for and install the latest version
-- **Secure API Key Management:** Store and manage API keys for all providers
-- **Responsive UI:** Clean, adaptive interface for any screen size
-- **Menu Bar:** Quick access to all app features and settings
+  - Accuweather
+  
+- **Comprehensive Weather Data**
+  - Current conditions with detailed metrics
+  - 5-day forecast with hourly breakdowns
+  - Weather alerts and warnings
+  - Air quality index (AQI) and UV index
+  - Sunrise/sunset and moon phase information
 
----
+- **User Experience**
+  - Clean, modern UI with light/dark themes
+  - Support for multiple languages (English, Spanish, French, German, Italian, Russian, Arabic, Japanese)
+  - Customizable units (metric/imperal)
+  - Favorite locations with quick access
+  - Responsive design for different screen sizes
 
-## 🛠️ Getting Started
+- **Advanced Features**
+  - Automatic location detection
+  - Weather maps and radar integration
+  - Severe weather alerts
+  - Historical weather data
+  - Export weather data (CSV/JSON)
 
-1. **Install dependencies**
+- **For Developers**
+  - Well-documented codebase
+  - Comprehensive test suite
+  - Plugin system for weather providers
+  - RESTful API for integration
+  - Docker support for easy deployment
 
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.10 or higher
+- Git
+- pip (Python package manager)
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Nsfr750/weather.git
+   cd weather
+   ```
+
+2. **Set up a virtual environment (recommended)**:
+   ```bash
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   
+   # Unix/macOS
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Get an API Key**
-
-   - Register for a free API key at your preferred weather provider:
-     - [OpenWeatherMap](https://openweathermap.org/api) (recommended)
-     - [Open-Meteo](https://open-meteo.com/)
-     - [Weather.com](https://www.weather.com/services/weather-api)
-     - [IBM Weather](https://www.ibm.com/weather/)
-
-3. **Run the app**
-
+4. **Run the application**:
    ```bash
    python -m script.main
    ```
-   
-   Or install in development mode:
-   ```bash
-   pip install -e .
-   weather-app
-   ```
 
-4. **Configure your API Key**
+### Configuration
 
-   - Open Settings from the menu bar
-   - Select your preferred weather provider
-   - Enter your API key in the Settings dialog
-   - Click Save to apply your changes
+1. Get an API key from one of the supported weather providers (e.g., [OpenWeatherMap](https://openweathermap.org/api))
+2. Launch the application and go to Settings > API Keys
+3. Enter your API key and save the settings
 
----
+## 📚 Documentation
 
-## ⚙️ Configuration
+For detailed documentation, please visit our [documentation website](https://nsfr750.github.io/weather/) or check the `/docs` directory in the repository.
 
-The app uses `config.json` for persistent settings:
-
-- **API Key**: Set in Settings or manually in `config.json` (`api_key` field)
-- **Units**: Choose "metric" or "imperial" (UI dropdown or `units` field)
-- **Language**: Select from English (`en`), Spanish (`es`), or Italian (`it`) (UI dropdown or `language` field)
-
-Example `config.json`:
-
-```json
-{
-  "units": "metric",
-  "api_key": "YOUR_API_KEY_HERE",
-  "language": "en"
-}
-```
-
-## 🆕 Recent Improvements (v1.2.1)
-
-- Added automatic update checking on startup
-- Added manual update check option in Help menu
-- Redesigned Settings dialog with secure API key management
-- Added show/hide toggle for API key in settings
-- Improved error handling and user feedback
-- Fixed menu bar disappearing when changing language
-- Enhanced settings dialog layout and usability
-- Better error messages for API key validation
-
-### Previous Improvements
-
-- Fully multi-language Help dialog that updates instantly
-- Modularized translation system for easy maintenance
-- Persistent settings for theme, language, and units
-- Built-in error logging and log viewer
-
-## 📝 Usage Tips
-
-- **Favorites**: Click the star next to the city input to add/remove favorites. Use the dropdown to quickly switch.
-- **Units & Language**: Change units or language at any time from the top bar. All labels and weather descriptions update instantly.
-- **API Key**: Set your OpenWeatherMap API key in Settings. It will be saved securely.
-- **Update Check**: The app checks for updates on startup. You can also check manually from the Help menu.
-- **Logs**: Use the Log menu to view error logs for troubleshooting.
-- **Settings**: Access all settings including API key, theme, units, and language from the menu.
-
----
-
-## 🐞 Troubleshooting
-- **Invalid API Key**: Make sure your OpenWeatherMap API key is correct and active.
-- **No Weather Data**: Check your internet connection and API key.
-- **UI Issues**: If you see display problems, ensure you are using Python 3.7+ and have all dependencies installed.
-- **Logs**: Check `weather_app.log` for detailed error messages.
-
----
+- [User Guide](docs/usage.md)
+- [Configuration](docs/configuration.md)
+- [Developer Guide](docs/development.md)
+- [API Reference](docs/api.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
 ## 🤝 Contributing
-Pull requests, translations, and feature suggestions are welcome! Please open an issue or PR on GitHub.
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report bugs, or suggest new features.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- All the amazing weather data providers
+- The PyQt community for the excellent GUI framework
+- All contributors who have helped improve this project
+
+## 📞 Support
+
+For support, please join our [Discord server](https://discord.gg/ryqNeuRYjD) or open an issue on GitHub.
 
 ---
 
-## 📄 License
-GPL-3.0 License. See [LICENSE](LICENSE) for details.
+<div align="center">
+  Made with ❤️ by <a href="https://github.com/Nsfr750">Nsfr750</a>
+  <br>
+  <a href="https://www.paypal.me/3dmega">
+    <img src="https://img.shields.io/badge/Support%20me-PayPal-ff5a5f?style=for-the-badge&logo=paypal" alt="Support me on PayPal">
+  </a>
+  <a href="https://www.patreon.com/Nsfr750">
+    <img src="https://img.shields.io/badge/Support%20me-Patreon-FF424D?style=for-the-badge&logo=patreon" alt="Support me on Patreon">
+  </a>
+</div>

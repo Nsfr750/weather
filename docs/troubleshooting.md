@@ -2,6 +2,14 @@
 
 This guide helps you resolve common issues you might encounter while using the Weather App.
 
+## Table of Contents
+- [Common Issues](#common-issues)
+- [Log Files](#log-files)
+- [Debugging](#debugging)
+- [Performance Issues](#performance-issues)
+- [Frequently Asked Questions](#frequently-asked-questions)
+- [Getting Help](#getting-help)
+
 ## Common Issues
 
 ### 1. Application Won't Start
@@ -9,166 +17,273 @@ This guide helps you resolve common issues you might encounter while using the W
 **Symptoms**:
 - The application crashes immediately after launch
 - You see an error message about missing dependencies
+- The application window doesn't appear
 
 **Solutions**:
-1. Verify Python 3.8 or higher is installed:
+1. **Check System Requirements**:
+   - Ensure you have Python 3.10 or higher installed
+   - Verify all system dependencies are installed
+   - Check disk space and permissions
+
+2. **Reinstall Dependencies**:
    ```bash
-   python --version
+   # Activate your virtual environment first
+   pip install --upgrade -r requirements.txt
    ```
-2. Reinstall dependencies:
+
+3. **Check for Conflicting Software**:
+   - Temporarily disable antivirus/firewall
+   - Close other applications that might be conflicting
+
+4. **Reset Configuration**:
    ```bash
-   pip install -r requirements.txt
+   # Backup your config first
+   mv ~/.config/WeatherApp/config.ini ~/.config/WeatherApp/config.ini.bak
    ```
-3. Check the error log at:
-   - Windows: `%APPDATA%\WeatherApp\logs\app.log`
-   - macOS: `~/Library/Logs/WeatherApp/app.log`
-   - Linux: `~/.local/share/WeatherApp/logs/app.log`
 
 ### 2. No Weather Data Displayed
 
 **Symptoms**:
 - The app opens but shows "No data available"
 - Weather information doesn't update
+- Location cannot be found
 
 **Solutions**:
-1. Check your internet connection
-2. Verify your API key is correctly set in Settings
-3. Try switching to a different weather provider
-4. Check if the weather service is experiencing outages
+1. **Check Internet Connection**:
+   - Verify your device is connected to the internet
+   - Try accessing a website in your browser
 
-### 3. Invalid API Key Error
+2. **Verify API Keys**:
+   - Check if your API key is valid and not expired
+   - Ensure the API key has the correct permissions
+   - Try regenerating the API key
 
-**Symptoms**:
-- Error message: "Invalid API key"
-- Weather data fails to load
+3. **Provider Status**:
+   - Check if the weather service is experiencing outages
+   - Try switching to a different weather provider
 
-**Solutions**:
-1. Verify the API key is correct and hasn't expired
-2. Check if you've exceeded your API quota
-3. For OpenWeatherMap, ensure you've activated your API key via email
-4. Try generating a new API key
+4. **Location Services**:
+   - Ensure location services are enabled
+   - Try entering the location manually
 
-### 4. Location Not Found
-
-**Symptoms**:
-- Error: "Location not found"
-- The app can't find your city
-
-**Solutions**:
-1. Check for typos in the city name
-2. Try including the country code (e.g., "London, GB")
-3. Use English names for non-English cities
-4. Try a nearby larger city
-
-### 5. High CPU or Memory Usage
+### 3. High CPU or Memory Usage
 
 **Symptoms**:
 - The app becomes slow or unresponsive
 - Your computer's fan runs loudly
+- Other applications become slow
 
 **Solutions**:
-1. Close and reopen the application
-2. Reduce the update frequency in Settings
-3. Disable animations in Settings > Display
-4. Check for memory leaks in the logs
+1. **Reduce Update Frequency**:
+   - Increase the update interval in Settings > Weather
+   - Disable automatic location updates if not needed
+
+2. **Disable Animations**:
+   - Go to Settings > Display
+   - Toggle off "Enable animations"
+
+3. **Clear Cache**:
+   ```bash
+   # Linux/macOS
+   rm -rf ~/.cache/WeatherApp
+   
+   # Windows
+   rmdir /s /q %LOCALAPPDATA%\WeatherApp\Cache
+   ```
+
+4. **Check for Memory Leaks**:
+   - Monitor memory usage in Task Manager
+   - Report any consistent memory growth
 
 ## Log Files
 
-The application creates log files that can help diagnose issues. The log level can be changed in Settings or via command line:
-
-```bash
-python -m script.main --log-level DEBUG
-```
+Log files contain detailed information about application events and errors. They are essential for troubleshooting.
 
 ### Log Locations
 
+- **Linux/macOS**: `~/.local/share/WeatherApp/logs/`
 - **Windows**: `%APPDATA%\WeatherApp\logs\`
 - **macOS**: `~/Library/Logs/WeatherApp/`
-- **Linux**: `~/.local/share/WeatherApp/logs/`
 
-## Common Error Messages
+### Log Levels
 
-### "Could not connect to weather service"
-- Check your internet connection
-- Verify the weather service is operational
-- Try a different weather provider
+- **DEBUG**: Detailed information for debugging
+- **INFO**: General application events
+- **WARNING**: Potentially harmful situations
+- **ERROR**: Errors that might still allow the app to continue
+- **CRITICAL**: Severe errors that cause the app to crash
 
-### "Invalid configuration"
-- Reset the configuration file (see below)
-- Check for syntax errors in the config file
+### Viewing Logs
 
-### "Out of memory"
-- Close other applications
-- Reduce the number of locations in your favorites
-- Restart the application
+1. **From the Application**:
+   - Go to Help > View Logs
+   - Filter by log level
+   - Search for specific terms
 
-## Resetting the Application
+2. **From Command Line**:
+   ```bash
+   # Linux/macOS
+   tail -f ~/.local/share/WeatherApp/logs/app.log
+   
+   # Windows
+   Get-Content -Path "$env:APPDATA\WeatherApp\logs\app.log" -Wait
+   ```
 
-### Reset Settings
-1. Close the application
-2. Delete the configuration file:
-   - Windows: `%APPDATA%\WeatherApp\config.ini`
-   - macOS: `~/Library/Application Support/WeatherApp/config.ini`
-   - Linux: `~/.config/WeatherApp/config.ini`
-3. Restart the application
+## Debugging
 
-### Clear Cache
-Delete the cache directory:
-- Windows: `%LOCALAPPDATA%\WeatherApp\cache`
-- macOS: `~/Library/Caches/WeatherApp`
-- Linux: `~/.cache/WeatherApp`
+### Enabling Debug Mode
+
+1. **From Command Line**:
+   ```bash
+   python -m script.main --debug
+   ```
+
+2. **From Configuration**:
+   ```ini
+   [Logging]
+   level = DEBUG
+   ```
+
+### Common Error Messages
+
+#### "API Rate Limit Exceeded"
+- **Cause**: Too many requests to the weather API
+- **Solution**:
+  - Wait before making more requests
+  - Upgrade your API plan if needed
+  - Implement proper caching
+
+#### "Invalid API Key"
+- **Cause**: The provided API key is invalid or expired
+- **Solution**:
+  - Verify the key is correct
+  - Check for extra spaces
+  - Generate a new key if needed
+
+#### "Location Not Found"
+- **Cause**: The specified location doesn't exist
+- **Solution**:
+  - Check for typos
+  - Try a nearby larger city
+  - Use coordinates instead of city name
+
+### Using a Debugger
+
+1. **VS Code**:
+   - Set breakpoints in your code
+   - Press F5 to start debugging
+   - Use the debug console to inspect variables
+
+2. **pdb (Python Debugger)**:
+   ```python
+   import pdb; pdb.set_trace()  # Add this line where you want to break
+   ```
 
 ## Performance Issues
 
-### Slow Loading Times
-1. Clear the cache
-2. Reduce the number of favorite locations
-3. Check your internet connection speed
+### Slow Startup
+
+1. **Disable Unnecessary Plugins**:
+   - Check for third-party plugins
+   - Disable unused providers
+
+2. **Optimize Imports**:
+   - Use lazy loading for heavy modules
+   - Remove unused imports
 
 ### High Memory Usage
-1. Close and reopen the application
-2. Reduce the number of days in the forecast
-3. Disable background updates when minimized
 
-## Known Issues
+1. **Check for Memory Leaks**:
+   - Monitor memory usage over time
+   - Look for objects that aren't being garbage collected
 
-### Windows
-- Some visual glitches on high-DPI displays
-  - Fix: Right-click the application icon > Properties > Compatibility > Change high DPI settings > Enable "Override high DPI scaling behavior"
+2. **Reduce Cache Size**:
+   ```ini
+   [Cache]
+   max_size = 100  # MB
+   ```
 
-### macOS
-- Menu bar might not appear in fullscreen mode
-  - Workaround: Use windowed mode or show the menu bar in fullscreen (System Preferences > General)
+### Network Issues
 
-### Linux
-- Some themes might cause visual issues
-  - Try using the default GTK theme
+1. **Check Connection**:
+   ```bash
+   ping api.openweathermap.org
+   ```
+
+2. **Proxy Settings**:
+   - Configure proxy in Settings > Network
+   - Check firewall settings
+
+## Frequently Asked Questions
+
+### Q: How do I update the application?
+A: Use your package manager or download the latest version from GitHub.
+
+### Q: Why is the weather data not updating?
+A: Check your internet connection and API key. The app caches data to reduce API calls.
+
+### Q: How do I change the temperature unit?
+A: Go to Settings > Display > Units and select your preferred unit.
+
+### Q: The app is using too much battery. What can I do?
+A: Reduce the update frequency and disable unnecessary features like animations.
+
+### Q: How do I report a bug?
+A: Please open an issue on our [GitHub repository](https://github.com/Nsfr750/weather/issues) with detailed steps to reproduce the issue.
 
 ## Getting Help
 
 If you've tried the solutions above and are still experiencing issues:
 
-1. Check the [GitHub Issues](https://github.com/Nsfr750/weather/issues) for similar problems
-2. Create a new issue with:
-   - A clear description of the problem
-   - Steps to reproduce
-   - Your operating system and version
-   - The contents of the relevant log file
-   - Any error messages you see
+1. **Check the Documentation**:
+   - [User Guide](usage.md)
+   - [Configuration](configuration.md)
+   - [API Documentation](api.md)
 
-## Reporting Bugs
+2. **Search Existing Issues**:
+   - [GitHub Issues](https://github.com/Nsfr750/weather/issues)
+   - [FAQ](https://github.com/Nsfr750/weather/wiki/FAQ)
 
-When reporting a bug, please include:
+3. **Ask the Community**:
+   - [Discord](https://discord.gg/ryqNeuRYjD)
+   - [GitHub Discussions](https://github.com/Nsfr750/weather/discussions)
 
-1. Steps to reproduce the issue
-2. Expected behavior
-3. Actual behavior
-4. Environment details:
-   - Operating system and version
-   - Python version
-   - Application version
-5. Relevant log output
+4. **Contact Support**:
+   - Email: nsfr750@yandex.com
+   - Include your system information and error logs
 
-## Contributing Fixes
+### When Reporting an Issue
 
-If you've found a solution to an issue, we'd love your contribution! Please see our [Development Guide](development.md) for instructions on how to submit a pull request.
+Please include the following information:
+1. Weather App version
+2. Operating System and version
+3. Steps to reproduce the issue
+4. Expected vs. actual behavior
+5. Relevant error messages or logs
+6. Screenshots if applicable
+
+## Emergency Recovery
+
+If the application becomes completely unresponsive:
+
+1. **Force Quit**:
+   - Windows: Ctrl+Alt+Delete → Task Manager → End Task
+   - macOS: Command+Option+Esc → Force Quit
+   - Linux: `pkill -f weather`
+
+2. **Reset Configuration**:
+   ```bash
+   # Linux/macOS
+   rm -rf ~/.config/WeatherApp
+   
+   # Windows
+   rmdir /s /q %APPDATA%\WeatherApp
+   ```
+
+3. **Reinstall**:
+   ```bash
+   pip uninstall weather-app
+   pip install --no-cache-dir weather-app
+   ```
+
+Remember to back up your configuration before making any changes!

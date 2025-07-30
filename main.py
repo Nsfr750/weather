@@ -239,60 +239,97 @@ class WeatherApp(QMainWindow):
         # Start the background task
         self._run_in_background(fetch_weather, update_ui)
     
-    def update_weather_display(self, weather_data: Dict[str, Any]):
+    def update_weather_display(self, weather_data):
         """Update the UI with weather data."""
         # Clear previous weather widgets
         self.ui.clear_weather_display()
         
         # Create and add weather widgets based on the data
-        # This is a simplified example - you'll need to implement the actual widget creation
-        # based on your weather data structure
-        if 'current' in weather_data:
-            current = weather_data['current']
-            temp = current.get('temp', 'N/A')
-            desc = current.get('weather', [{}])[0].get('description', 'N/A').title()
+        if weather_data is None:
+            self.ui.show_error("No weather data available")
+            return
             
-            # Create a widget for the current weather
-            current_widget = QFrame()
-            current_widget.setObjectName('currentWeather')
-            current_widget.setStyleSheet('''
-                QFrame#currentWeather {
-                    background-color: #2c3e50;
-                    border-radius: 10px;
-                    padding: 15px;
-                }
-                QLabel {
-                    color: #ecf0f1;
-                }
-                .temp {
-                    font-size: 24px;
-                    font-weight: bold;
-                }
-                .desc {
-                    font-size: 16px;
-                    color: #bdc3c7;
-                }
-            ''')
-            
-            layout = QVBoxLayout(current_widget)
-            
-            # City name
-            city_label = QLabel(self.city.title())
-            city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
-            layout.addWidget(city_label)
-            
-            # Temperature
-            temp_label = QLabel(f"{temp}°")
-            temp_label.setProperty('class', 'temp')
-            layout.addWidget(temp_label)
-            
-            # Description
-            desc_label = QLabel(desc)
-            desc_label.setProperty('class', 'desc')
-            layout.addWidget(desc_label)
-            
-            # Add to the UI
-            self.ui.add_weather_widget(current_widget)
+        # Create a widget for the current weather
+        current_widget = QFrame()
+        current_widget.setObjectName('currentWeather')
+        current_widget.setStyleSheet('''
+            QFrame#currentWeather {
+                background-color: #2c3e50;
+                border-radius: 10px;
+                padding: 15px;
+            }
+            QLabel {
+                color: #ecf0f1;
+            }
+            .temp {
+                font-size: 24px;
+                font-weight: bold;
+            }
+            .desc {
+                font-size: 16px;
+                color: #bdc3c7;
+            }
+        ''')
+        
+        layout = QVBoxLayout(current_widget)
+        
+        # City name
+        city_label = QLabel(self.city.title() if hasattr(self, 'city') else 'N/A')
+        city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
+        layout.addWidget(city_label)
+        
+        # Temperature
+        temp = getattr(weather_data, 'temperature', 'N/A')
+        temp_label = QLabel(f"{temp}°" if temp != 'N/A' else 'N/A')
+        temp_label.setProperty('class', 'temp')
+        layout.addWidget(temp_label)
+        
+        # Weather condition
+        condition = getattr(weather_data, 'condition', 'N/A')
+        desc_label = QLabel(condition.title() if condition != 'N/A' else 'N/A')
+        desc_label.setProperty('class', 'desc')
+        layout.addWidget(desc_label)
+        
+        # Additional weather details
+        details = QFrame()
+        details_layout = QHBoxLayout(details)
+        
+        # Humidity
+        humidity = getattr(weather_data, 'humidity', 'N/A')
+        humidity_widget = self._create_detail_widget("💧", f"{humidity}%" if humidity != 'N/A' else 'N/A')
+        details_layout.addWidget(humidity_widget)
+        
+        # Wind
+        wind_speed = getattr(weather_data, 'wind_speed', 'N/A')
+        wind_widget = self._create_detail_widget("💨", f"{wind_speed} m/s" if wind_speed != 'N/A' else 'N/A')
+        details_layout.addWidget(wind_widget)
+        
+        # Pressure
+        pressure = getattr(weather_data, 'pressure', 'N/A')
+        pressure_widget = self._create_detail_widget("📊", f"{pressure} hPa" if pressure != 'N/A' else 'N/A')
+        details_layout.addWidget(pressure_widget)
+        
+        layout.addWidget(details)
+        
+        # Add to the UI
+        self.ui.add_weather_widget(current_widget)
+    
+    def _create_detail_widget(self, icon: str, text: str) -> QWidget:
+        """Create a widget for displaying a weather detail."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        icon_label = QLabel(icon)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        text_label = QLabel(text)
+        text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(icon_label)
+        layout.addWidget(text_label)
+        
+        return widget
     
     def on_language_changed(self, language: str):
         """Handle language change."""

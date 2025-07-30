@@ -1,143 +1,206 @@
 """
-OpenWeatherMap provider implementation.
-"""
-import requests
-from .base_provider import WeatherProvider
+OpenWeatherMap Provider Implementation.
 
-class OpenWeatherMapProvider(WeatherProvider):
-    """Weather data provider for OpenWeatherMap API."""
+This module provides the OpenWeatherMap implementation of the weather provider interface.
+"""
+
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Any
+
+import requests
+
+from .base_provider import BaseProvider, WeatherData
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+class OpenWeatherMapProvider(BaseProvider):
+    """OpenWeatherMap weather provider implementation."""
     
-    BASE_URL = 'https://api.openweathermap.org/data/2.5/'
+    # Provider configuration
+    name = 'openweathermap'
+    display_name = 'OpenWeatherMap'
+    requires_api_key = True
     
-    def __init__(self, api_key=None, units='metric', language='en'):
-        super().__init__(api_key, units, language)
-        self.name = "OpenWeatherMap"
+    # API endpoints
+    BASE_URL = 'https://api.openweathermap.org/data/2.5'
+    CURRENT_WEATHER_URL = f"{BASE_URL}/weather"
+    FORECAST_URL = f"{BASE_URL}/forecast"
     
-    def _make_request(self, endpoint, params=None):
-        """Make a request to the OpenWeatherMap API.
+    def __init__(
+        self, 
+        api_key: Optional[str] = None, 
+        units: str = 'metric',
+        language: str = 'en',
+        offline_mode: bool = False
+    ):
+        """Initialize the OpenWeatherMap provider.
         
         Args:
-            endpoint (str): API endpoint
-            params (dict, optional): Additional parameters
-            
-        Returns:
-            dict: JSON response
+            api_key: OpenWeatherMap API key
+            units: Units for temperature (metric, imperial, standard)
+            language: Language for weather descriptions
+            offline_mode: Whether to operate in offline mode
         """
-        if params is None:
-            params = {}
-            
-        params.update({
+        super().__init__(api_key=api_key, offline_mode=offline_mode)
+        self.units = units
+        self.language = language
+        
+        # Set up base parameters for API requests
+        self._base_params = {
             'appid': self.api_key,
             'units': self.units,
             'lang': self.language
+        }
+    
+    def get_current_weather(self, location: str) -> WeatherData:
+        """Get current weather for a location."""
+        params = self._base_params.copy()
+        params['q'] = location
+        
+        # Make the API request
+        response = self._make_request(self.CURRENT_WEATHER_URL, params)
+        
+        # Parse the response
+        return self._parse_current_weather(response)
+    
+    def get_forecast(self, location: str, days: int = 5) -> List[WeatherData]:
+        """Get weather forecast for a location."""
+        if not 1 <= days <= 16:
+            raise ValueError("Days must be between 1 and 16 for OpenWeatherMap")
+        
+        params = self._base_params.copy()
+        params.update({
+            'q': location,
+            'cnt': days * 8  # 3-hour forecast for the next 5 days (40 timestamps)
         })
         
-        response = requests.get(f"{self.BASE_URL}{endpoint}", params=params)
-        response.raise_for_status()
-        return response.json()
+        # Make the API request
+        response = self._make_request(self.FORECAST_URL, params)
+        
+        # Parse the forecast data
+        return self._parse_forecast(response, days)
     
-    def get_current_weather(self, location):
-        """Get current weather for a location."""
+    def validate_api_key(self) -> bool:
+        """Validate the current API key."""
+        if not self.requires_api_key or not self.api_key:
+            return False
+            
         try:
-            params = {'q': location} if ',' not in location else {'lat': location.split(',')[0], 'lon': location.split(',')[1]}
-            data = self._make_request('weather', params)
+            # Make a test request to the API
+            params = self._base_params.copy()
+            params['q'] = 'London,uk'  # Test with a known location
             
-            return {
-                'temp': data['main']['temp'],
-                'feels_like': data['main']['feels_like'],
-                'humidity': data['main']['humidity'],
-                'pressure': data['main']['pressure'],
-                'wind_speed': data['wind']['speed'],
-                'wind_deg': data['wind'].get('deg', 0),
-                'description': data['weather'][0]['description'],
-                'icon': data['weather'][0]['icon'],
-                'visibility': data.get('visibility', 10000) / 1000,  # Convert to km
-                'clouds': data['clouds']['all'],
-                'sunrise': data['sys']['sunrise'],
-                'sunset': data['sys']['sunset'],
-                'location': data['name'],
-                'country': data['sys']['country'],
-                'timestamp': data['dt']
-            }
-        except Exception as e:
-            raise Exception(f"Failed to get current weather: {str(e)}")
-    
-    def get_forecast(self, location, days=5):
-        """Get weather forecast for a location."""
-        try:
-            params = {
-                'q': location if ',' not in location else None,
-                'lat': location.split(',')[0] if ',' in location else None,
-                'lon': location.split(',')[1] if ',' in location else None,
-                'cnt': days * 8  # 8 data points per day (3-hour intervals)
-            }
-            params = {k: v for k, v in params.items() if v is not None}
+            response = requests.get(
+                self.CURRENT_WEATHER_URL,
+                params=params,
+                timeout=10
+            )
             
-            data = self._make_request('forecast', params)
-            
-            forecast = []
-            for item in data['list']:
-                forecast.append({
-                    'timestamp': item['dt'],
-                    'temp': item['main']['temp'],
-                    'feels_like': item['main']['feels_like'],
-                    'humidity': item['main']['humidity'],
-                    'pressure': item['main']['pressure'],
-                    'wind_speed': item['wind']['speed'],
-                    'wind_deg': item['wind'].get('deg', 0),
-                    'description': item['weather'][0]['description'],
-                    'icon': item['weather'][0]['icon'],
-                    'pop': item.get('pop', 0)  # Probability of precipitation
-                })
-            
-            return forecast
-        except Exception as e:
-            raise Exception(f"Failed to get forecast: {str(e)}")
-    
-    def get_alerts(self, location):
-        """Get weather alerts for a location."""
-        try:
-            params = {
-                'q': location if ',' not in location else None,
-                'lat': location.split(',')[0] if ',' in location else None,
-                'lon': location.split(',')[1] if ',' in location else None,
-                'exclude': 'current,minutely,hourly,daily'
-            }
-            params = {k: v for k, v in params.items() if v is not None}
-            
-            data = self._make_request('onecall', params)
-            
-            alerts = []
-            for alert in data.get('alerts', []):
-                alerts.append({
-                    'event': alert.get('event', ''),
-                    'start': alert.get('start', 0),
-                    'end': alert.get('end', 0),
-                    'description': alert.get('description', ''),
-                    'sender': alert.get('sender', '')
-                })
-            
-            return alerts
-        except Exception as e:
-            # If no alerts, the API returns 404
-            if '404' in str(e):
-                return []
-            raise Exception(f"Failed to get alerts: {str(e)}")
-    
-    def validate_api_key(self, api_key):
-        """Validate the OpenWeatherMap API key."""
-        try:
-            test_params = {
-                'q': 'London',
-                'appid': api_key
-            }
-            response = requests.get(f"{self.BASE_URL}weather", params=test_params, timeout=5)
-            
+            # Check if the response indicates an invalid API key
+            if response.status_code == 401:
+                return False
+                
+            # If we got a successful response, the key is valid
             if response.status_code == 200:
-                return True, "API key is valid"
-            elif response.status_code == 401:
-                return False, "Invalid API key"
-            else:
-                return False, f"API error: {response.status_code} - {response.text}"
-        except requests.RequestException as e:
-            return False, f"Connection error: {str(e)}"
+                return True
+                
+            # For other status codes, log the error
+            logger.warning(f"Unexpected status code during API key validation: {response.status_code}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error validating API key: {e}")
+            return False
+    
+    def _parse_current_weather(self, data: Dict[str, Any]) -> WeatherData:
+        """Parse current weather data from the API response."""
+        # Extract main weather data
+        main = data.get('main', {})
+        weather = data.get('weather', [{}])[0]
+        wind = data.get('wind', {})
+        
+        # Get weather condition
+        condition = weather.get('description', 'unknown')
+        
+        # Get temperature and other metrics
+        temperature = main.get('temp', 0)
+        humidity = main.get('humidity', 0)
+        pressure = main.get('pressure', 0)  # hPa
+        visibility = data.get('visibility')  # meters
+        
+        # Get wind information
+        wind_speed = wind.get('speed', 0)  # m/s
+        wind_direction = wind.get('deg', 0)  # degrees
+        
+        # Get weather icon
+        icon_code = weather.get('icon', '')
+        icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png" if icon_code else ''
+        
+        # Get last update time
+        dt = data.get('dt', 0)
+        last_updated = datetime.fromtimestamp(dt).isoformat() if dt else ''
+        
+        return WeatherData(
+            temperature=temperature,
+            condition=condition,
+            humidity=humidity,
+            wind_speed=wind_speed,
+            wind_direction=wind_direction,
+            pressure=pressure,
+            visibility=visibility,
+            icon=icon_url,
+            last_updated=last_updated
+        )
+    
+    def _parse_forecast(self, data: Dict[str, Any], days: int) -> List[WeatherData]:
+        """Parse forecast data from the API response."""
+        forecast_list = []
+        forecast_data = data.get('list', [])
+        
+        # Group forecast by day (8 timestamps per day for 3-hour intervals)
+        for i in range(0, len(forecast_data), 8):
+            daily_forecasts = forecast_data[i:i+8]
+            if not daily_forecasts:
+                continue
+                
+            # Get the first forecast of the day
+            forecast = daily_forecasts[0]
+            main = forecast.get('main', {})
+            weather = forecast.get('weather', [{}])[0]
+            
+            # Get weather condition
+            condition = weather.get('description', 'unknown')
+            
+            # Get temperature and other metrics
+            temp_avg = main.get('temp', 0)
+            humidity = main.get('humidity', 0)
+            pressure = main.get('pressure', 0)  # hPa
+            
+            # Get wind information
+            wind_speed = forecast.get('wind', {}).get('speed', 0)  # m/s
+            
+            # Get weather icon
+            icon_code = weather.get('icon', '')
+            icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png" if icon_code else ''
+            
+            # Get forecast date
+            dt = forecast.get('dt', 0)
+            date = datetime.fromtimestamp(dt).strftime('%Y-%m-%d') if dt else ''
+            
+            forecast_list.append(
+                WeatherData(
+                    temperature=temp_avg,
+                    condition=condition,
+                    humidity=humidity,
+                    wind_speed=wind_speed,
+                    wind_direction=0,  # Not using wind direction in daily forecast
+                    pressure=pressure,
+                    icon=icon_url,
+                    last_updated=date
+                )
+            )
+        
+        return forecast_list[:days]  # Return only the requested number of days

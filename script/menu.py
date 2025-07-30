@@ -5,135 +5,210 @@ This module provides the menu bar and menu actions for the Weather application.
 It is designed to be imported and used by the main WeatherApp class.
 """
 
-# Debug imports
-import sys
+# Standard library imports
 import importlib
+import logging
 import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Callable
 
-def check_pyqt6_installation():
-    """Check PyQt6 installation and available modules."""
-    print("\n=== PyQt6 Installation Check ===")
-    
-    # Check if PyQt6 is installed
-    try:
-        import PyQt6
-        print(f"PyQt6 version: {PyQt6.QtCore.PYQT_VERSION_STR}")
-        print(f"Qt version: {PyQt6.QtCore.QT_VERSION_STR}")
-        
-        # List available PyQt6 modules
-        print("\nAvailable PyQt6 modules:")
-        modules = [
-            'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtPrintSupport',
-            'QtSvg', 'QtTest', 'QtWebEngineWidgets', 'QtWebEngineCore'
-        ]
-        for module in modules:
-            try:
-                mod = importlib.import_module(f'PyQt6.{module}')
-                print(f"- {module}: {mod.__file__}")
-            except ImportError:
-                print(f"- {module}: Not available")
-                
-    except ImportError as e:
-        print(f"Error importing PyQt6: {e}")
-        print("Please make sure PyQt6 is installed in your virtual environment.")
-        print("You can install it with: pip install PyQt6")
-    
-    print("=" * 30 + "\n")
-
-# Run the check when this module is imported
-check_pyqt6_installation()
-
+# Third-party imports
+from PyQt6.QtCore import Qt, QObject, pyqtSignal, QUrl, QSettings
+from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QIcon
 from PyQt6.QtWidgets import (
-    QMenuBar, QMenu, QMessageBox, QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+    QMenuBar, QMenu, QMessageBox, QFileDialog, QDialog, QVBoxLayout, 
+    QLabel, QLineEdit, QDialogButtonBox, QWidget, QStyle
 )
-from PyQt6.QtGui import QAction, QKeySequence, QActionGroup
-from PyQt6.QtCore import Qt, QObject, pyqtSignal
 
+# Local application imports
 from script.about import About
 from script.help import Help
 from script.sponsor import Sponsor
 from script.log_viewer import LogViewer
 
+# Constants
+DEFAULT_LANGUAGE = 'en'
+DEFAULT_THEME = 'dark'
+DEFAULT_UNITS = 'metric'
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 class MenuBar(QMenuBar):
-    """Custom menu bar for the Weather application."""
+    """
+    Custom menu bar for the Weather application.
+    
+    Provides a fully featured menu system with support for themes, languages,
+    and application settings.
+    """
     
     # Signals
     refresh_triggered = pyqtSignal()
     units_changed = pyqtSignal(str)
     language_changed = pyqtSignal(str)
     theme_changed = pyqtSignal(str)
+    offline_mode_changed = pyqtSignal(bool)  # New signal for offline mode
+    settings_updated = pyqtSignal()  # New signal for settings updates
     
-    def __init__(self, parent=None, translations=None):
+    def __init__(self, parent: Optional[QWidget] = None, 
+                 translations: Optional[Dict[str, str]] = None) -> None:
         """Initialize the menu bar.
         
         Args:
-            parent: The parent widget
+            parent: The parent widget (main window)
             translations: Dictionary containing translations for menu items
         """
         super().__init__(parent)
-        self.setObjectName("menuBar")
         
-        # Store translations
-        self.translations = translations or {}
+        # Store parent and translations
+        self.parent = parent
+        self._translations = translations or {}
         
-        # Store references to actions that need to be updated
+        # Initialize settings
+        self.settings = QSettings("WeatherApp", "WeatherApp")
+        
+        # Initialize instance variables
+        self.current_language = DEFAULT_LANGUAGE
+        self.current_theme = DEFAULT_THEME
+        self.offline_mode = False  # Default to online mode
+        
+        # Initialize action groups
         self.units_group = QActionGroup(self)
-        self.lang_group = QActionGroup(self)
         self.theme_group = QActionGroup(self)
-        self.lang_actions = {}  # Initialize empty dictionary for language actions
+        self.language_group = QActionGroup(self)
+        self.lang_group = QActionGroup(self)
+        self.mode_group = QActionGroup(self)  # For online/offline mode
+        self.lang_actions: Dict[str, QAction] = {}
         
         # Create menus
         self._create_file_menu()
         self._create_view_menu()
-        self._create_settings_menu()
         self._create_language_menu()
         self._create_help_menu()
         
         # Apply styling
         self._apply_styling()
+        
+        logger.info("Menu bar initialized")
     
-    def _create_file_menu(self):
-        """Create the File menu."""
-        file_menu = self.addMenu("&File")
+    def _create_file_menu(self) -> None:
+        """Create the File menu with common application actions."""
+        file_menu = self.addMenu(self._tr('&File'))
+        
+        # Online/Offline mode
+        mode_menu = file_menu.addMenu(self._tr('&Mode'))
+        
+        # Online mode action
+        online_action = QAction(
+            self._tr('&Online Mode'),
+            self,
+            checkable=True,
+            checked=not self.offline_mode,
+            statusTip=self._tr('Connect to the internet for weather data')
+        )
+        online_action.triggered.connect(lambda: self._on_mode_changed(False))
+        self.mode_group.addAction(online_action)
+        mode_menu.addAction(online_action)
+        
+        # Offline mode action
+        offline_action = QAction(
+            self._tr('O&ffline Mode'),
+            self,
+            checkable=True,
+            checked=self.offline_mode,
+            statusTip=self._tr('Work with cached data only')
+        )
+        offline_action.triggered.connect(lambda: self._on_mode_changed(True))
+        self.mode_group.addAction(offline_action)
+        mode_menu.addAction(offline_action)
+        
+        # Separator
+        file_menu.addSeparator()
         
         # Refresh action
-        refresh_action = QAction("&Refresh", self)
-        refresh_action.setShortcut(QKeySequence.StandardKey.Refresh)
-        refresh_action.triggered.connect(self.refresh_triggered.emit)
+        refresh_action = QAction(
+            self._tr('&Refresh'),
+            self,
+            shortcut=QKeySequence.StandardKey.Refresh,
+            statusTip=self._tr('Refresh weather data'),
+            triggered=self.refresh_triggered.emit
+        )
         file_menu.addAction(refresh_action)
         
         # Separator
         file_menu.addSeparator()
         
         # Exit action
-        exit_action = QAction("E&xit", self)
-        exit_action.setShortcut(QKeySequence.StandardKey.Quit)
-        exit_action.triggered.connect(self.parent().close)
+        exit_action = QAction(
+            self._tr('E&xit'),
+            self,
+            shortcut=QKeySequence.StandardKey.Quit,
+            statusTip=self._tr('Exit the application'),
+            triggered=self.parent.close
+        )
         file_menu.addAction(exit_action)
-    
-    def _create_settings_menu(self):
-        """Create the Settings menu."""
-        settings_menu = self.addMenu("&Settings")
         
-        # API Key management
-        api_key_action = QAction("Manage API Keys...", self)
-        api_key_action.triggered.connect(self._show_api_key_dialog)
+        # Store actions for later reference
+        self.refresh_action = refresh_action
+        self.exit_action = exit_action
+    
+    def _create_settings_menu(self) -> None:
+        """Create the Settings menu with configuration options."""
+        settings_menu = self.addMenu(self._tr('&Settings'))
+        
+        # API Key Manager
+        api_key_action = QAction(self._tr("&API Key Manager..."), self)
+        api_key_action.triggered.connect(self._show_api_key_manager)
+        api_key_action.setStatusTip(self._tr("Manage API keys for weather providers"))
         settings_menu.addAction(api_key_action)
         
+        # Add separator
+        settings_menu.addSeparator()
+        
+        # Units submenu
+        units_menu = settings_menu.addMenu(self._tr("&Units"))
+        
+        # Create action group for units
+        self.unit_group = QActionGroup(self)
+        
+        # Metric units (Celsius, km/h, etc.)
+        metric_action = QAction(self._tr("&Metric"), self)
+        metric_action.setCheckable(True)
+        metric_action.setData("metric")
+        metric_action.triggered.connect(lambda: self._on_units_changed("metric"))
+        self.unit_group.addAction(metric_action)
+        units_menu.addAction(metric_action)
+        
+        # Imperial units (Fahrenheit, mph, etc.)
+        imperial_action = QAction(self._tr("&Imperial"), self)
+        imperial_action.setCheckable(True)
+        imperial_action.setData("imperial")
+        imperial_action.triggered.connect(lambda: self._on_units_changed("imperial"))
+        self.unit_group.addAction(imperial_action)
+        units_menu.addAction(imperial_action)
+        
+        # Set default unit
+        current_unit = self.settings.value("units", "metric")
+        for action in self.unit_group.actions():
+            if action.data() == current_unit:
+                action.setChecked(True)
+                break
+        
         # Provider selection
-        provider_menu = settings_menu.addMenu("Weather Provider")
+        provider_menu = settings_menu.addMenu(self._tr('Weather Provider'))
         self.provider_group = QActionGroup(self)
         
         # Add available providers
-        providers = ["OpenWeatherMap", "WeatherAPI", "AccuWeather"]  # Example providers
-        current_provider = "OpenWeatherMap"  # Get this from config in real implementation
+        providers = ["OpenWeatherMap", "WeatherAPI", "AccuWeather"]
+        current_provider = "OpenWeatherMap"  # Should come from config
         
         for provider in providers:
-            action = QAction(provider, self)
-            action.setCheckable(True)
+            action = QAction(provider, self, checkable=True, data=provider)
             action.setChecked(provider == current_provider)
-            action.triggered.connect(lambda checked, p=provider: self._on_provider_changed(p))
+            action.triggered.connect(
+                lambda checked, p=provider: self._on_provider_changed(p)
+            )
             self.provider_group.addAction(action)
             provider_menu.addAction(action)
         
@@ -141,206 +216,181 @@ class MenuBar(QMenuBar):
         settings_menu.addSeparator()
         
         # Application settings
-        app_settings_action = QAction("Application Settings...", self)
-        app_settings_action.triggered.connect(self._show_app_settings)
+        app_settings_action = QAction(
+            self._tr('Application Settings...'),
+            self,
+            statusTip=self._tr('Configure application settings'),
+            triggered=self._show_app_settings
+        )
         settings_menu.addAction(app_settings_action)
     
-    def _create_view_menu(self):
-        """Create the View menu with units and theme options."""
-        view_menu = self.addMenu("&View")
-        
-        # Units submenu
-        units_menu = view_menu.addMenu("&Units")
-        
-        # Unit actions
-        metric_action = QAction("&Metric (°C, m/s, mm)", self)
-        metric_action.setCheckable(True)
-        metric_action.setData("metric")
-        metric_action.triggered.connect(lambda: self._on_units_changed("metric"))
-        
-        imperial_action = QAction("&Imperial (°F, mph, in)", self)
-        imperial_action.setCheckable(True)
-        imperial_action.setData("imperial")
-        imperial_action.triggered.connect(lambda: self._on_units_changed("imperial"))
-        
-        # Add to group for mutual exclusivity
-        self.units_group.addAction(metric_action)
-        self.units_group.addAction(imperial_action)
-        
-        # Add to menu
-        units_menu.addAction(metric_action)
-        units_menu.addAction(imperial_action)
+    def _create_view_menu(self) -> None:
+        """Create the View menu with display options."""
+        view_menu = self.addMenu(self._tr('&View'))
         
         # Theme submenu
-        theme_menu = view_menu.addMenu("&Theme")
+        theme_menu = view_menu.addMenu(self._tr("&Theme"))
+        
+        # Get current theme from settings or use default
+        current_theme = self.settings.value("theme", "system", str)
         
         # Theme actions
-        system_action = QAction("System Default", self)
-        system_action.setCheckable(True)
-        system_action.setData("system")
-        system_action.triggered.connect(lambda: self._on_theme_changed("system"))
+        theme_actions = [
+            ("System", "system"),
+            ("Light", "light"),
+            ("Dark", "dark"),
+            ("High Contrast", "high_contrast")
+        ]
         
-        light_action = QAction("Light", self)
-        light_action.setCheckable(True)
-        light_action.setData("light")
-        light_action.triggered.connect(lambda: self._on_theme_changed("light"))
+        for text, data in theme_actions:
+            action = QAction(self._tr(text), self, checkable=True)
+            action.setData(data)
+            action.setChecked(data == current_theme)
+            action.triggered.connect(lambda checked, t=data: self._on_theme_changed(t))
+            self.theme_group.addAction(action)
+            theme_menu.addAction(action)
         
-        dark_action = QAction("Dark", self)
-        dark_action.setCheckable(True)
-        dark_action.setData("dark")
-        dark_action.triggered.connect(lambda: self._on_theme_changed("dark"))
+        view_menu.addSeparator()
         
-        # Add to group for mutual exclusivity
-        self.theme_group.addAction(system_action)
-        self.theme_group.addAction(light_action)
-        self.theme_group.addAction(dark_action)
+        # Layout submenu
+        layout_menu = view_menu.addMenu(self._tr("&Layout"))
         
-        # Add to menu
-        theme_menu.addAction(system_action)
-        theme_menu.addAction(light_action)
-        theme_menu.addAction(dark_action)
+        # Get current layout from settings or use default
+        current_layout = self.settings.value("layout", "standard", str)
         
-        # Set current theme from config or use dark as default
-        current_theme = getattr(self, 'current_theme', 'dark')
-        if current_theme == 'system':
-            system_action.setChecked(True)
-        elif current_theme == 'light':
-            light_action.setChecked(True)
-        else:
-            dark_action.setChecked(True)
+        # Layout actions
+        layout_actions = [
+            ("Standard", "standard"),
+            ("Compact", "compact"),
+            ("Detailed", "detailed")
+        ]
+        
+        for text, data in layout_actions:
+            action = QAction(self._tr(text), self, checkable=True)
+            action.setData(data)
+            action.setChecked(data == current_layout)
+            action.triggered.connect(lambda checked, l=data: self._on_layout_changed(l))
+            layout_menu.addAction(action)
+        
+        view_menu.addSeparator()
+        
+        # Fullscreen toggle
+        fullscreen_action = QAction(self._tr("Fullscreen"), self, checkable=True)
+        fullscreen_action.setShortcut("F11")
+        fullscreen_action.triggered.connect(self._toggle_fullscreen)
+        view_menu.addAction(fullscreen_action)
+        
+        # Store actions for later reference
+        self.fullscreen_action = fullscreen_action
     
-    def _create_language_menu(self):
-        """Create the Language menu with available languages."""
-        # Create Language menu
-        lang_menu = self.addMenu("&Language")
+    def _create_language_menu(self) -> None:
+        """Create the Language menu with available translations."""
+        language_menu = self.addMenu(self._tr('&Language'))
         
-        # Language actions group
-        self.lang_group = QActionGroup(self)
-        self.lang_actions = {}
+        # Get available languages
+        languages = {
+            'en': 'English',
+            'es': 'Español',
+            'fr': 'Français',
+            'de': 'Deutsch',
+            'it': 'Italiano',
+            'pt': 'Português',
+            'ru': 'Русский',
+            'zh': '中文',
+            'ja': '日本語',
+            'ko': '한국어'
+        }
         
-        # Get available languages from translations
-        try:
-            from script.translations import TRANSLATIONS
-            
-            # Define language display names (lowercase keys for matching)
-            language_names = {
-                'en': 'English',
-                'it': 'Italiano',
-                'es': 'Español',
-                'pt': 'Português',
-                'fr': 'Français',
-                'de': 'Deutsch',
-                'ru': 'Русский',
-                'zh': '中文',
-                'ja': '日本語',
-                'ar': 'العربية'
-            }
-            
-            # Get available languages from TRANSLATIONS dictionary (convert to lowercase for consistency)
-            available_langs = {}
-            for lang_code in TRANSLATIONS.keys():
-                # Convert to lowercase for internal use, but keep original for display
-                lc_code = lang_code.lower()
-                available_langs[lc_code] = language_names.get(lc_code, lang_code)
-            
-            # Get current language from config or use default
-            current_lang = getattr(self, 'current_language', 'en')
-            
-            # Add language actions
-            for lang_code, lang_name in available_langs.items():
-                action = QAction(lang_name, self)
-                action.setCheckable(True)
-                action.setChecked(lang_code == current_lang)
-                action.setData(lang_code)
-                action.triggered.connect(
-                    lambda checked, lc=lang_code: self._on_language_changed(lc)
-                )
-                self.lang_group.addAction(action)
-                self.lang_actions[lang_code] = action
-                lang_menu.addAction(action)  # Add action to the menu
-                
-        except Exception as e:
-            import logging
-            logging.error(f"Error loading languages: {str(e)}")
-            # Add a disabled action to show error
-            error_action = QAction("Error loading languages", self)
-            error_action.setEnabled(False)
-            lang_menu.addAction(error_action)
+        # Add language actions
+        for code, name in languages.items():
+            action = QAction(name, self, checkable=True)
+            action.setData(code)  # Set data after creating the action
+            action.triggered.connect(lambda checked, c=code: self._on_language_changed(c))
+            self.language_group.addAction(action)
+            language_menu.addAction(action)
+        
+        # Set current language
+        current_lang = self.settings.value('language', 'en', str)
+        for action in self.language_group.actions():
+            if action.data() == current_lang:
+                action.setChecked(True)
+                break
     
-    def _create_help_menu(self):
-        """Create the Help menu."""
-        help_menu = self.addMenu(self.translations.get('help', '&Help'))
-
-        # About action
-        about_action = QAction(self.translations.get('about', '&About'), self)
-        about_action.triggered.connect(self._show_about_dialog)
-        help_menu.addAction(about_action)
+    def _create_help_menu(self) -> None:
+        """Create the Help menu with support and information options."""
+        help_menu = self.addMenu(self._tr('&Help'))
         
-        # Separator
-        help_menu.addSeparator()
+        # Help actions
+        actions = [
+            (self._tr('&About'), 'F1', self._show_about_dialog),
+            (self._tr('&Help'), 'F1', self._show_help_dialog),
+            (self._tr('&Documentation'), 'F2', self._show_documentation),
+            (self._tr('View &Logs'), None, self._show_log_viewer),
+            (self._tr('&Sponsor'), None, self._show_sponsor_dialog),
+            (self._tr('Check for &Updates'), None, self._check_for_updates)
+        ]
         
-        # Help action
-        help_action = QAction(self.translations.get('help', '&Help'), self)
-        help_action.triggered.connect(self._show_help_dialog)
-        help_menu.addAction(help_action)
-        
-        # Documentation action
-        docs_action = QAction(self.translations.get('documentation', '&Documentation'), self)
-        docs_action.triggered.connect(self._show_documentation)
-        help_menu.addAction(docs_action)
-        
-        # Separator
-        help_menu.addSeparator()
-        
-        # Log viewer action
-        log_action = QAction(self.translations.get('view_log', 'View &Logs'), self)
-        log_action.triggered.connect(self._show_log_viewer)
-        help_menu.addAction(log_action)
-        
-        # Separator
-        help_menu.addSeparator()
-        
-        # Sponsor action
-        sponsor_action = QAction(self.translations.get('sponsor', '&Sponsor'), self)
-        sponsor_action.triggered.connect(self._show_sponsor_dialog)
-        help_menu.addAction(sponsor_action)
-        
-        # Separator
-        help_menu.addSeparator()
-        
-        # Check for updates action
-        update_action = QAction(self.translations.get('check_updates', 'Check for &Updates'), self)
-        update_action.triggered.connect(self._check_for_updates)
-        help_menu.addAction(update_action)
+        for i, (text, shortcut, slot) in enumerate(actions):
+            action = QAction(text, self, triggered=slot)
+            if shortcut:
+                action.setShortcut(shortcut)
+            help_menu.addAction(action)
+            
+            # Add separators for better grouping
+            if i in [0, 2, 3]:
+                help_menu.addSeparator()
     
-    def _apply_styling(self):
-        """Apply styling to the menu bar."""
+    def _get_language_name(self, lang_code: str) -> str:
+        """Get the display name for a language code.
+        
+        Args:
+            lang_code: ISO 639-1 language code (e.g., 'en', 'es')
+            
+        Returns:
+            str: The display name of the language
+        """
+        lang_names = {
+            'en': 'English',
+            'es': 'Español',
+            'fr': 'Français',
+            'de': 'Deutsch',
+            'it': 'Italiano',
+            'pt': 'Português',
+            'ru': 'Русский',
+            'zh': '中文',
+            'ja': '日本語',
+            'ar': 'العربية'
+        }
+        return lang_names.get(lang_code, lang_code)
+    
+    def _apply_styling(self) -> None:
+        """Apply consistent styling to the menu bar and its components."""
         self.setStyleSheet("""
             QMenuBar {
-                background-color: #b3d9ff;  /* Dark blue background */
+                background-color: #f0f0f0;
                 padding: 2px;
                 border: none;
-                border-bottom: 1px solid #b3d9ff;  /* Slightly darker blue border */
+                border-bottom: 1px solid #d0d0d0;
             }
             
             QMenuBar::item {
                 padding: 5px 10px;
                 background: transparent;
                 border-radius: 4px;
-                color: #000  /* Black text */
+                color: #333;
             }
             
             QMenuBar::item:selected {
-                background: #cce6ff;  /* Lighter blue when selected */
+                background: #e0e0e0;
             }
             
-            QMenuBar::item:pressed {
-                background: #99ccff;  /* Medium blue when pressed */
+            QMenuBar::item:disabled {
+                color: #999999;
             }
             
             QMenu {
-                background-color: #e6f3ff;  /* Light blue background */
-                border: 1px solid #b3d9ff;
+                background-color: #ffffff;
+                border: 1px solid #d0d0d0;
                 padding: 5px;
                 border-radius: 4px;
             }
@@ -349,21 +399,26 @@ class MenuBar(QMenuBar):
                 padding: 5px 25px 5px 20px;
                 margin: 2px;
                 border-radius: 3px;
-                color: #0066cc;  /* Darker blue text */
+                color: #333;
             }
             
             QMenu::item:selected {
-                background-color: #cce6ff;  /* Lighter blue when selected */
+                background-color: #e6f0ff;
+                color: #0066cc;
             }
             
             QMenu::item:disabled {
-                color: #99c2ff;  /* Lighter blue for disabled items */
+                color: #999999;
             }
             
             QMenu::separator {
                 height: 1px;
-                background: #b3d9ff;  /* Border color */
+                background: #e0e0e0;
                 margin: 5px 0;
+            }
+            
+            QMenu::icon {
+                left: 5px;
             }
             
             QMenu::indicator {
@@ -371,27 +426,69 @@ class MenuBar(QMenuBar):
                 height: 13px;
             }
             
-            QMenu::indicator:unchecked {
-                border: 1px solid #99c2ff;  /* Lighter blue border */
-                border-radius: 3px;
-                background: white;
-            }
-            
             QMenu::indicator:checked {
-                border: 1px solid #0066cc;  /* Darker blue border */
+                background-color: #0066cc;
+                border: 1px solid #0052a3;
                 border-radius: 3px;
-                background: #4da6ff;  /* Medium blue background */
             }
         """)
     
-    def set_units(self, units):
+    def _tr(self, text: str) -> str:
+        """Translate text using the current translations.
+        
+        Args:
+            text: The text to translate
+            
+        Returns:
+            The translated text or the original if no translation is found
+        """
+        return self._translations.get(text, text)
+    
+    def update_translations(self, translations: Dict[str, str]) -> None:
+        """Update the translations for the menu bar.
+        
+        Args:
+            translations: Dictionary of translations
+        """
+        self._translations = translations or {}
+        self.set_languages({}, self.current_language)  # Refresh language menu
+        
+        # Update menu titles
+        for menu in self.findChildren(QMenu):
+            menu_title = menu.title()
+            if menu_title.startswith('&') and menu_title[1:] in self._translations:
+                menu.setTitle('&' + self._translations[menu_title[1:]])
+            elif menu_title in self._translations:
+                menu.setTitle(self._translations[menu_title])
+        
+        # Update action texts
+        for action in self.actions():
+            if not action.text():
+                continue
+                
+            # Remove '&' for translation lookup
+            text = action.text().replace('&', '')
+            if text in self._translations:
+                translated = self._translations[text]
+                # Preserve the original mnemonic if it had one
+                if '&' in action.text():
+                    translated = '&' + translated
+                action.setText(translated)
+            
+            # Update tooltips and status tips
+            if action.toolTip() and action.toolTip() in self._translations:
+                action.setToolTip(self._translations[action.toolTip()])
+            if action.statusTip() and action.statusTip() in self._translations:
+                action.setStatusTip(self._translations[action.statusTip()])
+    
+    def set_units(self, units: str) -> None:
         """Set the currently selected units."""
         for action in self.units_group.actions():
             if action.data() == units:
                 action.setChecked(True)
                 break
     
-    def set_languages(self, languages, current_lang):
+    def set_languages(self, languages: Dict[str, str], current_lang: str) -> None:
         """Set the available languages and current language."""
         if not languages:
             return
@@ -409,7 +506,7 @@ class MenuBar(QMenuBar):
             # Find the language menu by iterating through all menus and their actions
             for menu in self.findChildren(QMenu):
                 menu_title = menu.title().replace('&', '')  # Remove ampersand for comparison
-                trans_lang = self.translations.get('language', 'Language').replace('&', '')
+                trans_lang = self._translations.get('language', 'Language').replace('&', '')
                 
                 if menu_title in ['Language', trans_lang]:
                     # Clear the existing menu in a safe way
@@ -441,28 +538,28 @@ class MenuBar(QMenuBar):
             import logging
             logging.error(f"Error in set_languages: {str(e)}")
     
-    def set_theme(self, theme):
+    def set_theme(self, theme: str) -> None:
         """Set the currently selected theme."""
         for action in self.theme_group.actions():
             if action.data() == theme:
                 action.setChecked(True)
                 break
     
-    def _on_units_changed(self, units):
+    def _on_units_changed(self, units: str) -> None:
         """Handle units change."""
         self.units_changed.emit(units)
     
-    def _on_language_changed(self, lang_code):
+    def _on_language_changed(self, lang_code: str) -> None:
         """Handle language change."""
         # Save the selected language to config
         # self.config_manager.set('language', lang_code)
         self.language_changed.emit(lang_code)
     
-    def _on_theme_changed(self, theme):
+    def _on_theme_changed(self, theme: str) -> None:
         """Handle theme change."""
         self.theme_changed.emit(theme)
     
-    def _show_documentation(self):
+    def _show_documentation(self) -> None:
         """Show the documentation using markdown_viewer.py."""
         try:
             # Get the current language from the application
@@ -502,156 +599,245 @@ class MenuBar(QMenuBar):
             # Show error message to the user
             QMessageBox.critical(
                 self,
-                self.translations.get('error', 'Error'),
-                self.translations.get('error_loading_file', 'Error loading file:') + f" {str(e)}"
+                self._translations.get('error', 'Error'),
+                self._translations.get('error_loading_file', 'Error loading file:') + f" {str(e)}"
             )
     
-    def _show_about_dialog(self):
+    def _show_about_dialog(self) -> None:
         """Show the about dialog."""
-        from script.about import AboutDialog
-        AboutDialog.show_about(self.parent())            
+        about = About(self)
+        about.exec()
     
-    def _check_for_updates(self):
+    def _check_for_updates(self) -> None:
         """Check for application updates."""
-        from script.updates import check_for_updates
-        check_for_updates(self.parent())
+        try:
+            # This would call your update checking logic
+            # update_available, version = check_for_updates()
+            update_available = False
+            version = "1.0.0"
+            
+            if update_available:
+                reply = QMessageBox.information(
+                    self,
+                    self._tr('Update Available'),
+                    self._tr(f'Version {version} is available. Would you like to download it now?'),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                if reply == QMessageBox.StandardButton.Yes:
+                    # self._download_update(version)
+                    pass
+            else:
+                QMessageBox.information(
+                    self,
+                    self._tr('No Updates'),
+                    self._tr('You are using the latest version.')
+                )
+        except Exception as e:
+            logger.error(f"Error checking for updates: {e}")
+            QMessageBox.critical(
+                self,
+                self._tr('Error'),
+                self._tr('Failed to check for updates: {}').format(str(e))
+            )
     
-    def _show_sponsor_dialog(self):
-        """Show the sponsor dialog."""
-        from script.sponsor import Sponsor
-        Sponsor.show_sponsor_dialog(self.parent())
+    def _show_api_key_manager(self):
+        """Show the API Key Manager dialog."""
+        try:
+            from script.weather_providers.api_key_manager import ApiKeyManagerDialog
+            
+            dialog = ApiKeyManagerDialog(self.parent())
+            dialog.api_keys_updated.connect(self._on_api_keys_updated)
+            dialog.exec()
+            
+        except ImportError as e:
+            logger.error(f"Failed to import API key manager: {e}")
+            QMessageBox.critical(
+                self.parent(),
+                self._tr("Error"),
+                self._tr("Failed to load API key manager: {}".format(str(e)))
+            )
+        except Exception as e:
+            logger.error(f"Error showing API key manager: {e}")
+            QMessageBox.critical(
+                self.parent(),
+                self._tr("Error"),
+                self._tr("An error occurred while opening the API key manager: {}".format(str(e)))
+            )
     
-    def _show_api_key_dialog(self):
+    def _on_api_keys_updated(self):
+        """Handle API keys being updated."""
+        logger.info("API keys were updated")
+        # Emit signal to notify other components
+        self.settings_updated.emit()
+    
+    def _show_api_key_dialog(self) -> None:
         """Show the API key management dialog."""
-        from PyQt6.QtWidgets import (
-            QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-            QLineEdit, QDialogButtonBox
-        )
-        
         dialog = QDialog(self)
-        dialog.setWindowTitle("Manage API Keys")
+        dialog.setWindowTitle(self._tr('Manage API Keys'))
+        dialog.setMinimumWidth(400)
+        
         layout = QVBoxLayout(dialog)
         
-        # Add widgets for API key management
-        layout.addWidget(QLabel("Enter your API keys:"))
-        
-        # Example for OpenWeatherMap API key
-        owm_layout = QHBoxLayout()
-        owm_layout.addWidget(QLabel("OpenWeatherMap:"))
-        owm_key = QLineEdit()
-        owm_key.setPlaceholderText("Enter OpenWeatherMap API key")
-        owm_key.setEchoMode(QLineEdit.EchoMode.Password)
-        owm_layout.addWidget(owm_key)
-        layout.addLayout(owm_layout)
+        # Add form fields for API keys
+        layout.addWidget(QLabel(self._tr('OpenWeatherMap API Key:')))
+        owm_key_edit = QLineEdit()
+        # Load current key from config
+        # owm_key_edit.setText(self.config_manager.get('api_keys', {}).get('openweathermap', ''))
+        layout.addWidget(owm_key_edit)
         
         # Add more API key fields as needed
         
         # Add buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel
         )
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
         
-        # Show the dialog
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            # Save the API keys
-            # You would typically save these to a config file or secure storage
-            pass
+            # Save API keys to config
+            # self.config_manager.set('api_keys', {
+            #     'openweathermap': owm_key_edit.text().strip()
+            # })
+            QMessageBox.information(
+                self,
+                self._tr('Success'),
+                self._tr('API keys have been saved. Changes will take effect the next time you fetch weather data.')
+            )
     
-    def _on_provider_changed(self, provider):
-        """Handle weather provider change."""
-        # Save the selected provider to config
-        # self.config_manager.set('provider', provider.lower())
-        QMessageBox.information(
-            self,
-            "Provider Changed",
-            f"Weather provider changed to {provider}"
-        )
-    
-    def _show_app_settings(self):
+    def _show_app_settings(self) -> None:
         """Show the application settings dialog."""
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QCheckBox, QDialogButtonBox
-        
         dialog = QDialog(self)
-        dialog.setWindowTitle("Application Settings")
+        dialog.setWindowTitle(self._tr('Application Settings'))
+        dialog.setMinimumWidth(450)
+        
         layout = QVBoxLayout(dialog)
         
-        # Add settings widgets
-        startup_chk = QCheckBox("Start with system")
-        notifications_chk = QCheckBox("Enable notifications")
-        auto_update_chk = QCheckBox("Check for updates automatically")
-        
-        layout.addWidget(startup_chk)
-        layout.addWidget(notifications_chk)
+        # Add settings widgets here
+        # Example: Auto-update checkbox
+        auto_update_chk = QCheckBox(self._tr('Check for updates automatically'))
+        # auto_update_chk.setChecked(self.config_manager.get('auto_update', True))
         layout.addWidget(auto_update_chk)
         
-        # Add buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
+        # Add more settings as needed
         
-        # Show the dialog
+        # Add buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+        
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Save settings
-            # self.config_manager.set('start_with_system', startup_chk.isChecked())
-            # self.config_manager.set('enable_notifications', notifications_chk.isChecked())
             # self.config_manager.set('auto_update', auto_update_chk.isChecked())
-            pass
+            QMessageBox.information(
+                self,
+                self._tr('Settings Saved'),
+                self._tr('Application settings have been saved.')
+            )
     
-    def _show_log_viewer(self):
+    def _show_help_dialog(self) -> None:
+        """Show the help dialog."""
+        help_dialog = Help(self)
+        help_dialog.exec()
+    
+    def _show_sponsor_dialog(self) -> None:
+        """Show the sponsor dialog."""
+        sponsor = Sponsor(self)
+        sponsor.exec()
+    
+    def _show_log_viewer(self) -> None:
         """Show the log viewer dialog."""
         try:
-            from script.log_viewer import LogViewer
-            log_viewer = LogViewer()
+            log_viewer = LogViewer(self)
             log_viewer.exec()
-        except ImportError as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Could not load log viewer: {str(e)}"
-            )
         except Exception as e:
+            logger.error(f"Failed to open log viewer: {e}")
             QMessageBox.critical(
                 self,
-                "Error",
-                f"Failed to open log viewer: {str(e)}"
+                self._tr('Error'),
+                self._tr('Failed to open log viewer: {}').format(str(e))
             )
     
-    def _show_help_dialog(self):
-        """Show the help dialog."""
-        try:
-            from script.about import AboutDialog
-            from script.help import HelpDialog
-            from script.translations_utils import TranslationsManager
-            from script.translations import TRANSLATIONS
+    def _on_provider_changed(self, provider: str) -> None:
+        """Handle weather provider change.
+        
+        Args:
+            provider: The selected weather provider
+        """
+        logger.info(f"Weather provider changed to: {provider}")
+        # Save to config and update application state
+        # self.config_manager.set('provider', provider.lower())
+        
+        # Show a message to the user
+        QMessageBox.information(
+            self,
+            self._tr('Provider Changed'),
+            self._tr(f'Weather provider changed to {provider}. Restart may be required for changes to take effect.')
+        )
+    
+    def _on_mode_changed(self, offline: bool) -> None:
+        """Handle online/offline mode change.
+        
+        Args:
+            offline: True if offline mode is enabled, False for online mode
+        """
+        if self.offline_mode == offline:
+            return
             
-            # Get the current language (default to 'en' if not available)
-            current_lang = getattr(self, 'current_language', 'en')
-            
-            # Create and show the help dialog
-            help_dialog = HelpDialog(self, TranslationsManager(TRANSLATIONS), current_lang)
-            help_dialog.exec()
-            
-        except ImportError as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Could not load help dialog: {str(e)}"
+        self.offline_mode = offline
+        logger.info(f"{'Offline' if offline else 'Online'} mode enabled")
+        
+        # Update UI state based on mode
+        for action in self.mode_group.actions():
+            if action.text().lower().startswith('offline' if offline else 'online'):
+                action.setChecked(True)
+        
+        # Emit signal to notify other components
+        self.offline_mode_changed.emit(offline)
+        
+        # Show status message
+        QMessageBox.information(
+            self,
+            self._tr('Mode Changed'),
+            self._tr('Now in {} mode').format(
+                self._tr('Offline') if offline else self._tr('Online')
             )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to open help: {str(e)}"
-            )
-
-
-def create_menu_bar(parent, translations=None):
+        )
+    
+    def set_offline_mode(self, offline: bool) -> None:
+        """Set the offline mode programmatically.
+        
+        Args:
+            offline: True to enable offline mode, False for online mode
+        """
+        if self.offline_mode != offline:
+            self._on_mode_changed(offline)
+    
+    def _toggle_fullscreen(self) -> None:
+        """Toggle fullscreen mode for the main window."""
+        if not hasattr(self, 'parent') or not self.parent:
+            logger.warning("Cannot toggle fullscreen: No parent window found")
+            return
+            
+        if self.parent.isFullScreen():
+            self.parent.showNormal()
+            if hasattr(self, 'fullscreen_action'):
+                self.fullscreen_action.setChecked(False)
+            logger.debug("Exited fullscreen mode")
+        else:
+            self.parent.showFullScreen()
+            if hasattr(self, 'fullscreen_action'):
+                self.fullscreen_action.setChecked(True)
+            logger.debug("Entered fullscreen mode")
+    
+def create_menu_bar(parent: Optional[QWidget] = None, 
+                    translations: Optional[Dict[str, str]] = None) -> MenuBar:
     """
     Create and return a menu bar for the application.
     

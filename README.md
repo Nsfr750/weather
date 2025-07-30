@@ -1,25 +1,34 @@
 # Weather App
 
-A modern, feature-rich Python weather application with a beautiful, responsive GUI built using Tkinter. Instantly view real-time weather conditions and a 5-day forecast for any city, with support for multiple languages, units, favorites, and more. Includes automatic update checking and a user-friendly settings interface. Designed for usability, extensibility, and a delightful user experience.
+A modern, feature-rich Python weather application with a beautiful, responsive GUI built using Tkinter. Instantly view real-time weather conditions and a 5-day forecast for any city, with support for multiple weather providers, languages, units, favorites, and more. Includes automatic update checking, comprehensive documentation, and a user-friendly settings interface. Designed for usability, extensibility, and a delightful user experience.
 
 ---
 
 ## 🚀 Features
 
+- **Multiple Weather Providers:** Choose from 7 different weather data sources
+  - OpenWeatherMap (default)
+  - Open-Meteo
+  - Weather.com
+  - Breezy Weather
+  - QuickWeather
+  - Weather Company (IBM)
+  - Alliander
 - **Current Weather:** Real-time temperature, humidity, wind speed, and weather icon
 - **5-Day Forecast:** Daily temperature, icon, and weather description
 - **Themes:** Toggle between light and dark modes
 - **Units:** Choose between Metric (°C, m/s) and Imperial (°F, mph)
 - **Favorites:** Save and quickly select your favorite cities
-- **Multi-language Support:** English, Spanish, Italian (UI, weather descriptions, and Help dialog)
+- **Multi-language Support:** English, Spanish, Italian, French, German, Portuguese, Russian, Arabic, and Japanese
+- **Comprehensive Documentation:** Detailed guides for users and developers in the `/docs` directory
 - **Modularized Translations:** All major UI and help content are fully translatable and update instantly with the selected language
-- **Persistent API Key:** Securely stored in `config.json` via the Settings dialog
+- **Persistent Configuration:** All settings saved to `config.json`
 - **Error Logging:** All errors recorded in `weather_app.log`
-- **Log Viewer:** Conveniently view logs from within the app
+- **Log Viewer:** Conveniently view and filter logs from within the app
 - **Automatic Updates:** Check for and install the latest version
-- **Secure API Key Management:** Store and manage your OpenWeatherMap API key securely
+- **Secure API Key Management:** Store and manage API keys for all providers
 - **Responsive UI:** Clean, adaptive interface for any screen size
-- **Menu Bar:** Quick access to About, Help, Check for Updates, Log, and Settings
+- **Menu Bar:** Quick access to all app features and settings
 
 ---
 
@@ -33,17 +42,30 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
 
 2. **Get an API Key**
 
-   - Register for a free API key at [OpenWeatherMap](https://openweathermap.org/api).
+   - Register for a free API key at your preferred weather provider:
+     - [OpenWeatherMap](https://openweathermap.org/api) (recommended)
+     - [Open-Meteo](https://open-meteo.com/)
+     - [Weather.com](https://www.weather.com/services/weather-api)
+     - [IBM Weather](https://www.ibm.com/weather/)
 
 3. **Run the app**
 
    ```bash
-   python weather_app.py
+   python -m script.main
+   ```
+   
+   Or install in development mode:
+   ```bash
+   pip install -e .
+   weather-app
    ```
 
 4. **Configure your API Key**
 
-   - Enter your API key in the Settings dialog (recommended), or set the `OPENWEATHER_API_KEY` environment variable.
+   - Open Settings from the menu bar
+   - Select your preferred weather provider
+   - Enter your API key in the Settings dialog
+   - Click Save to apply your changes
 
 ---
 

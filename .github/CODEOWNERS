@@ -1,0 +1,41 @@
+# This is a CODEOWNERS file for the Weather App project.
+# It specifies who is responsible for reviewing and approving changes to different parts of the codebase.
+
+# Default owner for the entire repository
+* @Nsfr750
+
+# Core application code
+/main.py @Nsfr750
+/script/ @Nsfr750
+
+# Configuration and setup
+/config/ @Nsfr750
+/requirements.txt @Nsfr750
+
+# Documentation
+/README.md @Nsfr750
+/CHANGELOG.md @Nsfr750
+/TO_DO.md @Nsfr750
+/docs/ @Nsfr750
+
+# Translations
+/script/translations.py @Nsfr750
+/script/translations_utils.py @Nsfr750
+/lang/ @Nsfr750
+
+# Tests
+/tests/ @Nsfr750
+
+# GitHub workflows and CI/CD
+/.github/ @Nsfr750
+
+# Dependencies and environment
+/requirements*.txt @Nsfr750
+/setup.py @Nsfr750
+
+# Assets and resources
+/assets/ @Nsfr750
+/resources/ @Nsfr750
+
+# Logs (usually in .gitignore, but included here for completeness)
+/logs/ @Nsfr750

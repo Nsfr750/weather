@@ -12,7 +12,11 @@ import os
 
 # Get the application directory
 APP_DIR = Path(__file__).parent.parent
-UPDATES_FILE = APP_DIR / 'updates.json'
+
+# Ensure config directory exists
+CONFIG_DIR = APP_DIR / 'config'
+CONFIG_DIR.mkdir(exist_ok=True)
+UPDATES_FILE = CONFIG_DIR / 'updates.json'
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -63,7 +67,8 @@ class UpdateChecker:
             force_check: If True, skip the cache and force a check.
             
         Returns:
-            Tuple of (update_available, update_info)
+            Tuple of (update_available, update_info, error_message)
+            where error_message is None if no error, or a tuple of (title, message) if there was an error
         """
         try:
             logger.info("Checking for updates...")
@@ -83,26 +88,19 @@ class UpdateChecker:
                     'url': release['html_url'],
                     'notes': release['body'],
                     'published_at': release['published_at']
-                }
+                }, None
             else:
                 logger.info("No updates available")
-                if parent:
-                    messagebox.showinfo(
-                        'No Updates',
-                        'You are using the latest version.',
-                        parent=parent
-                    )
-                return False, None
+                return False, None, ('No Updates', 'You are using the latest version.')
                 
         except requests.RequestException as e:
-            logger.error(f"Error checking for updates: {e}")
-            if parent:
-                messagebox.showerror(
-                    'Update Error',
-                    f'Failed to check for updates: {str(e)}',
-                    parent=parent
-                )
-            return False, None
+            error_msg = f'Failed to check for updates: {str(e)}'
+            logger.error(error_msg)
+            return False, None, ('Update Error', error_msg)
+        except Exception as e:
+            error_msg = f'An unexpected error occurred: {str(e)}'
+            logger.exception("Unexpected error during update check")
+            return False, None, ('Update Error', error_msg)
     
     def _version_compare(self, v1: str, v2: str) -> int:
         """Compare two version strings.
@@ -211,8 +209,52 @@ def check_for_updates(parent: Optional[tk.Tk] = None, current_version: str = "__
         current_version: Current application version.
         force_check: If True, skip the cache and force a check.
     """
-    checker = UpdateChecker(current_version)
-    update_available, update_info = checker.check_for_updates(parent, force_check=force_check)
+    def show_message(title: str, message: str, is_error: bool = False) -> None:
+        """Helper to show a message box in the main thread."""
+        if parent and parent.winfo_exists():
+            try:
+                if is_error or title == 'No Updates':
+                    parent.after(0, lambda t=title, m=message: messagebox.showinfo(t, m, parent=parent))
+                else:
+                    parent.after(0, lambda t=title, m=message: messagebox.showerror(t, m, parent=parent))
+            except RuntimeError as e:
+                logging.error(f"Failed to show message: {e}")
     
-    if update_available and update_info:
-        checker.show_update_dialog(parent, update_info)
+    def perform_check():
+        try:
+            checker = UpdateChecker(current_version)
+            update_available, update_info, error_info = None, None, None
+            
+            try:
+                update_available, update_info, error_info = checker.check_for_updates(parent, force_check=force_check)
+            except Exception as e:
+                error_msg = f"Error checking for updates: {e}"
+                logging.exception(error_msg)
+                show_message("Update Error", error_msg, is_error=True)
+                return
+            
+            if not parent or not parent.winfo_exists():
+                return
+                
+            if update_available and update_info:
+                try:
+                    parent.after(0, lambda: checker.show_update_dialog(parent, update_info))
+                except Exception as e:
+                    logging.exception("Failed to show update dialog")
+            elif error_info:
+                show_message(error_info[0], error_info[1], is_error=True)
+                
+        except Exception as e:
+            error_msg = f"An unexpected error occurred while checking for updates: {e}"
+            logging.exception(error_msg)
+            if parent and parent.winfo_exists():
+                parent.after(0, lambda: show_message("Update Error", error_msg, is_error=True))
+    
+    # Only start the thread if we have a parent window
+    if parent and parent.winfo_exists():
+        import threading
+        try:
+            thread = threading.Thread(target=perform_check, daemon=True, name="UpdateCheckThread")
+            thread.start()
+        except Exception as e:
+            logging.exception("Failed to start update check thread")

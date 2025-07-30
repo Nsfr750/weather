@@ -4,8 +4,13 @@ Utility functions and class for managing favorite cities in a modular way.
 """
 import json
 import os
+from pathlib import Path
 
-FAV_FILE = 'favorites.json'
+# Ensure config directory exists
+CONFIG_DIR = Path('config')
+CONFIG_DIR.mkdir(exist_ok=True)
+
+FAV_FILE = CONFIG_DIR / 'favorites.json'
 
 class FavoritesManager:
     def __init__(self, fav_file=FAV_FILE):

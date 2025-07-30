@@ -7,10 +7,10 @@ It is designed to be imported and used by the main WeatherApp class.
 
 import tkinter as tk
 from tkinter import messagebox
-from about import About
-from help import Help
-from sponsor import Sponsor
-from log_viewer import LogViewer
+from script.about import About
+from script.help import Help
+from script.sponsor import Sponsor
+from script.log_viewer import LogViewer
 
 
 def create_menu_bar(root, app):
@@ -32,7 +32,38 @@ def create_menu_bar(root, app):
     view_menu = tk.Menu(menubar, tearoff=0)
     view_menu.add_command(label="Refresh", command=app.refresh_weather)
     view_menu.add_separator()
-    # Add more view options here if needed
+    
+    # Language submenu
+    lang_menu = tk.Menu(view_menu, tearoff=0)
+    
+    # Language names in their native form
+    language_names = {
+        'en': 'English',
+        'it': 'Italiano',
+        'es': 'Español',
+        'pt': 'Português',
+        'de': 'Deutsch',
+        'fr': 'Français',
+        'ru': 'Русский',
+        'ar': 'العربية',
+        'ja': '日本語'
+    }
+    
+    # Add language options with radio buttons
+    lang_var = tk.StringVar(value=app.language)
+    for lang_code, lang_name in language_names.items():
+        if lang_code in app.translations_manager.available_languages():
+            lang_menu.add_radiobutton(
+                label=f"{lang_name} ({lang_code})",
+                value=lang_code,
+                variable=lang_var,
+                command=lambda l=lang_code: app._change_language(l)
+            )
+    
+    # Add language submenu to view menu
+    view_menu.add_cascade(label="Language", menu=lang_menu)
+    view_menu.add_separator()
+    
     menubar.add_cascade(label="View", menu=view_menu)
 
     # Settings menu

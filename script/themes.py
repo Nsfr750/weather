@@ -4,7 +4,7 @@ Centralized theme definitions and theming utilities for the Weather App.
 """
 
 LIGHT_THEME = {
-    'bg': '#f4f4f4',
+    'bg': '#f6caa5',
     'fg': '#222',
     'accent': '#1976d2',
     'panel': '#ffffff',

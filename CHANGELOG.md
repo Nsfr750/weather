@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.3.0] - 2025-07-30
+
+### Added
+
+- Support for multiple weather data providers:
+  - OpenWeatherMap (default)
+  - Open-Meteo
+  - Weather.com
+  - Breezy Weather
+  - QuickWeather
+  - Weather Company (IBM)
+  - Alliander
+- Weather provider selection in settings
+- Comprehensive documentation in the `/docs` directory
+- New translation strings for all supported languages
+- Improved error handling for API responses
+- Better logging and debugging capabilities
+
+### Fixed
+
+- Threading and UI update issues in the update checker
+- Weather icon attribute mismatch in the main UI
+- Datetime import bug in main.py
+- Font handling in `_update_metric`
+- Language switching and config saving issues
+- Various bug fixes and performance improvements
+
 ## [1.2.1] - 2025-06-23
 
 ### Added

@@ -1,7 +1,12 @@
 import json
 import os
+from pathlib import Path
 
-FAV_FILE = 'favorites.json'
+# Ensure config directory exists
+CONFIG_DIR = Path('config')
+CONFIG_DIR.mkdir(exist_ok=True)
+
+FAV_FILE = CONFIG_DIR / 'favorites.json'
 
 def load_favorites():
     if os.path.exists(FAV_FILE):

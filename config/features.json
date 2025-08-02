@@ -1,12 +1,12 @@
 {
     "history_features": {
-        "enabled": true,
+        "enabled": false,
         "max_history_days": 30,
         "auto_cleanup": true,
         "notify_on_cleanup": true
     },
     "enh_notifications": {
-        "enabled": true,
+        "enabled": false,
         "show_desktop_notifications": true,
         "show_system_tray": true,
         "notification_timeout": 10,

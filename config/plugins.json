@@ -4,8 +4,8 @@
         "units": "metric",
         "update_interval": 30,
         "enable_alerts": true,
-        "location_override": "Bolzano Novarese",
-        "_enabled": true
+        "location_override": "Boston",
+        "_enabled": false
     },
     "example_provider.ExampleWeatherProvider": {
         "_enabled": false
@@ -15,7 +15,7 @@
         "units": "metric",
         "update_interval": 30,
         "enable_alerts": true,
-        "location_override": "Bolzano Novarese",
-        "_enabled": true
+        "location_override": "Tokio",
+        "_enabled": false
     }
 }

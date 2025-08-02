@@ -295,21 +295,59 @@ class OpenMeteoProvider(BaseWeatherProvider):
         return descriptions.get(code, "Unknown weather conditions")
     
     def _get_weather_icon(self, code: int, is_day: bool = True) -> str:
-        """Get a weather icon code based on the weather code."""
-        # Simple mapping - you can expand this with more specific icons
-        if code in [0, 1]:
-            return "01d" if is_day else "01n"
-        elif code in [2, 3]:
-            return "02d" if is_day else "02n"
-        elif code in [45, 48, 51, 53, 55, 56, 57]:
-            return "50d"  # mist/fog
-        elif code in [61, 63, 65, 66, 67, 80, 81, 82]:
-            return "10d" if is_day else "10n"  # rain
-        elif code in [71, 73, 75, 77, 85, 86]:
-            return "13d"  # snow
-        elif code in [95, 96, 99]:
-            return "11d"  # thunderstorm
-        return "01d"  # default to clear day
+        """Get a weather icon URL based on the weather code.
+        
+        Args:
+            code: Weather condition code from Open-Meteo
+            is_day: Whether it's daytime (affects icon selection)
+            
+        Returns:
+            str: Complete URL to the weather icon
+        """
+        # Map Open-Meteo weather codes to OpenWeatherMap icon codes
+        icon_map = {
+            # Clear
+            0: "01d" if is_day else "01n",  # Clear sky
+            1: "01d" if is_day else "01n",  # Mainly clear
+            # Partly cloudy
+            2: "02d" if is_day else "02n",  # Partly cloudy
+            3: "03d" if is_day else "03n",  # Overcast
+            # Fog
+            45: "50d",  # Fog
+            48: "50d",  # Depositing rime fog
+            # Drizzle
+            51: "09d",  # Light drizzle
+            53: "09d",  # Moderate drizzle
+            55: "09d",  # Dense drizzle
+            56: "09d",  # Light freezing drizzle
+            57: "09d",  # Dense freezing drizzle
+            # Rain
+            61: "10d" if is_day else "10n",  # Slight rain
+            63: "10d" if is_day else "10n",  # Moderate rain
+            65: "10d" if is_day else "10n",  # Heavy rain
+            66: "13d" if is_day else "13n",  # Light freezing rain
+            67: "13d" if is_day else "13n",  # Heavy freezing rain
+            80: "09d" if is_day else "09n",  # Slight rain showers
+            81: "09d" if is_day else "09n",  # Moderate rain showers
+            82: "09d" if is_day else "09n",  # Violent rain showers
+            # Snow
+            71: "13d",  # Slight snow fall
+            73: "13d",  # Moderate snow fall
+            75: "13d",  # Heavy snow fall
+            77: "13d",  # Snow grains
+            85: "13d",  # Slight snow showers
+            86: "13d",  # Heavy snow showers
+            # Thunderstorm
+            95: "11d",  # Thunderstorm
+            96: "11d",  # Thunderstorm with slight hail
+            99: "11d"   # Thunderstorm with heavy hail
+        }
+        
+        # Get the icon code, default to clear day if code not found
+        icon_code = icon_map.get(code, "01d" if is_day else "01n")
+        
+        # Return the complete URL to the icon
+        return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
     
     async def get_current_weather(self, location: str, **kwargs) -> WeatherForecast:
         """Get current weather for a location."""
@@ -361,6 +399,14 @@ class OpenMeteoProvider(BaseWeatherProvider):
                 current_hourly = data.get('hourly', {})
                 current_daily = data.get('daily', {})
                 
+                # Get the weather code and is_day flag
+                weather_code = current.get('weather_code', 0)
+                is_day = current.get('is_day', 1) == 1
+                
+                # Get the weather condition and icon URL
+                condition = self._map_weather_code(weather_code)
+                icon_url = self._get_weather_icon(weather_code, is_day)
+                
                 # Get the current hour's data from hourly if available
                 current_hour = None
                 if 'time' in current_hourly and len(current_hourly['time']) > 0:
@@ -372,6 +418,11 @@ class OpenMeteoProvider(BaseWeatherProvider):
                 # Create current weather data point
                 current_dt = datetime.fromisoformat(current['time'].replace('Z', '+00:00'))
                 is_day = current_hour.get('is_day', 1) if current_hour else 1
+                weather_code = current.get('weathercode', 0)
+                
+                # Get the condition and icon URL
+                condition = self._map_weather_code(weather_code)
+                icon_url = self._get_weather_icon(weather_code, is_day=is_day)
                 
                 current_data = WeatherDataPoint(
                     timestamp=current_dt,
@@ -381,9 +432,9 @@ class OpenMeteoProvider(BaseWeatherProvider):
                     pressure=current_hour.get('surface_pressure', 1013) if current_hour else 1013,
                     wind_speed=current.get('windspeed', 0.0),
                     wind_direction=current.get('winddirection', 0),
-                    condition=self._map_weather_code(current.get('weathercode', 0)),
-                    description=self._get_weather_description(current.get('weathercode', 0)),
-                    icon=self._get_weather_icon(current.get('weathercode', 0), is_day=is_day),
+                    condition=condition,
+                    description=self._get_weather_description(weather_code),
+                    icon=icon_url,
                     precipitation=current_hour.get('precipitation', 0.0) if current_hour else 0.0,
                     visibility=current_hour.get('visibility', 10000) if current_hour else 10000,
                     wind_gust=current.get('windgusts_10m', 0.0) if 'windgusts_10m' in current else None,

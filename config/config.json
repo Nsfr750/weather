@@ -1,6 +1,6 @@
 {
   "units": "metric",
-  "language": "IT",
+  "language": "it",
   "theme": "dark",
   "provider": "open-meteo",
   "providers": {
@@ -14,26 +14,9 @@
     },
     "accuweather": {
       "apy_key": ""
-    },
-    "weather.com": {
-      "api_key": ""
-    },
-    "breezy-weather": {
-      "api_key": ""
-    },
-    "quickweather": {
-      "api_key": ""
-    },
-    "weathercompany": {
-      "api_key": "",
-      "username": "",
-      "password": ""
-    },
-    "alliander": {
-      "api_key": ""
     }
   },
-  "last_city": "Bolzano Novarese",
+  "last_city": "Riga",
   "weather_provider": "open-meteo",
   "layout": "standard"
 }

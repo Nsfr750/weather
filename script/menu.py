@@ -27,10 +27,11 @@ from script.help import Help
 from script.sponsor import Sponsor
 from script.log_viewer import LogViewer
 from script.plugin_config_dialog import PluginConfigDialog
+from script.feature_config_dialog import FeatureConfigDialog
 from script.api_key_manager import ApiKeyManagerDialog
 
 # Constants
-DEFAULT_LANGUAGE = 'en'
+DEFAULT_LANGUAGE = 'it'
 DEFAULT_THEME = 'dark'
 DEFAULT_UNITS = 'metric'
 

@@ -88,36 +88,94 @@ def _create_emoji_icon(emoji, size):
 
 def get_icon_image(icon_code, size=(64, 64)):
     """
-    Fetch and cache weather icon images from OpenWeatherMap.
+    Fetch and cache weather icon images. Handles both local icon codes and full URLs.
     If offline or fetch fails, falls back to emoji representation.
     Returns a QPixmap.
+    
+    Args:
+        icon_code: Either a local icon code (e.g., '01d') or a full URL to an icon
+        size: Tuple of (width, height) for the output pixmap
+        
+    Returns:
+        QPixmap containing the weather icon or an emoji fallback
     """
+    if not icon_code:
+        return QPixmap()
+        
     if not isinstance(size, (tuple, list)) or len(size) != 2:
         size = (64, 64)
     
-    cache_key = (icon_code, size[0], size[1])
+    # Create a cache key that includes both the icon_code and size
+    cache_key = (str(icon_code), size[0], size[1])
+    
+    # Check cache first
     if cache_key in _icon_cache:
-        # Return a copy to avoid issues with pixmap modification
-        return _icon_cache[cache_key].copy()
+        cached = _icon_cache[cache_key]
+        if not cached.isNull():
+            return cached.copy()
     
-    # If in offline mode or we've had previous failures, use emoji fallback
-    if _offline_mode or not _check_internet_connection():
-        emoji = EMOJI_ICONS.get(icon_code, '')
-        emoji_pixmap = _create_emoji_icon(emoji, size)
-        if not emoji_pixmap.isNull():
-            _icon_cache[cache_key] = emoji_pixmap
-            return emoji_pixmap.copy()
+    # If in offline mode, try to use emoji fallback immediately
+    if _offline_mode:
+        return _get_fallback_icon(icon_code, size, cache_key)
     
-    # Try to fetch the online icon
-    url = f'http://openweathermap.org/img/wn/{icon_code}@2x.png'
+    # Determine if we have a URL or a local icon code
+    is_url = (isinstance(icon_code, str) and 
+             (icon_code.startswith('http://') or icon_code.startswith('https://')))
+    
+    # If we have a URL, try to fetch it
+    if is_url:
+        try:
+            # Check cache with URL as key
+            if cache_key in _icon_cache:
+                return _icon_cache[cache_key].copy()
+                
+            # Check internet connection
+            if not _check_internet_connection():
+                set_offline_mode(True)
+                return _get_fallback_icon(icon_code, size, cache_key)
+                
+            # Fetch the remote icon
+            response = requests.get(icon_code, timeout=5)
+            response.raise_for_status()
+            
+            # Load and cache the pixmap
+            return _process_icon_data(response.content, size, cache_key)
+            
+        except Exception as e:
+            logging.warning(f'Failed to fetch remote icon {icon_code}: {e}')
+            return _get_fallback_icon(icon_code, size, cache_key)
+    
+    # Handle local icon code (e.g., '01d')
+    else:
+        # Check internet connection for OpenWeatherMap icons
+        if not _check_internet_connection():
+            set_offline_mode(True)
+            return _get_fallback_icon(icon_code, size, cache_key)
+            
+        try:
+            # Check cache with local code as key
+            if cache_key in _icon_cache:
+                return _icon_cache[cache_key].copy()
+                
+            # Try to fetch from OpenWeatherMap CDN
+            url = f'https://openweathermap.org/img/wn/{icon_code}@2x.png'
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            
+            # Load and cache the pixmap
+            return _process_icon_data(response.content, size, cache_key)
+            
+        except Exception as e:
+            logging.warning(f'Failed to fetch OpenWeatherMap icon {icon_code}: {e}')
+            return _get_fallback_icon(icon_code, size, cache_key)
+
+def _process_icon_data(icon_data, size, cache_key):
+    """Process icon data into a QPixmap and cache it."""
     try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        
-        # Load image data into QPixmap
         pixmap = QPixmap()
-        pixmap.loadFromData(response.content)
-        
+        if not pixmap.loadFromData(icon_data):
+            return QPixmap()
+            
         # Resize if needed
         if pixmap.size() != size:
             pixmap = pixmap.scaled(
@@ -129,19 +187,29 @@ def get_icon_image(icon_code, size=(64, 64)):
         if not pixmap.isNull():
             _icon_cache[cache_key] = pixmap
             return pixmap.copy()
-        
+            
     except Exception as e:
-        logging.warning(f'Failed to fetch online icon {icon_code}, using emoji fallback: {e}')
-        set_offline_mode(True)
+        logging.error(f'Error processing icon data: {e}')
+        
+    return QPixmap()
+
+def _get_fallback_icon(icon_code, size, cache_key):
+    """Get a fallback emoji icon for the given icon code."""
+    # Try to extract the base icon code if it's a URL
+    if isinstance(icon_code, str) and '/' in icon_code:
+        # Extract the base filename without extension
+        base_name = os.path.basename(icon_code).split('.')[0]
+        # Remove any @2x suffix
+        base_name = base_name.replace('@2x', '')
+        emoji = EMOJI_ICONS.get(base_name, '☀️')  # Default to sun emoji
+    else:
+        emoji = EMOJI_ICONS.get(str(icon_code), '☀️')  # Default to sun emoji
     
-    # Fallback to emoji if anything went wrong
-    emoji = EMOJI_ICONS.get(icon_code, '')
     emoji_pixmap = _create_emoji_icon(emoji, size)
     if not emoji_pixmap.isNull():
         _icon_cache[cache_key] = emoji_pixmap
         return emoji_pixmap.copy()
     
-    # Return empty QPixmap as last resort
     return QPixmap()
 
 def _check_internet_connection(timeout=5):

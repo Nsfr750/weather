@@ -17,7 +17,7 @@ from script.logger import logger
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                             QLabel, QPushButton, QComboBox, QFrame, QMessageBox, QMenuBar,
                             QMenu, QStatusBar, QInputDialog, QLineEdit, QFileDialog, QScrollArea)
-from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent
+from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent, QThread, QMetaObject
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont, QPalette, QColor, QDesktopServices
 
 # Add script directory to path for module imports
@@ -191,82 +191,25 @@ class WeatherApp(QMainWindow):
     
     def initialize_weather_provider(self):
         """Initialize the weather provider based on configuration."""
-        from script.plugin_system.legacy_compat import LegacyWeatherProvider
-        from script.weather_providers import get_provider, get_available_providers
-        from script.plugin_system.weather_provider import BaseWeatherProvider
-        import asyncio
+        from script.weather_providers.openmeteo import OpenMeteoProvider
         
-        # Set default provider to 'openmeteo' if not configured
-        self.weather_provider_name = self.config_manager.get('weather_provider', 'openmeteo')
-        logger.info(f"Initializing weather provider: {self.weather_provider_name}")
+        # Set default provider to legacy OpenMeteo
+        self.weather_provider_name = 'openmeteo'
+        logger.info("Initializing legacy OpenMeteo provider")
         
-        # First try to use the plugin system
-        if not hasattr(self, 'plugin_manager'):
-            error_msg = "Plugin manager not available"
-            logger.error(error_msg)
-            raise RuntimeError(f"Failed to initialize weather provider: {error_msg}")
-        
-        logger.info(f"Found {len(self.plugin_manager.plugins)} plugins")
-        
-        # Get all weather provider plugins
-        weather_plugin_classes = self.plugin_manager.get_plugins_by_type(BaseWeatherProvider)
-        logger.info(f"Found {len(weather_plugin_classes)} weather provider plugins: {list(weather_plugin_classes.keys())}")
-        
-        if not weather_plugin_classes:
-            error_msg = "No weather provider plugins found"
-            logger.error(error_msg)
-            raise RuntimeError(f"Failed to initialize weather provider: {error_msg}")
-        
-        # Try to find and initialize the requested provider
-        for name, plugin_class in weather_plugin_classes.items():
-            # Normalize names for comparison (case-insensitive, handle hyphens/underscores)
-            normalized_name = name.lower().replace('-', '').replace('_', '')
-            normalized_provider = self.weather_provider_name.lower().replace('-', '').replace('_', '')
-            
-            if normalized_name == normalized_provider:
-                try:
-                    logger.info(f"Attempting to initialize plugin: {name}")
-                    
-                    # Create a config dictionary with required parameters
-                    config = {
-                        'units': self.units,
-                        'language': self.language,
-                        'api_key': self.config_manager.get('api_key'),  # Pass any configured API key
-                        'offline_mode': not self.online  # Use the online status we detected
-                    }
-                    
-                    logger.debug(f"Creating plugin instance with config: {config}")
-                    
-                    # Create plugin instance with config
-                    plugin_instance = plugin_class(config=config)
-                    
-                    # Initialize the plugin asynchronously
-                    logger.debug("Initializing plugin asynchronously")
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        initialized = loop.run_until_complete(plugin_instance.initialize())
-                        if initialized:
-                            self.weather_provider = plugin_instance
-                            logger.info(f"Successfully initialized plugin: {name}")
-                            return
-                        else:
-                            logger.error(f"Plugin {name} failed to initialize (returned False)")
-                    except Exception as e:
-                        logger.error(f"Error during plugin initialization for {name}: {str(e)}", exc_info=True)
-                    finally:
-                        loop.close()
-                except Exception as e:
-                    logger.error(f"Error creating plugin instance for {name}: {str(e)}", exc_info=True)
-        
-        # If we get here, no providers worked
-        available_plugins = list(weather_plugin_classes.keys())
-        error_msg = (
-            f"Failed to initialize weather provider '{self.weather_provider_name}'. "
-            f"Available providers: {available_plugins}"
-        )
-        logger.error(error_msg)
-        raise RuntimeError(error_msg)
+        try:
+            # Initialize the legacy OpenMeteo provider with keyword arguments
+            self.weather_provider = OpenMeteoProvider(
+                api_key=self.config_manager.get('api_key', ''),
+                units=self.units,
+                language=self.language,
+                offline_mode=not self.online
+            )
+            logger.info("Successfully initialized legacy OpenMeteo provider")
+        except Exception as e:
+            error_msg = f"Failed to initialize legacy OpenMeteo provider: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            raise RuntimeError(error_msg) from e
     
     def setup_connections(self):
         """Set up signal connections."""
@@ -482,7 +425,18 @@ class WeatherApp(QMainWindow):
     def update_weather_display(self, weather_data):
         """Update the UI with weather data."""
         try:
-            # Clear previous weather widgets
+            # Ensure we're on the main thread for UI updates
+            if QThread.currentThread() != self.thread():
+                # If not on the main thread, use QMetaObject.invokeMethod to call this method on the main thread
+                QMetaObject.invokeMethod(
+                    self, 
+                    'update_weather_display', 
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(object, weather_data)
+                )
+                return
+                
+            # Clear previous weather widgets on the main thread
             self.ui.clear_weather_display()
             
             # Check if we have valid weather data
@@ -504,12 +458,13 @@ class WeatherApp(QMainWindow):
                     color: white;
                 }
                 .temp {
-                    font-size: 48px;
+                    font-size: 36px;
                     font-weight: bold;
                 }
                 .desc {
-                    font-size: 20px;
-                    margin: 10px 0;
+                    font-size: 16px;
+                    margin: 8px 0;
+                    opacity: 0.9;
                 }
             ''')
             
@@ -517,29 +472,33 @@ class WeatherApp(QMainWindow):
             
             # City name and date
             city = getattr(weather_data, 'city', self.city) if hasattr(weather_data, 'city') else self.city
-            date = getattr(weather_data, 'timestamp', datetime.now()).strftime('%A, %B %d, %Y')
+            timestamp = getattr(weather_data, 'timestamp', None)
+            date_str = timestamp.strftime('%A, %B %d, %Y') if hasattr(timestamp, 'strftime') else datetime.now().strftime('%A, %B %d, %Y')
             
-            city_label = QLabel(f"{city.title()}\n{date}")
+            city_label = QLabel(f"{city.title()}")
             city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
             city_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             city_label.setWordWrap(True)
             layout.addWidget(city_label)
             
+            date_label = QLabel(date_str)
+            date_label.setStyleSheet('font-size: 14px; opacity: 0.8; margin-bottom: 10px;')
+            date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(date_label)
+            
             # Weather icon and temperature
             weather_layout = QHBoxLayout()
             
-            # Weather icon
+            # Weather icon - use a placeholder first
             icon_label = QLabel()
-            condition = getattr(weather_data, 'condition', 'clear')
-            icon_pixmap = get_icon_image(condition, 100)
-            if icon_pixmap:
-                icon_label.setPixmap(icon_pixmap)
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            icon_label.setMinimumSize(80, 80)  # Reduced from 100x100
+            icon_label.setMaximumSize(80, 80)  # Add maximum size to maintain consistency
             weather_layout.addWidget(icon_label, 1)
             
             # Temperature and description
             temp = getattr(weather_data, 'temperature', 'N/A')
-            temp_text = f"{round(float(temp))}°" if temp != 'N/A' else 'N/A'
+            temp_text = f"{round(float(temp))}°" if temp != 'N/A' and str(temp).replace('.', '').isdigit() else 'N/A'
             temp_label = QLabel(temp_text)
             temp_label.setProperty('class', 'temp')
             
@@ -563,19 +522,19 @@ class WeatherApp(QMainWindow):
             
             # Humidity
             humidity = getattr(weather_data, 'humidity', 'N/A')
-            humidity_text = f"{humidity}%" if humidity != 'N/A' else 'N/A'
+            humidity_text = f"{humidity}%" if humidity != 'N/A' and str(humidity).isdigit() else 'N/A'
             humidity_widget = self._create_detail_widget("💧", f"Humidity\n{humidity_text}")
             details_layout.addWidget(humidity_widget)
             
             # Wind
             wind_speed = getattr(weather_data, 'wind_speed', 'N/A')
-            wind_text = f"{wind_speed} m/s" if wind_speed != 'N/A' else 'N/A'
+            wind_text = f"{wind_speed} m/s" if wind_speed != 'N/A' and str(wind_speed).replace('.', '').isdigit() else 'N/A'
             wind_widget = self._create_detail_widget("💨", f"Wind\n{wind_text}")
             details_layout.addWidget(wind_widget)
             
             # Pressure
             pressure = getattr(weather_data, 'pressure', 'N/A')
-            pressure_text = f"{pressure} hPa" if pressure != 'N/A' else 'N/A'
+            pressure_text = f"{pressure} hPa" if pressure != 'N/A' and str(pressure).isdigit() else 'N/A'
             pressure_widget = self._create_detail_widget("📊", f"Pressure\n{pressure_text}")
             details_layout.addWidget(pressure_widget)
             
@@ -583,6 +542,9 @@ class WeatherApp(QMainWindow):
             
             # Add current weather to the UI
             self.ui.add_weather_widget(current_widget)
+            
+            # Load the icon asynchronously to prevent UI freezing
+            self._load_weather_icon_async(icon_label, getattr(weather_data, 'icon', None) or getattr(weather_data, 'condition', 'clear'))
             
             # Add 5-day forecast if available
             daily_forecast = getattr(weather_data, 'daily', None)
@@ -670,17 +632,23 @@ class WeatherApp(QMainWindow):
                     day_name = timestamp.strftime('%A')
                     date_str = timestamp.strftime('%b %d')
                     
-                    day_label = QLabel(f"{day_name}\n{date_str}")
+                    day_label = QLabel(day_name)
+                    day_label.setStyleSheet('font-size: 12px; font-weight: bold;')
                     day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    day_label.setWordWrap(True)
+                    
+                    date_label = QLabel(date_str)
+                    date_label.setStyleSheet('font-size: 11px; opacity: 0.8;')
+                    date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     
                     # Weather icon
                     icon_label = QLabel()
                     condition = getattr(day, 'condition', getattr(day, 'weather', [{}])[0].get('main', 'clear') if hasattr(day, 'weather') else 'clear')
-                    icon_pixmap = get_icon_image(condition, 48)
+                    icon_pixmap = get_icon_image(condition, 20)  # Reduced from 48px
                     if icon_pixmap:
                         icon_label.setPixmap(icon_pixmap)
                     icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    icon_label.setMinimumSize(20, 20)  # Ensure consistent icon size
+                    icon_label.setMaximumSize(20, 20)
                     
                     # Temperature
                     temp_min = getattr(day, 'temperature_min', getattr(day, 'temp', {}).get('min', 'N/A'))
@@ -691,6 +659,7 @@ class WeatherApp(QMainWindow):
                         temp_text = f"{round(float(temp_max))}° / {round(float(temp_min))}°"
                     
                     temp_label = QLabel(temp_text)
+                    temp_label.setStyleSheet('font-size: 13px; font-weight: bold;')
                     temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     
                     # Description
@@ -698,14 +667,19 @@ class WeatherApp(QMainWindow):
                                  getattr(day, 'weather', [{}])[0].get('description', 'N/A') if hasattr(day, 'weather') else 'N/A')
                     desc_text = str(desc).capitalize() if desc != 'N/A' else 'N/A'
                     desc_label = QLabel(desc_text)
+                    desc_label.setStyleSheet('font-size: 11px; opacity: 0.9;')
                     desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     desc_label.setWordWrap(True)
                     
-                    # Add widgets to day layout
+                    # Add widgets to day layout with proper spacing
                     day_layout.addWidget(day_label)
-                    day_layout.addWidget(icon_label)
+                    day_layout.addWidget(date_label)
+                    day_layout.addSpacing(2)
+                    day_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+                    day_layout.addSpacing(2)
                     day_layout.addWidget(temp_label)
                     day_layout.addWidget(desc_label)
+                    day_layout.addStretch()
                     
                     # Add day widget to days layout
                     days_layout.addWidget(day_widget)
@@ -723,6 +697,38 @@ class WeatherApp(QMainWindow):
         except Exception as e:
             logger.error(f"Error updating weather display: {str(e)}", exc_info=True)
             self.ui.show_error(f"Error displaying weather: {str(e)}")
+    
+    def _load_weather_icon_async(self, icon_label, icon_code, size=(20, 20)):
+        """Load a weather icon asynchronously to prevent UI freezing.
+        
+        Args:
+            icon_label: The QLabel to set the icon on
+            icon_code: The icon code or URL to load
+            size: The size of the icon (width, height)
+        """
+        # Create a worker function to load the icon
+        def load_icon():
+            try:
+                # Load the icon (this is thread-safe as it doesn't interact with the UI)
+                pixmap = get_icon_image(icon_code, size)
+                if not pixmap or pixmap.isNull():
+                    return None
+                return pixmap
+            except Exception as e:
+                logging.error(f"Error loading icon {icon_code}: {e}")
+                return None
+        
+        # Create a callback function to update the UI on the main thread
+        def update_ui(pixmap):
+            if pixmap and not pixmap.isNull() and icon_label:
+                try:
+                    # This runs on the main thread
+                    icon_label.setPixmap(pixmap)
+                except Exception as e:
+                    logging.error(f"Error updating icon UI: {e}")
+        
+        # Run the icon loading in a thread
+        self._run_in_background(load_icon, update_ui)
     
     def _create_detail_widget(self, icon: str, text: str) -> QWidget:
         """Create a widget for displaying a weather detail."""
@@ -746,8 +752,26 @@ class WeatherApp(QMainWindow):
         self.language = language
         self.config_manager.set('language', language)
         self.translations_manager.set_default_lang(language)
-        self.weather_provider.language = language
+        
+        # Update weather provider language if supported
+        if hasattr(self.weather_provider, 'language'):
+            self.weather_provider.language = language
+        
+        # Update UI elements
+        self.ui.set_language(language)
+        
+        # Refresh the weather to update all text
         self.refresh_weather()
+        
+        # Update window title
+        self.setWindowTitle(self.translations_manager.t('app_title', language) or 'Weather App')
+        
+        # Update menu bar
+        if hasattr(self, 'menu_bar'):
+            self.menu_bar.set_languages(
+                self.translations_manager.translations.get('languages', {}), 
+                language
+            )
     
     def on_units_changed(self, units: str):
         """Handle units change."""

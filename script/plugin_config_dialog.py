@@ -347,8 +347,8 @@ class PluginConfigDialog(QDialog):
             self.plugin_manager.set_plugin_config(plugin_id, config)
             
             # Handle enable/disable state
-            if plugin_id in self.plugin_manager.instances:
-                plugin = self.plugin_manager.instances[plugin_id]
+            if plugin_id in self.plugin_manager.plugin_instances:
+                plugin = self.plugin_manager.plugin_instances[plugin_id]
                 if not is_enabled:
                     # Unload disabled plugins
                     self.plugin_manager.unload_plugin(plugin_id)
@@ -356,7 +356,7 @@ class PluginConfigDialog(QDialog):
                     # Reinitialize enabled plugins with new config
                     plugin.config = config
                     plugin.initialize()
-            elif is_enabled and plugin_id not in self.plugin_manager.instances:
+            elif is_enabled and plugin_id not in self.plugin_manager.plugin_instances:
                 # Load newly enabled plugins
                 try:
                     self.plugin_manager.load_plugin(plugin_id)

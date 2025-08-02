@@ -184,42 +184,6 @@ class WeatherAppUI(QMainWindow):
         settings_layout.setContentsMargins(0, 0, 0, 0)
         settings_layout.setSpacing(10)
         
-        # Language selector
-        lang_frame = QFrame()
-        lang_layout = QHBoxLayout(lang_frame)
-        lang_layout.setContentsMargins(0, 0, 0, 0)
-        
-        lang_icon = QLabel('🌐')
-        lang_icon.setStyleSheet('font-size: 16px;')
-        lang_layout.addWidget(lang_icon)
-        
-        self.lang_combo = QComboBox()
-        self.lang_combo.addItems(self.translations_manager.available_languages())
-        self.lang_combo.setCurrentText(self.translations_manager.default_lang)
-        self.lang_combo.currentTextChanged.connect(self._on_language_changed)
-        self.lang_combo.setStyleSheet('''
-            QComboBox {
-                padding: 3px;
-                border: 1px solid #3d4f5e;
-                border-radius: 3px;
-                background: #2c3e50;
-                color: white;
-                min-width: 100px;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 6px solid white;
-            }
-        ''')
-        lang_layout.addWidget(self.lang_combo)
-        
         # Units selector
         units_frame = QFrame()
         units_layout = QHBoxLayout(units_frame)
@@ -308,7 +272,6 @@ class WeatherAppUI(QMainWindow):
         fav_layout.addWidget(self.fav_btn)
         
         # Add widgets to settings layout
-        settings_layout.addWidget(lang_frame)
         settings_layout.addWidget(units_frame)
         settings_layout.addWidget(fav_frame)
         settings_layout.addStretch()
@@ -407,8 +370,25 @@ class WeatherAppUI(QMainWindow):
             self.units_combo.setCurrentIndex(index)
     
     def set_language(self, language):
-        """Set the current language in the language combo box."""
-        self.lang_combo.setCurrentText(language)
+        """Set the current language and update all UI text."""
+        # Update all UI text using translations
+        if hasattr(self, 'search_button'):
+            self.search_button.setText(self.translations_manager.t('search', language))
+        
+        if hasattr(self, 'favorites_combo'):
+            self.favorites_combo.setPlaceholderText(self.translations_manager.t('favorites', language))
+        
+        if hasattr(self, 'current_weather_label'):
+            self.current_weather_label.setText(self.translations_manager.t('current_weather', language))
+        
+        if hasattr(self, 'forecast_label'):
+            self.forecast_label.setText(self.translations_manager.t('forecast', language))
+        
+        # Update window title
+        self.setWindowTitle(f"{self.translations_manager.t('app_title', language)} v{get_version()}")
+        
+        # Update status bar
+        self.set_status(self.translations_manager.t('ready', language) or 'Ready')
     
     def set_status(self, message):
         """Set the status bar message."""

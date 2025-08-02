@@ -228,24 +228,19 @@ class MarkdownViewer(QMainWindow):
                            "## Available Documentation\n\n"
                            "- [Main](index.md)\n"
                            "- [Installation](installation.md)\n"
-                           "- [Configuration](configuration.md)\n"
                            "- [Troubleshooting](troubleshooting.md)\n"
                            "- [Usage](usage.md)\n"
                            "- [Development](development.md)\n"
-                           "- [Providers](providers.md)\n"
                            "- [Translations](translations.md)\n"
-                           "- [Enhanced Notifications](enhanced_notifications.md)\n")
+                    )
             
             # Create other basic documentation files
             self.create_default_doc('index.md', "# Index\n\nIndex information goes here.")
             self.create_default_doc('installation.md', "# Installation\n\nInstallation instructions go here.")
-            self.create_default_doc('configuration.md', "# Configuration\n\nConfiguration options go here.")
             self.create_default_doc('troubleshooting.md', "# Troubleshooting\n\nTroubleshooting information goes here.")
             self.create_default_doc('usage.md', "# Usage\n\nUsage information goes here.")
             self.create_default_doc('development.md', "# Development\n\nDevelopment information goes here.")
-            self.create_default_doc('providers.md', "# Providers\n\nProviders information goes here.")
             self.create_default_doc('translations.md', "# Translations\n\nTranslations information goes here.")
-            self.create_default_doc('enhanced_notifications.md', "# Enhanced Notifications\n\nEnhanced notifications information goes here.")
             
             return True
         return False

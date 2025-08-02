@@ -188,60 +188,79 @@ class WeatherApp(QMainWindow):
         """Initialize the weather provider based on configuration."""
         from script.plugin_system.legacy_compat import LegacyWeatherProvider
         from script.weather_providers import get_provider, get_available_providers
+        from script.plugin_system.weather_provider import BaseWeatherProvider
         import asyncio
         
+        # Set default provider to 'openmeteo' if not configured
         self.weather_provider_name = self.config_manager.get('weather_provider', 'openmeteo')
         logger.info(f"Initializing weather provider: {self.weather_provider_name}")
         
         # First try to use the plugin system
-        if hasattr(self, 'plugin_manager'):
-            logger.info(f"Found {len(self.plugin_manager.plugins)} plugins")
+        if not hasattr(self, 'plugin_manager'):
+            error_msg = "Plugin manager not available"
+            logger.error(error_msg)
+            raise RuntimeError(f"Failed to initialize weather provider: {error_msg}")
+        
+        logger.info(f"Found {len(self.plugin_manager.plugins)} plugins")
+        
+        # Get all weather provider plugins
+        weather_plugin_classes = self.plugin_manager.get_plugins_by_type(BaseWeatherProvider)
+        logger.info(f"Found {len(weather_plugin_classes)} weather provider plugins: {list(weather_plugin_classes.keys())}")
+        
+        if not weather_plugin_classes:
+            error_msg = "No weather provider plugins found"
+            logger.error(error_msg)
+            raise RuntimeError(f"Failed to initialize weather provider: {error_msg}")
+        
+        # Try to find and initialize the requested provider
+        for name, plugin_class in weather_plugin_classes.items():
+            # Normalize names for comparison (case-insensitive, handle hyphens/underscores)
+            normalized_name = name.lower().replace('-', '').replace('_', '')
+            normalized_provider = self.weather_provider_name.lower().replace('-', '').replace('_', '')
             
-            # Get all weather provider plugins
-            weather_plugin_classes = self.plugin_manager.get_plugins_by_type(BaseWeatherProvider)
-            logger.info(f"Found {len(weather_plugin_classes)} weather provider plugins: {list(weather_plugin_classes.keys())}")
-            
-            # Try to find and initialize the requested provider
-            for name, plugin_class in weather_plugin_classes.items():
-                if name.lower() == self.weather_provider_name.lower():
+            if normalized_name == normalized_provider:
+                try:
+                    logger.info(f"Attempting to initialize plugin: {name}")
+                    
+                    # Create a config dictionary with required parameters
+                    config = {
+                        'units': self.units,
+                        'language': self.language,
+                        'api_key': self.config_manager.get('api_key'),  # Pass any configured API key
+                        'offline_mode': not self.online  # Use the online status we detected
+                    }
+                    
+                    logger.debug(f"Creating plugin instance with config: {config}")
+                    
+                    # Create plugin instance with config
+                    plugin_instance = plugin_class(config=config)
+                    
+                    # Initialize the plugin asynchronously
+                    logger.debug("Initializing plugin asynchronously")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
                     try:
-                        logger.info(f"Initializing plugin: {name}")
-                        # Create a config dictionary with required parameters
-                        config = {
-                            'units': self.units,
-                            'language': self.language,
-                            'api_key': None,  # OpenMeteo doesn't require an API key
-                            'offline_mode': not self.online  # Use the online status we detected
-                        }
-                        
-                        # Create plugin instance with config
-                        plugin_instance = plugin_class(config=config)
-                        
-                        # Initialize the plugin asynchronously
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
                         initialized = loop.run_until_complete(plugin_instance.initialize())
-                        loop.close()
-                        
                         if initialized:
                             self.weather_provider = plugin_instance
                             logger.info(f"Successfully initialized plugin: {name}")
                             return
                         else:
-                            logger.error(f"Plugin {name} failed to initialize")
+                            logger.error(f"Plugin {name} failed to initialize (returned False)")
                     except Exception as e:
-                        logger.error(f"Error initializing plugin {name}: {e}", exc_info=True)
+                        logger.error(f"Error during plugin initialization for {name}: {str(e)}", exc_info=True)
+                    finally:
+                        loop.close()
+                except Exception as e:
+                    logger.error(f"Error creating plugin instance for {name}: {str(e)}", exc_info=True)
         
         # If we get here, no providers worked
-        error_msg = "Failed to initialize any weather provider. No working providers found."
+        available_plugins = list(weather_plugin_classes.keys())
+        error_msg = (
+            f"Failed to initialize weather provider '{self.weather_provider_name}'. "
+            f"Available providers: {available_plugins}"
+        )
         logger.error(error_msg)
-        
-        # Try to provide more detailed error information
-        if not hasattr(self, 'plugin_manager'):
-            error_msg += " Plugin manager not available."
-        elif not weather_plugin_classes:
-            error_msg += " No weather provider plugins found."
-        
         raise RuntimeError(error_msg)
     
     def setup_connections(self):

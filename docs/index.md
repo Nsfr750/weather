@@ -7,7 +7,6 @@ Welcome to the Weather App documentation! This application provides real-time we
 - 🌦️ Current weather conditions
 - 📅 5-day weather forecast
 - 🌍 Multiple weather data providers
-- 🌓 Light and dark theme support
 - 🌐 Multi-language support
 - ⭐ Favorite locations
 - ⚙️ Customizable settings

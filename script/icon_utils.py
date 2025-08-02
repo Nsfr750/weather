@@ -144,30 +144,6 @@ def get_icon_image(icon_code, size=(64, 64)):
         except Exception as e:
             logging.warning(f'Failed to fetch remote icon {icon_code}: {e}')
             return _get_fallback_icon(icon_code, size, cache_key)
-    
-    # Handle local icon code (e.g., '01d')
-    else:
-        # Check internet connection for OpenWeatherMap icons
-        if not _check_internet_connection():
-            set_offline_mode(True)
-            return _get_fallback_icon(icon_code, size, cache_key)
-            
-        try:
-            # Check cache with local code as key
-            if cache_key in _icon_cache:
-                return _icon_cache[cache_key].copy()
-                
-            # Try to fetch from OpenWeatherMap CDN
-            url = f'https://openweathermap.org/img/wn/{icon_code}@2x.png'
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()
-            
-            # Load and cache the pixmap
-            return _process_icon_data(response.content, size, cache_key)
-            
-        except Exception as e:
-            logging.warning(f'Failed to fetch OpenWeatherMap icon {icon_code}: {e}')
-            return _get_fallback_icon(icon_code, size, cache_key)
 
 def _process_icon_data(icon_data, size, cache_key):
     """Process icon data into a QPixmap and cache it."""

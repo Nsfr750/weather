@@ -7,12 +7,9 @@ from PyQt6.QtGui import QIcon, QPixmap, QFont, QPalette, QColor, QAction, QClose
 from pathlib import Path
 import logging
 import sys
-from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Callable
 from script.version import get_version
 from script.menu import create_menu_bar
-
-if TYPE_CHECKING:
-    from .plugin_system.plugin_manager import PluginManager
 
 class WeatherAppUI(QMainWindow):
     # Signals for UI events
@@ -22,13 +19,12 @@ class WeatherAppUI(QMainWindow):
     favorite_toggled = pyqtSignal(str)  # Emitted when favorite is toggled
     favorite_selected = pyqtSignal(str)  # Emitted when a favorite is selected
 
-    def __init__(self, config_manager, translations_manager, weather_provider, notification_manager, plugin_manager: 'PluginManager' = None):
+    def __init__(self, config_manager, translations_manager, weather_provider, notification_manager):
         super().__init__()
         self.config_manager = config_manager
         self.translations_manager = translations_manager
         self.weather_provider = weather_provider
         self.notification_manager = notification_manager
-        self.plugin_manager = plugin_manager
         
         # Initialize UI
         self._setup_window()

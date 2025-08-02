@@ -24,17 +24,15 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
 
 ## ✨ Features
 
-- **Multiple Weather Providers**: Choose from 8 different weather data sources
-  - OpenWeatherMap
-  - Open-Meteo (default)
-  - Accuweather
+- **Weather Data**: Powered by Open-Meteo
+  - Reliable and free weather data
+  - No API key required
+  - Global coverage with high accuracy
   
 - **Comprehensive Weather Data**
   - Current conditions with detailed metrics
   - 5-day forecast with hourly breakdowns
   - Weather alerts and warnings
-  - Air quality index (AQI) and UV index
-  - Sunrise/sunset and moon phase information
 
 - **User Experience**
   - Clean, modern UI with light/dark themes
@@ -43,17 +41,9 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
   - Favorite locations with quick access
   - Responsive design for different screen sizes
 
-- **Advanced Features**
-  - Automatic location detection
-  - Weather maps and radar integration
-  - Severe weather alerts
-  - Historical weather data
-  - Export weather data (CSV/JSON)
-
 - **For Developers**
   - Well-documented codebase
   - Comprehensive test suite
-  - Plugin system for weather providers
   - RESTful API for integration
   - Docker support for easy deployment
 
@@ -73,7 +63,8 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
    cd weather
    ```
 
-2. **Set up a virtual environment (recommended)**:
+2. **Set up a virtual environment (recommended)**
+
    ```bash
    # Windows
    python -m venv venv
@@ -84,21 +75,23 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
    source venv/bin/activate
    ```
 
-3. **Install dependencies**:
+3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Run the application**:
+4. **Run the application**
+
    ```bash
    python -m script.main
    ```
 
 ### Configuration
 
-1. Get an API key from one of the supported weather providers (e.g., [OpenWeatherMap](https://openweathermap.org/api))
-2. Launch the application and go to Settings > API Keys
-3. Enter your API key and save the settings
+1. Launch the application
+2. Search for your location to get started
+3. No API key required - uses Open-Meteo by default
 
 ## 📚 Documentation
 

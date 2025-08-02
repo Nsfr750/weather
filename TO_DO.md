@@ -13,9 +13,6 @@
 - [x] Fixed high-DPI display issues
 - [x] Addressed memory leaks in map rendering
 - [x] Fixed translation loading for non-ASCII characters
-- [x] Implemented a plugin system for weather providers
-- [x] Implemented a notification system for weather alerts
-- [x] Added support for weather history data
 - [x] Added support for weather widgets
 - [x] Added support for async/await
 
@@ -33,10 +30,6 @@
 - [x] Pre-commit hooks for code quality checks
 - [x] Updated README with new features and installation instructions
 - [x] Improved project structure and organization
-- [x] Support for multiple weather providers
-  - [x] OpenWeatherMap
-  - [x] Open-Meteo
-  - [x] AccuWeather
 - [x] Support for imperial units (°F, mph)
 - [x] Error logging and log viewer
 - [x] Option to save favorite cities
@@ -72,21 +65,11 @@
   - [ ] Heat index
   - [ ] UV index
 
-### High Priority
-- [ ] Add more weather data visualization (charts, graphs)
-- [ ] Implement weather map integration
-- [ ] Improve offline functionality
-- [ ] Add more customization options for the UI
-
-
 ### Medium Priority
-- [ ] Improve accessibility features
 - [ ] Add support for more weather data points (UV index, air quality, etc.)
-- [ ] Add support for custom themes
 
 ### Low Priority
 - [ ] Implement a RESTful API for the application
-- [ ] Add support for weather widgets
 - [ ] Add support for voice commands
 
 ## 🔮 Future Ideas

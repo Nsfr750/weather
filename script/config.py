@@ -68,6 +68,6 @@ DEFAULT_CONFIG = {
     'api_key': '',
     'language': 'en',
     'theme': 'dark',
-    'provider': 'openweathermap',
+    'provider': 'openmeteo',
     'providers': {}
 }

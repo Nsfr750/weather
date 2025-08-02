@@ -1,13 +1,139 @@
 """
 Open-Meteo provider implementation.
 """
-import requests
+import logging
+import aiohttp
+import asyncio
 from datetime import datetime
-from PyQt6.QtCore import QObject, pyqtSignal, QSettings, QMetaType
-from script.plugin_system.weather_provider import BaseWeatherProvider
+from typing import Dict, Any, Optional, List, Tuple
+from dataclasses import dataclass
 
-# Create a metaclass that combines QObject's metaclass and BaseWeatherProvider's metaclass
-class OpenMeteoMeta(type(BaseWeatherProvider), type(QObject)):
+from PyQt6.QtCore import QObject, pyqtSignal, QSettings, QMetaType, pyqtSlot
+from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout, QFormLayout, QLineEdit
+
+# Set up logger
+logger = logging.getLogger('script.weather_providers.openmeteo')
+
+# Create a session for aiohttp
+async def get_session():
+    return aiohttp.ClientSession()
+
+@dataclass
+class WeatherDataPoint:
+    """A single data point of weather information."""
+    temperature: float
+    condition: str
+    icon: str
+    time: datetime
+    humidity: float
+    wind_speed: float
+    wind_direction: float
+    pressure: float
+    precipitation: float
+    cloud_cover: int
+    visibility: float
+    uv_index: float
+    feels_like: float
+    dew_point: float
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the data point to a dictionary."""
+        return {
+            'temperature': self.temperature,
+            'condition': self.condition,
+            'icon': self.icon,
+            'time': self.time.isoformat(),
+            'humidity': self.humidity,
+            'wind_speed': self.wind_speed,
+            'wind_direction': self.wind_direction,
+            'pressure': self.pressure,
+            'precipitation': self.precipitation,
+            'cloud_cover': self.cloud_cover,
+            'visibility': self.visibility,
+            'uv_index': self.uv_index,
+            'feels_like': self.feels_like,
+            'dew_point': self.dew_point
+        }
+
+class BaseWeatherProvider(QObject):
+    """Base class for weather providers.
+    
+    This class defines the interface that all weather providers must implement.
+    """
+    # Signals
+    weather_updated = pyqtSignal(dict)  # Emitted when weather data is updated
+    forecast_updated = pyqtSignal(list)  # Emitted when forecast data is updated
+    error_occurred = pyqtSignal(str)    # Emitted when an error occurs
+    
+    # Provider metadata
+    name = "Base Weather Provider"
+    description = "Base class for weather providers"
+    author = ""
+    version = "0.0.0"
+    api_key_required = True
+    
+    def __init__(self, **kwargs):
+        """Initialize the weather provider."""
+        super().__init__()
+        self._api_key = kwargs.get('api_key', '')
+        self._units = kwargs.get('units', 'metric')
+        self._language = kwargs.get('language', 'en')
+        self._offline_mode = kwargs.get('offline_mode', False)
+        self._initialized = False
+    
+    async def initialize(self):
+        """Initialize the provider."""
+        self._initialized = True
+        return True
+    
+    async def cleanup(self):
+        """Clean up resources used by the provider."""
+        self._initialized = False
+    
+    async def get_current_weather(self, location: str) -> Dict[str, Any]:
+        """Get current weather for a location.
+        
+        Args:
+            location: Location string (city name, coordinates, etc.)
+            
+        Returns:
+            Dictionary containing current weather data
+        """
+        raise NotImplementedError
+    
+    async def get_forecast(self, location: str, days: int = 5) -> List[Dict[str, Any]]:
+        """Get weather forecast for a location.
+        
+        Args:
+            location: Location string (city name, coordinates, etc.)
+            days: Number of days to forecast (default: 5)
+            
+        Returns:
+            List of dictionaries containing forecast data
+        """
+        raise NotImplementedError
+    
+    def get_settings_widget(self) -> QWidget:
+        """Get a widget for configuring the provider.
+        
+        Returns:
+            QWidget: Settings widget
+        """
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.addWidget(QLabel("No configuration available for this provider."))
+        return widget
+    
+    def save_settings(self):
+        """Save provider settings."""
+        pass
+    
+    def load_settings(self):
+        """Load provider settings."""
+        pass
+
+# Create a metaclass that combines QObject's metaclass
+class OpenMeteoMeta(type(QObject)):
     pass
 
 class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
@@ -18,6 +144,7 @@ class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
     description = "Open-Meteo Weather API Provider"
     author = "Nsfr750"
     version = "1.0.0"
+    api_key_required = False  # Open-Meteo doesn't require an API key for basic usage
     
     # Signals
     api_key_changed = pyqtSignal(str)
@@ -48,9 +175,78 @@ class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
         self.units = kwargs.get('units', 'metric')
         self.language = kwargs.get('language', 'en')
         self._offline_mode = kwargs.get('offline_mode', False)
+        self._initialized = False
         
         # Load provider-specific settings
-        self.load_settings()
+        self._load_settings()
+    
+    def _load_settings(self):
+        """Load provider settings from QSettings."""
+        try:
+            # Load settings from QSettings
+            settings = self._settings.value("OpenMeteo", {})
+            
+            if not isinstance(settings, dict):
+                settings = {}
+            
+            # Apply loaded settings
+            self.units = settings.get('units', self.units)
+            self.language = settings.get('language', self.language)
+            self._offline_mode = settings.get('offline_mode', self._offline_mode)
+            
+        except Exception as e:
+            logger.error(f"Error loading settings: {e}")
+    
+    def save_settings(self):
+        """Save provider settings to QSettings."""
+        try:
+            # Prepare settings to save
+            settings = {
+                'units': self.units,
+                'language': self.language,
+                'offline_mode': self._offline_mode
+            }
+            
+            # Save to QSettings
+            self._settings.setValue("OpenMeteo", settings)
+            self._settings.sync()
+            
+        except Exception as e:
+            logger.error(f"Error saving settings: {e}")
+        
+    async def initialize(self, app=None):
+        """Initialize the plugin.
+        
+        Args:
+            app: Reference to the main application instance (optional)
+            
+        Returns:
+            bool: True if initialization was successful, False otherwise
+        """
+        if self._initialized:
+            return True
+            
+        try:
+            # Perform any necessary initialization here
+            logger.info(f"Initializing {self.name} provider")
+            self._initialized = True
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize {self.name} provider: {str(e)}")
+            self._initialized = False
+            return False
+            
+    async def cleanup(self):
+        """Clean up resources used by the provider.
+        
+        This is a coroutine that will be awaited by the application.
+        """
+        try:
+            # Perform any necessary cleanup here
+            logger.info(f"Cleaning up {self.name} provider")
+            self._initialized = False
+        except Exception as e:
+            logger.error(f"Error during {self.name} cleanup: {str(e)}")
         
     @property
     def api_key(self):
@@ -65,8 +261,8 @@ class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
         if old_value != self._api_key:
             self.api_key_changed.emit(self._api_key)
     
-    def _make_request(self, endpoint, params=None):
-        """Make a request to the Open-Meteo API.
+    async def _make_request(self, endpoint, params=None):
+        """Make an async request to the Open-Meteo API.
         
         Args:
             endpoint (str): API endpoint
@@ -87,36 +283,50 @@ class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
             'timeformat': 'iso8601'
         })
         
-        response = requests.get(f"{self.BASE_URL}{endpoint}", params=params)
-        response.raise_for_status()
-        return response.json()
+        session = await get_session()
+        try:
+            async with session.get(f"{self.BASE_URL}{endpoint}", params=params) as response:
+                response.raise_for_status()
+                return await response.json()
+        except Exception as e:
+            logger.error(f"Request failed: {str(e)}")
+            raise
+        finally:
+            await session.close()
     
-    def _geocode_location(self, location):
+    async def _geocode_location(self, location):
         """Convert location name to coordinates using Open-Meteo's geocoding."""
         if ',' in location:  # Already coordinates
             lat, lon = location.split(',')
             return float(lat.strip()), float(lon.strip())
             
         # Geocode the location name
-        response = requests.get(
-            'https://geocoding-api.open-meteo.com/v1/search',
-            params={'name': location, 'count': 1, 'language': self.language, 'format': 'json'}
-        )
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data.get('results'):
-            raise ValueError(f"Location '{location}' not found")
-            
-        return data['results'][0]['latitude'], data['results'][0]['longitude']
+        session = await get_session()
+        try:
+            async with session.get(
+                'https://geocoding-api.open-meteo.com/v1/search',
+                params={'name': location, 'count': 1, 'language': self.language, 'format': 'json'}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+                
+                if not data.get('results'):
+                    raise ValueError(f"Location '{location}' not found")
+                    
+                return data['results'][0]['latitude'], data['results'][0]['longitude']
+        except Exception as e:
+            logger.error(f"Geocoding failed: {str(e)}")
+            raise
+        finally:
+            await session.close()
     
-    def get_current_weather(self, location):
+    async def get_current_weather(self, location):
         """Get current weather for a location."""
         try:
-            lat, lon = self._geocode_location(location)
+            lat, lon = await self._geocode_location(location)
             
             # Get current weather and daily forecast in one request
-            data = self._make_request('forecast', {
+            data = await self._make_request('forecast', {
                 'latitude': lat,
                 'longitude': lon,
                 'current_weather': 'true',
@@ -156,12 +366,12 @@ class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
         except Exception as e:
             raise Exception(f"Failed to get current weather: {str(e)}")
     
-    def get_forecast(self, location, days=5):
+    async def get_forecast(self, location, days=5):
         """Get weather forecast for a location."""
         try:
-            lat, lon = self._geocode_location(location)
+            lat, lon = await self._geocode_location(location)
             
-            data = self._make_request('forecast', {
+            data = await self._make_request('forecast', {
                 'latitude': lat,
                 'longitude': lon,
                 'daily': 'weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,winddirection_10m_dominant',

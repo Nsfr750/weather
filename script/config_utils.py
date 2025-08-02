@@ -16,45 +16,17 @@ DEFAULT_CONFIG = {
     'units': 'metric',
     'language': 'en',  # Default to English
     'theme': 'dark',   # Only dark theme is supported
-    'provider': 'openweathermap',  # Default provider
+    'provider': 'openmeteo',  # Default provider
     'providers': {
-        'openweathermap': {
-            'api_key': '',
-            'username': '',
-            'password': ''
-        },
         'open-meteo': {
             'api_key': ''  # Open-Meteo doesn't require an API key for basic usage
         },
-        'weather.com': {
-            'api_key': ''
-        },
-        'breezy-weather': {
-            'api_key': ''
-        },
-        'quickweather': {
-            'api_key': ''
-        },
-        'weathercompany': {
-            'api_key': '',
-            'username': '',
-            'password': ''
-        },
-        'alliander': {
-            'api_key': ''
-        }
     }
 }
 
 # Test endpoints for API key validation
 VALIDATION_ENDPOINTS = {
-    'openweathermap': 'https://api.openweathermap.org/data/2.5/weather?q=London&appid={}',
     'open-meteo': 'https://api.open-meteo.com/v1/forecast?latitude=51.51&longitude=-0.13&current_weather=true',
-    'weather.com': 'https://api.weather.com/v3/wx/observations/current?geocode=51.51,-0.13&format=json&units=m&language=en-US&apiKey={}',
-    'breezy-weather': 'https://breezy-weather.p.rapidapi.com/weather/current?lat=51.51&lon=-0.13',
-    'quickweather': 'https://api.quickweather.com/v1/current?lat=51.51&lon=-0.13',
-    'weathercompany': 'https://api.weather.com/v3/wx/observations/current?geocode=51.51,-0.13&format=json&units=m&language=en-US',
-    'alliander': 'https://api.alliander.com/weather/v1/weather/current?lat=51.51&lon=-0.13'
 }
 
 class ConfigManager:
@@ -91,7 +63,7 @@ class ConfigManager:
                     # Backward compatibility: migrate old config to new format
                     if 'api_key' in config and 'providers' not in config:
                         config['providers'] = {
-                            'openweathermap': {
+                            'openmeteo': {
                                 'api_key': config.get('api_key', '')
                             }
                         }
@@ -159,7 +131,7 @@ class ConfigManager:
     
     def get_current_provider(self):
         """Get the current active provider."""
-        return self.config.get('provider', 'openweathermap')
+        return self.config.get('provider', 'openmeteo')
     
     def set_current_provider(self, provider):
         """Set the current active provider."""

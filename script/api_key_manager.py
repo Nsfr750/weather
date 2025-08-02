@@ -1,26 +1,21 @@
 """
 API Key Manager for Weather Providers.
 
-This module provides a dialog for managing API keys for different weather providers.
-It works with the new plugin system to discover and configure API keys for all
-available weather provider plugins.
+This module provides a dialog for managing API keys for weather providers.
+It's a simplified version that works with the OpenMeteo provider.
 """
 
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Optional, Any, List, Type
+from typing import Dict, Optional, Any, List
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSettings
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton,
-    QMessageBox, QDialogButtonBox, QFormLayout, QWidget, QTabWidget
+    QMessageBox, QDialogButtonBox, QFormLayout, QWidget, QTabWidget, QHBoxLayout
 )
-
-# Import the plugin system
-from script.plugin_system.plugin_manager import PluginManager
-from script.plugin_system.weather_provider import BaseWeatherProvider
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -231,65 +226,33 @@ class ApiKeyManagerDialog(QDialog):
     
     def _load_providers(self):
         """Load available weather providers."""
-        # Clear existing providers
-        self.tab_widget.clear()
-        self.providers.clear()
-        
-        # Define default providers configuration
-        default_providers = {
-            'openweathermap': {
-                'name': 'OpenWeatherMap',
-                'config': {
+        try:
+            # Create a tab for the OpenMeteo provider
+            provider_widget = ProviderConfigWidget(
+                provider_id='openmeteo',
+                provider_name='OpenMeteo',
+                config={
+                    'id': 'openmeteo',
+                    'name': 'OpenMeteo',
                     'api_key': '',
-                    'username': '',
-                    'password': ''
+                    'enabled': True
                 }
-            },
-            'open-meteo': {
-                'name': 'Open-Meteo',
-                'config': {
-                    'api_key': ''
-                }
-            },
-            'accuweather': {
-                'name': 'AccuWeather',
-                'config': {
-                    'api_key': ''
-                }
-            }
-        }
-        
-        # Load providers from config file if it exists
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, 'r') as f:
-                    config = json.load(f)
-                    if 'Providers' in config:
-                        for provider_id, provider_config in config['Providers'].items():
-                            if provider_id in default_providers:
-                                # Update with saved config
-                                default_providers[provider_id]['config'].update(provider_config)
-            except Exception as e:
-                logger.error(f"Error loading providers config: {e}")
-        
-        # Create a tab for each provider
-        for provider_id, provider_info in default_providers.items():
-            try:
-                widget = ProviderConfigWidget(
-                    provider_id=provider_id,
-                    provider_name=provider_info['name'],
-                    config=provider_info['config'],
-                    parent=self
-                )
-                self.providers[provider_id] = widget
-                self.tab_widget.addTab(widget, provider_info['name'])
-            except Exception as e:
-                logger.error(f"Error initializing provider {provider_id}: {e}")
+            )
+            
+            self.tab_widget.addTab(provider_widget, 'OpenMeteo')
+            self.providers['openmeteo'] = provider_widget
+            
+        except Exception as e:
+            logger.error(f"Error loading providers: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to load weather providers: {e}"
+            )
     
     def save_all(self):
         """Save settings for all providers."""
         all_saved = True
-        config = {'Providers': {}}
         
         # Collect config from all widgets
         for provider_id, widget in self.providers.items():

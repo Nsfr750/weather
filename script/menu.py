@@ -26,8 +26,6 @@ from script.about import About
 from script.help import Help
 from script.sponsor import Sponsor
 from script.log_viewer import LogViewer
-from script.plugin_config_dialog import PluginConfigDialog
-from script.feature_config_dialog import FeatureConfigDialog
 from script.api_key_manager import ApiKeyManagerDialog
 
 # Constants
@@ -679,10 +677,10 @@ class MenuBar(QMenuBar):
         layout = QVBoxLayout(dialog)
         
         # Add form fields for API keys
-        layout.addWidget(QLabel(self._tr('OpenWeatherMap API Key:')))
+        layout.addWidget(QLabel(self._tr('OpenMeteo API Key:')))
         owm_key_edit = QLineEdit()
         # Load current key from config
-        # owm_key_edit.setText(self.config_manager.get('api_keys', {}).get('openweathermap', ''))
+        # owm_key_edit.setText(self.config_manager.get('api_keys', {}).get('openmeteo', ''))
         layout.addWidget(owm_key_edit)
         
         # Add more API key fields as needed
@@ -699,7 +697,7 @@ class MenuBar(QMenuBar):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Save API keys to config
             # self.config_manager.set('api_keys', {
-            #     'openweathermap': owm_key_edit.text().strip()
+            #     'openmeteo': owm_key_edit.text().strip()
             # })
             QMessageBox.information(
                 self,
@@ -861,170 +859,6 @@ class MenuBar(QMenuBar):
         # Emit a signal if needed (uncomment if you want to connect this to other components)
         # if hasattr(self.parent(), 'on_layout_changed'):
         #     self.parent().on_layout_changed(layout)
-    
-    def _create_plugins_menu(self) -> None:
-        """Create the Plugins menu with plugin and feature-related actions."""
-        if not hasattr(self.parent, 'plugin_manager') or not self.parent.plugin_manager:
-            return
-            
-        plugins_menu = self.addMenu(self._tr('🔌 &Plugins'))
-        
-        # Plugin configuration action
-        config_action = QAction(
-            self._tr('&Configure Plugins...'),
-            self,
-            shortcut='F6',
-            statusTip=self._tr('Configure installed plugins'),
-            triggered=self._show_plugin_config_dialog
-        )       
-        plugins_menu.addAction(config_action)
-
-        # Feature configuration action
-        feature_config_action = QAction(
-            self._tr('Configure &Features...'),
-            self,
-            shortcut='F7',
-            statusTip=self._tr('Configure feature plugins'),
-            triggered=self._show_feature_config_dialog
-        )
-        plugins_menu.addAction(feature_config_action)
-        
-        # Separator between configuration and reload actions
-        plugins_menu.addSeparator()
-        
-        # Reload plugins action
-        reload_action = QAction(
-            self._tr('&Reload Plugins'),
-            self,
-            statusTip=self._tr('Reload all plugins'),
-            triggered=self._reload_plugins
-        )
-        plugins_menu.addAction(reload_action)
-        
-        # Reload features action
-        reload_features_action = QAction(
-            self._tr('Reload &Features'),
-            self,
-            statusTip=self._tr('Reload all feature plugins'),
-            triggered=self._reload_features
-        )
-        plugins_menu.addAction(reload_features_action)
-    
-    def _show_plugin_config_dialog(self) -> None:
-        """Show the plugin configuration dialog."""
-        if not hasattr(self.parent, 'plugin_manager') or not self.parent.plugin_manager:
-            QMessageBox.warning(
-                self.parent,
-                self._tr('Plugin System Not Available'),
-                self._tr('The plugin system is not properly initialized.'),
-                QMessageBox.StandardButton.Ok
-            )
-            return
-            
-        dialog = PluginConfigDialog(self.parent.plugin_manager, self.parent)
-        dialog.exec()
-    
-    def _show_feature_config_dialog(self) -> None:
-        """Show the feature configuration dialog."""
-        try:
-            # Import here to avoid circular imports
-            from script.feature_config_dialog import FeatureConfigDialog
-            
-            if not hasattr(self.parent, 'feature_manager') or not self.parent.feature_manager:
-                QMessageBox.warning(
-                    self.parent,
-                    self._tr('Feature Manager Not Available'),
-                    self._tr('The feature manager is not properly initialized.'),
-                    QMessageBox.StandardButton.Ok
-                )
-                return
-                
-            dialog = FeatureConfigDialog(self.parent.feature_manager, self.parent)
-            dialog.exec()
-            
-        except ImportError as e:
-            logger.error(f"Failed to import FeatureConfigDialog: {e}")
-            QMessageBox.critical(
-                self.parent,
-                self._tr('Feature Configuration Error'),
-                self._tr('Failed to load feature configuration dialog. The feature management system may not be properly installed.'),
-                QMessageBox.StandardButton.Ok
-            )
-        except Exception as e:
-            logger.error(f"Error showing feature config dialog: {e}")
-            QMessageBox.critical(
-                self.parent,
-                self._tr('Error'),
-                self._tr(f'An error occurred while opening the feature configuration: {str(e)}'),
-                QMessageBox.StandardButton.Ok
-            )
-    
-    def _reload_plugins(self) -> None:
-        """Reload all plugins."""
-        if not hasattr(self.parent, 'plugin_manager') or not self.parent.plugin_manager:
-            return
-            
-        reply = QMessageBox.question(
-            self.parent,
-            self._tr('Reload Plugins'),
-            self._tr('Are you sure you want to reload all plugins?'),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                self.parent.plugin_manager.load_plugins()
-                QMessageBox.information(
-                    self.parent,
-                    self._tr('Plugins Reloaded'),
-                    self._tr('All plugins have been reloaded successfully.'),
-                    QMessageBox.StandardButton.Ok
-                )
-            except Exception as e:
-                QMessageBox.critical(
-                    self.parent,
-                    self._tr('Plugin Error'),
-                    self._tr(f'Failed to reload plugins: {str(e)}'),
-                    QMessageBox.StandardButton.Ok
-                )
-    
-    def _reload_features(self) -> None:
-        """Reload all feature plugins."""
-        if not hasattr(self.parent, 'feature_manager') or not self.parent.feature_manager:
-            QMessageBox.warning(
-                self.parent,
-                self._tr('Feature Manager Not Available'),
-                self._tr('The feature manager is not properly initialized.'),
-                QMessageBox.StandardButton.Ok
-            )
-            return
-            
-        reply = QMessageBox.question(
-            self.parent,
-            self._tr('Reload Features'),
-            self._tr('Are you sure you want to reload all feature plugins?'),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                self.parent.feature_manager.load_features()
-                QMessageBox.information(
-                    self.parent,
-                    self._tr('Features Reloaded'),
-                    self._tr('All feature plugins have been reloaded successfully.'),
-                    QMessageBox.StandardButton.Ok
-                )
-            except Exception as e:
-                logger.error(f"Failed to reload features: {e}")
-                QMessageBox.critical(
-                    self.parent,
-                    self._tr('Feature Error'),
-                    self._tr(f'Failed to reload features: {str(e)}'),
-                    QMessageBox.StandardButton.Ok
-                )
     
 def create_menu_bar(parent: Optional[QWidget] = None, 
                     translations: Optional[Dict[str, str]] = None) -> MenuBar:

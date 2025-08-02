@@ -3,20 +3,7 @@
   "language": "it",
   "theme": "dark",
   "provider": "open-meteo",
-  "providers": {
-    "openweathermap": {
-      "api_key": "",
-      "username": "",
-      "password": ""
-    },
-    "open-meteo": {
-      "api_key": ""
-    },
-    "accuweather": {
-      "apy_key": ""
-    }
-  },
-  "last_city": "Riga",
+  "last_city": "Bolzano Novarese",
   "weather_provider": "open-meteo",
   "layout": "standard"
 }

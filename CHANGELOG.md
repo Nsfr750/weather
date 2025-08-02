@@ -57,15 +57,6 @@
 
 ### Added
 
-- Support for multiple weather data providers:
-  - OpenWeatherMap (default)
-  - Open-Meteo
-  - Weather.com
-  - Breezy Weather
-  - QuickWeather
-  - Weather Company (IBM)
-  - Alliander
-- Weather provider selection in settings
 - Comprehensive documentation in the `/docs` directory
 - New translation strings for all supported languages
 - Improved error handling for API responses

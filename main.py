@@ -39,9 +39,7 @@ from script.translations_utils import TranslationsManager
 from script.notifications import NotificationManager, check_severe_weather
 from script.weather_providers import get_provider, get_available_providers
 from script.ui import WeatherAppUI
-from script.plugin_system.plugin_manager import PluginManager
-from script.plugin_system.feature_manager import FeatureManager, BaseFeature
-from script.plugin_system.weather_provider import BaseWeatherProvider
+from script.weather_providers.openmeteo import OpenMeteoProvider
 
 # ----------- CONFIGURATION -----------
 DEFAULT_CITY = 'London'
@@ -70,52 +68,11 @@ class WeatherApp(QMainWindow):
         # Set offline mode if no internet
         self.check_connection()
         
-        # Initialize the plugin manager with all possible plugin paths
-        script_dir = Path(__file__).parent.absolute()
-        plugin_paths = [
-            script_dir / 'script' / 'plugins' / 'weather_providers',
-            script_dir / 'script' / 'plugins' / 'features',
-            script_dir / 'plugins' / 'weather_providers',
-            script_dir / 'plugins' / 'features'
-        ]
-        
-        # Filter out non-existent paths and log them
-        self.plugin_manager = PluginManager([p for p in plugin_paths if p.exists()])
-        
-        # Set the plugin manager for the weather providers module
-        from script.weather_providers import set_plugin_manager
-        set_plugin_manager(self.plugin_manager)
-        
-        # Log the paths we're actually using
-        logger.info(f"Looking for plugins in: {[str(p) for p in self.plugin_manager.plugin_dirs]}")
-        
-        # Log which plugin directories exist
-        for path in plugin_paths:
-            logger.info(f"Plugin path '{path}' exists: {path.exists()}")
-        
-        # Load plugins
-        try:
-            self.plugin_manager.load_plugins()
-            logger.info(f"Successfully loaded {len(self.plugin_manager.plugins)} plugins")
-            if self.plugin_manager.plugins:
-                logger.info(f"Available plugins: {list(self.plugin_manager.plugins.keys())}")
-        except Exception as e:
-            logger.error(f"Error loading plugins: {e}", exc_info=True)
-        
-        # Initialize weather provider (needs plugin_manager to be initialized)
-        self.initialize_weather_provider()
-        
         # Initialize translations
         self.translations_manager = TranslationsManager(TRANSLATIONS, default_lang=self.language)
         
-        # Initialize feature manager
-        self.feature_manager = FeatureManager(self.plugin_manager)
-        
-        # Load features from all plugin directories
-        for plugin_dir in self.plugin_manager.plugin_dirs:
-            features_dir = plugin_dir / 'features'
-            if features_dir.exists():
-                self.feature_manager.load_features(str(features_dir))
+        # Initialize weather provider
+        self.initialize_weather_provider()
         
         # Initialize UI
         self.setWindowTitle('Weather App')
@@ -129,8 +86,7 @@ class WeatherApp(QMainWindow):
             config_manager=self.config_manager,
             translations_manager=self.translations_manager,
             weather_provider=self.weather_provider,
-            notification_manager=self.notification_manager,
-            plugin_manager=self.plugin_manager
+            notification_manager=self.notification_manager
         )
         
         # Set up signals
@@ -269,17 +225,6 @@ class WeatherApp(QMainWindow):
                 self.tr('Provider Error'),
                 self.tr(error_msg)
             )
-            
-            # Try to revert to the previous provider
-            try:
-                prev_provider = self.config_manager.get('previous_provider', 'openweathermap')
-                if prev_provider != provider_name:
-                    self.update_weather_provider(prev_provider)
-            except Exception as revert_error:
-                logger.error(f"Failed to revert to previous provider: {revert_error}")
-        finally:
-            # Clear any status message after a delay
-            QTimer.singleShot(3000, self.statusBar().clearMessage)
     
     def create_menu_bar(self):
         """Create the application menu bar."""
@@ -331,8 +276,22 @@ class WeatherApp(QMainWindow):
                 )
                 
                 # Combine the data
-                if hasattr(forecast, 'daily') and forecast.daily:
-                    current.daily = forecast.daily
+                if isinstance(forecast, dict):
+                    # If forecast is a dictionary, check for 'daily' or 'forecast' keys
+                    if 'daily' in forecast and forecast['daily']:
+                        current.daily = forecast['daily']
+                    elif 'forecast' in forecast and forecast['forecast']:
+                        current.daily = forecast['forecast']
+                else:
+                    # If forecast is an object, check for attributes
+                    if hasattr(forecast, 'daily') and forecast.daily:
+                        current.daily = forecast.daily
+                    elif hasattr(forecast, 'forecast') and forecast.forecast:
+                        # Handle case where forecast data is in a 'forecast' attribute
+                        current.daily = forecast.forecast
+                
+                logger.debug(f"Current weather data: {current}")
+                logger.debug(f"Forecast data: {getattr(forecast, 'daily', getattr(forecast, 'forecast', None))}")
                 
                 return current, None
                 
@@ -340,7 +299,7 @@ class WeatherApp(QMainWindow):
                 error_msg = f"HTTP error occurred: {http_err}"
                 if hasattr(http_err, 'response') and http_err.response.status_code == 404:
                     error_msg = f"City '{self.city}' not found. Please check the city name and try again."
-                logger.error(error_msg)
+                logger.error(error_msg, exc_info=True)
                 return None, error_msg
             except Exception as e:
                 error_msg = f"Error fetching weather data: {str(e)}"
@@ -1165,18 +1124,6 @@ def on_theme_changed(self, theme: str):
                 self.tr('Provider Error'),
                 self.tr(error_msg)
             )
-            
-            # Try to revert to the previous provider
-            try:
-                prev_provider = self.config_manager.get('previous_provider', 'openweathermap')
-                if prev_provider != provider_name:
-                    self.update_weather_provider(prev_provider)
-            except Exception as revert_error:
-                logger.error(f"Failed to revert to previous provider: {revert_error}")
-        finally:
-            # Clear any status message after a delay
-            QTimer.singleShot(3000, self.statusBar().clearMessage)
-
 
 class _CallbackEvent(QEvent):
     """Custom event for callbacks from background threads."""

@@ -3,6 +3,11 @@
   "language": "it",
   "theme": "dark",
   "provider": "open-meteo",
+  "providers": {
+    "open-meteo": {
+      "api_key": ""
+    }
+  },
   "last_city": "Bolzano Novarese",
   "weather_provider": "open-meteo",
   "layout": "standard"

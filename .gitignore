@@ -78,10 +78,3 @@ db.sqlite3
 
 # Logs
 *.log
-
-# Project specific test files
-tests/*.py
-!tests/__init__.py
-!tests/conftest.py
-!tests/test_*.py
-/tests

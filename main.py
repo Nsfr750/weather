@@ -239,7 +239,7 @@ class WeatherApp(QMainWindow):
         # Try to provide more detailed error information
         if not hasattr(self, 'plugin_manager'):
             error_msg += " Plugin manager not available."
-        elif not weather_plugins:
+        elif not weather_plugin_classes:
             error_msg += " No weather provider plugins found."
         
         raise RuntimeError(error_msg)

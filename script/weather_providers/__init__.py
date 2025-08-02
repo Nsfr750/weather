@@ -1,57 +1,45 @@
 """
 Weather Providers Package.
 
-This package contains the base provider class and all weather provider implementations.
+This module provides access to weather providers through the plugin system.
 """
 
-import importlib
 import logging
-from typing import Dict, Type, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, TYPE_CHECKING
 
-from .base_provider import BaseProvider, WeatherData
+from script.plugin_system.weather_provider import WeatherDataPoint as WeatherData
+from script.plugin_system.weather_provider import BaseWeatherProvider
+
+if TYPE_CHECKING:
+    from script.plugin_system.plugin_manager import PluginManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Provider module to class name mapping (handles case sensitivity)
-PROVIDER_MAPPING = {
-    'openweathermap': 'OpenWeatherMapProvider',
-    'weatherapi': 'WeatherAPIProvider',
-    'accuweather': 'AccuWeatherProvider'
-}
+# Plugin manager will be set by the main application
+plugin_manager = None  # type: ignore[assignment]
 
-# Initialize provider registry
-_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
-
-# Try to import all provider modules
-for module_name, class_name in PROVIDER_MAPPING.items():
-    try:
-        module = importlib.import_module(f'.{module_name}', __package__)
-        provider_class = getattr(module, class_name, None)
-        if provider_class and issubclass(provider_class, BaseProvider):
-            _PROVIDERS[module_name.lower()] = provider_class
-            logger.info(f"Successfully loaded provider: {module_name}")
-        else:
-            logger.warning(f"Invalid provider class in {module_name}: {class_name}")
-    except ImportError as e:
-        logger.warning(f"Could not import provider {module_name}: {e}")
-    except Exception as e:
-        logger.error(f"Error initializing provider {module_name}: {e}")
+def set_plugin_manager(manager: 'PluginManager') -> None:
+    """Set the plugin manager instance to use.
+    
+    This should be called by the main application to provide the shared plugin manager.
+    
+    Args:
+        manager: The plugin manager instance to use
+    """
+    global plugin_manager
+    plugin_manager = manager
 
 # Define __all__ for explicit exports
 __all__ = [
-    'BaseProvider',
     'WeatherData',
     'get_provider',
+    'set_plugin_manager',
     'get_available_providers'
 ]
 
-# Add provider classes to __all__
-for provider_class in _PROVIDERS.values():
-    __all__.append(provider_class.__name__)
-
-
-def get_provider(provider_name: str, **kwargs) -> BaseProvider:
+def get_provider(provider_name: str, **kwargs) -> BaseWeatherProvider:
     """Get a weather provider instance by name.
     
     Args:
@@ -64,22 +52,20 @@ def get_provider(provider_name: str, **kwargs) -> BaseProvider:
     Raises:
         ValueError: If the provider is not found
     """
-    provider_name = provider_name.lower()
-    provider_class = _PROVIDERS.get(provider_name)
-    if not provider_class:
-        available = ', '.join(f"'{p}'" for p in _PROVIDERS.keys())
-        raise ValueError(
-            f"Unknown provider: '{provider_name}'. "
-            f"Available providers: {available or 'none'}"
-        )
+    # Get all weather provider plugins
+    providers = plugin_manager.get_plugins(BaseWeatherProvider)
     
-    # Filter kwargs to only include parameters that the provider's __init__ accepts
-    import inspect
-    init_params = inspect.signature(provider_class.__init__).parameters
-    valid_kwargs = {k: v for k, v in kwargs.items() if k in init_params}
+    # Find the requested provider (case-insensitive)
+    provider_name_lower = provider_name.lower()
+    for name, provider_class in providers.items():
+        if name.lower() == provider_name_lower:
+            try:
+                return provider_class(**kwargs)
+            except Exception as e:
+                logger.error(f"Error creating provider {name}: {e}")
+                raise
     
-    return provider_class(**valid_kwargs)
-
+    raise ValueError(f"Weather provider not found: {provider_name}")
 
 def get_available_providers() -> Dict[str, str]:
     """Get a dictionary of available weather providers.
@@ -87,7 +73,8 @@ def get_available_providers() -> Dict[str, str]:
     Returns:
         dict: Dictionary mapping provider names to their display names
     """
-    return {
-        name: provider.display_name 
-        for name, provider in _PROVIDERS.items()
-    }
+    providers = {}
+    for name, provider_class in plugin_manager.get_plugins(BaseWeatherProvider).items():
+        display_name = getattr(provider_class, 'display_name', name)
+        providers[name] = display_name
+    return providers

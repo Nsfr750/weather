@@ -1,2 +1,2 @@
 [console_scripts]
-weather-app = main:main
+weather-app = script.main:main

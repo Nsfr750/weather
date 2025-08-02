@@ -1,6 +1,7 @@
 LICENSE
 README.md
 pyproject.toml
+setup.py
 weather_app.egg-info/PKG-INFO
 weather_app.egg-info/SOURCES.txt
 weather_app.egg-info/dependency_links.txt

@@ -45,21 +45,67 @@ class MarkdownViewer(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         
-        # Create top bar for file selection
+        # Create top bar for controls
         top_bar = QHBoxLayout()
+        
+        # Left side: Document selection
+        left_controls = QHBoxLayout()
         
         # Add label for dropdown
         label = QLabel(self.translations.get('select_document', 'Select Document:'))
-        top_bar.addWidget(label)
+        left_controls.addWidget(label)
         
         # Create dropdown for markdown files
         self.file_dropdown = QComboBox()
         self.file_dropdown.setMinimumWidth(200)
+        self.file_dropdown.setToolTip(self.translations.get('select_document_tooltip', 'Select a document to view'))
         self.file_dropdown.currentTextChanged.connect(self.on_document_selected)
-        top_bar.addWidget(self.file_dropdown)
+        left_controls.addWidget(self.file_dropdown)
         
-        # Add stretch to push dropdown to the left
+        # Add left controls to top bar
+        top_bar.addLayout(left_controls)
+        
+        # Add stretch to push zoom controls to the right
         top_bar.addStretch()
+        
+        # Right side: Zoom controls and About button
+        right_controls = QHBoxLayout()
+        
+        # Zoom out button
+        self.zoom_out_btn = QPushButton('−')  # Minus sign
+        self.zoom_out_btn.setToolTip(self.translations.get('zoom_out', 'Zoom Out (Ctrl+-)'))
+        self.zoom_out_btn.setFixedSize(30, 30)
+        self.zoom_out_btn.clicked.connect(self.zoom_out)
+        right_controls.addWidget(self.zoom_out_btn)
+        
+        # Zoom reset button
+        self.zoom_reset_btn = QPushButton('100%')
+        self.zoom_reset_btn.setToolTip(self.translations.get('reset_zoom', 'Reset Zoom (Ctrl+0)'))
+        self.zoom_reset_btn.setFixedSize(50, 30)
+        self.zoom_reset_btn.clicked.connect(self.reset_zoom)
+        right_controls.addWidget(self.zoom_reset_btn)
+        
+        # Zoom in button
+        self.zoom_in_btn = QPushButton('+')
+        self.zoom_in_btn.setToolTip(self.translations.get('zoom_in', 'Zoom In (Ctrl++)'))
+        self.zoom_in_btn.setFixedSize(30, 30)
+        self.zoom_in_btn.clicked.connect(self.zoom_in)
+        right_controls.addWidget(self.zoom_in_btn)
+        
+        # Add a separator
+        separator = QLabel('|')
+        separator.setStyleSheet('color: #999; margin: 0 5px;')
+        right_controls.addWidget(separator)
+        
+        # About button
+        self.about_btn = QPushButton(self.translations.get('about', 'About'))
+        self.about_btn.setToolTip(self.translations.get('about_tooltip', 'Show information about this application'))
+        self.about_btn.clicked.connect(self.show_about)
+        self.about_btn.setFixedHeight(30)
+        right_controls.addWidget(self.about_btn)
+        
+        # Add right controls to top bar
+        top_bar.addLayout(right_controls)
         
         # Add top bar to main layout
         layout.addLayout(top_bar)
@@ -75,6 +121,7 @@ class MarkdownViewer(QMainWindow):
         close_button = QPushButton(self.translations.get('close', 'Close'))
         close_button.clicked.connect(self.close)
         close_button.setFixedWidth(100)
+        close_button.setToolTip(self.translations.get('close_tooltip', 'Close this window'))
         
         # Create a horizontal layout for the button to center it
         button_layout = QHBoxLayout()
@@ -87,7 +134,7 @@ class MarkdownViewer(QMainWindow):
         # Apply styling
         self.apply_styling(close_button)
         
-        # Create menu bar
+        # Create menu bar (moved after UI setup to ensure all widgets exist)
         self.create_menus()
         
         # Status bar
@@ -95,9 +142,9 @@ class MarkdownViewer(QMainWindow):
         self.setStatusBar(self.status_bar)
         
         # Set default font
-        font = QFont()
-        font.setPointSize(10)
-        self.text_browser.setFont(font)
+        self.default_font = QFont()
+        self.default_font.setPointSize(10)
+        self.text_browser.setFont(self.default_font)
         
         # Load available markdown files
         self.load_available_documents()
@@ -179,6 +226,7 @@ class MarkdownViewer(QMainWindow):
                     f.write("# Weather App Documentation\n\n"
                            "Welcome to the Weather App documentation.\n\n"
                            "## Available Documentation\n\n"
+                           "- [Main](index.md)\n"
                            "- [Installation](installation.md)\n"
                            "- [Configuration](configuration.md)\n"
                            "- [Troubleshooting](troubleshooting.md)\n"
@@ -186,9 +234,10 @@ class MarkdownViewer(QMainWindow):
                            "- [Development](development.md)\n"
                            "- [Providers](providers.md)\n"
                            "- [Translations](translations.md)\n"
-                           "- [Index](index.md)\n")
+                           "- [Enhanced Notifications](enhanced_notifications.md)\n")
             
             # Create other basic documentation files
+            self.create_default_doc('index.md', "# Index\n\nIndex information goes here.")
             self.create_default_doc('installation.md', "# Installation\n\nInstallation instructions go here.")
             self.create_default_doc('configuration.md', "# Configuration\n\nConfiguration options go here.")
             self.create_default_doc('troubleshooting.md', "# Troubleshooting\n\nTroubleshooting information goes here.")
@@ -196,7 +245,7 @@ class MarkdownViewer(QMainWindow):
             self.create_default_doc('development.md', "# Development\n\nDevelopment information goes here.")
             self.create_default_doc('providers.md', "# Providers\n\nProviders information goes here.")
             self.create_default_doc('translations.md', "# Translations\n\nTranslations information goes here.")
-            self.create_default_doc('index.md', "# Index\n\nIndex information goes here.")
+            self.create_default_doc('enhanced_notifications.md', "# Enhanced Notifications\n\nEnhanced notifications information goes here.")
             
             return True
         return False
@@ -454,7 +503,7 @@ class MarkdownViewer(QMainWindow):
         QMessageBox.about(
             self,
             self.translations.get('about', 'About'),
-            self.translations.get('about_text', 'Markdown Viewer\nVersion 1.0.0\n\nA simple markdown documentation viewer.')
+            self.translations.get('about_text', 'Markdown Viewer\nVersion 1.2.0\n\nA markdown documentation viewer.')
         )
 
 

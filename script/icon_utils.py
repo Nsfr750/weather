@@ -59,8 +59,18 @@ def _create_emoji_icon(emoji, size):
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         
         # Set font (use system emoji font if available)
-        font = QFont("Segoe UI Emoji", min(width, height) * 0.8)
-        painter.setFont(font)
+        try:
+            font_size = int(min(width, height) * 0.8)
+            font = QFont()
+            font.setFamily("Segoe UI Emoji")
+            font.setPointSize(font_size)
+            painter.setFont(font)
+        except Exception as e:
+            logging.warning(f"Failed to set emoji font: {e}")
+            # Fallback to default font if emoji font fails
+            font = painter.font()
+            font.setPointSize(int(min(width, height) * 0.6))
+            painter.setFont(font)
         
         # Draw emoji centered
         font_metrics = QFontMetrics(font)

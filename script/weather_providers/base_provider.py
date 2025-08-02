@@ -1,85 +1,97 @@
 """
-Base weather provider module.
+Legacy Base Provider for Weather Providers.
 
-This module contains the base class for all weather providers.
+This module provides a base class for weather providers that need to maintain
+compatibility with the legacy provider system while using the new plugin system.
+
+Note: New providers should inherit directly from BaseWeatherProvider in the
+plugin system rather than using this class.
 """
-
-import abc
 import json
 import logging
-import os
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from abc import abstractmethod
+from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Type, TypeVar, Generic, ClassVar
+from typing import Dict, List, Optional, Any, Type, ClassVar, Union, Tuple
 
 import requests
 from PyQt6.QtCore import QObject, pyqtSignal, QSettings
 
+from script.plugin_system.weather_provider import (
+    BaseWeatherProvider,
+    WeatherDataPoint,
+    WeatherForecast,
+    WeatherCondition
+)
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
 
-@dataclass
-class WeatherData:
-    """Data class to hold weather information."""
-    temperature: float
-    condition: str
-    humidity: float
-    wind_speed: float
-    wind_direction: float
-    pressure: float
-    visibility: Optional[float] = None
-    sunrise: Optional[str] = None
-    sunset: Optional[str] = None
-    icon: Optional[str] = None
-    last_updated: Optional[str] = None
+class _BaseProviderMeta(type(QObject), type(BaseWeatherProvider)):
+    """Metaclass to combine QObject and BaseWeatherProvider metaclasses."""
+    def __new__(mcls, name, bases, namespace):
+        # Create the class with both metaclasses
+        return super().__new__(mcls, name, bases, namespace)
+
+
+class BaseProvider(BaseWeatherProvider, QObject, metaclass=_BaseProviderMeta):
+    """Legacy base class for weather providers with QObject compatibility.
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert weather data to dictionary."""
-        return asdict(self)
+    This class is provided for backward compatibility. New providers should
+    inherit directly from BaseWeatherProvider in the plugin system.
     
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'WeatherData':
-        """Create WeatherData from dictionary."""
-        return cls(**data)
-
-
-class _BaseProviderMeta(type(QObject), type(ABC)):
-    """Metaclass to combine QObject and ABC metaclasses."""
-    pass
-
-
-class BaseProvider(QObject, ABC, Generic[T], metaclass=_BaseProviderMeta):
-    """Base class for all weather providers.
-    
-    This class provides common functionality and interface for all weather providers.
+    This class extends BaseWeatherProvider with QObject functionality for signals
+    and slots, and provides common functionality for all weather providers.
     """
     
-    # Signal emitted when the API key changes
+    # Signals for UI updates
     api_key_changed = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+    connection_status_changed = pyqtSignal(bool)
     
-    # Default settings
+    # Class variables
     DEFAULT_CONFIG_DIR = Path.home() / '.weather_app'
     DEFAULT_CONFIG_FILE = DEFAULT_CONFIG_DIR / 'providers.json'
     
-    # Provider configuration
+    # Provider metadata (override in subclasses)
     name: ClassVar[str] = 'base'
-    display_name: ClassVar[str] = 'Base Provider'
-    requires_api_key: ClassVar[bool] = True
-    api_key_name: ClassVar[str] = 'api_key'
+    description: ClassVar[str] = 'Base weather provider'
+    author: ClassVar[str] = 'Nsfr750'
+    version: ClassVar[str] = '1.0.0'
     
-    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
+    # Settings schema for the plugin system
+    settings_schema: ClassVar[Dict[str, Any]] = {
+        'api_key': {
+            'type': 'string',
+            'title': 'API Key',
+            'description': 'API key for the weather provider',
+            'required': True,
+            'secret': True
+        },
+        'offline_mode': {
+            'type': 'boolean',
+            'title': 'Offline Mode',
+            'description': 'Enable offline mode (use cached data if available)',
+            'default': False
+        }
+    }
+    
+    def __init__(self, **kwargs):
         """Initialize the base provider.
         
         Args:
-            api_key: Optional API key for the provider
-            offline_mode: If True, the provider will work in offline mode
+            **kwargs: Provider-specific configuration options
         """
+        # Initialize QObject first
+        QObject.__init__(self)
+        
+        # Initialize BaseWeatherProvider with plugin metadata
         super().__init__()
-        self._api_key = api_key
-        self._offline_mode = offline_mode
+        
+        # Initialize instance variables
+        self._api_key = kwargs.get('api_key')
+        self._offline_mode = kwargs.get('offline_mode', False)
         self._settings = QSettings("WeatherApp", "WeatherProviders")
         
         # Load provider-specific settings
@@ -106,59 +118,75 @@ class BaseProvider(QObject, ABC, Generic[T], metaclass=_BaseProviderMeta):
     @offline_mode.setter
     def offline_mode(self, value: bool) -> None:
         """Set the offline mode status."""
-        self._offline_mode = value
+        if self._offline_mode != value:
+            self._offline_mode = value
+            self.save_settings()
     
+    async def initialize(self, app=None) -> bool:
+        """Initialize the provider.
+        
+        Args:
+            app: Reference to the main application instance
+            
+        Returns:
+            bool: True if initialization was successful, False otherwise
+        """
+        # Load settings from persistent storage
+        self.load_settings()
+        
+        # Validate API key if required
+        if self.settings_schema.get('api_key', {}).get('required', True):
+            if not self._api_key:
+                logger.warning("No API key provided for %s", self.name)
+                return False
+                
+        return True
+    
+    def cleanup(self) -> None:
+        """Clean up resources used by the provider."""
+        # Save settings before cleanup
+        self.save_settings()
+        
+    # Abstract methods from BaseWeatherProvider
     @abstractmethod
-    def get_current_weather(self, location: str) -> WeatherData:
+    async def get_current_weather(self, location: str, **kwargs) -> WeatherDataPoint:
         """Get current weather for a location.
         
         Args:
             location: Location to get weather for (city name, coordinates, etc.)
+            **kwargs: Additional parameters specific to the provider
             
         Returns:
-            WeatherData object with current weather information
+            WeatherDataPoint with current weather information
             
         Raises:
             Exception: If there's an error fetching the weather data
         """
-        pass
+        raise NotImplementedError
     
     @abstractmethod
-    def get_forecast(self, location: str, days: int = 5) -> List[WeatherData]:
+    async def get_forecast(self, location: str, days: int = 5, **kwargs) -> WeatherForecast:
         """Get weather forecast for a location.
         
         Args:
             location: Location to get forecast for
             days: Number of days to forecast (1-16, depends on provider)
+            **kwargs: Additional parameters specific to the provider
             
         Returns:
-            List of WeatherData objects for each forecast period
-        """
-        pass
-    
-    def validate_api_key(self) -> bool:
-        """Validate the current API key.
-        
-        Returns:
-            bool: True if the API key is valid, False otherwise
-        """
-        if not self.requires_api_key:
-            return True
+            WeatherForecast with forecast data
             
-        if not self._api_key:
-            logger.warning(f"No API key provided for {self.name}")
-            return False
-            
-        # Default implementation assumes the key is valid if it exists
-        # Override in subclasses for actual validation
-        return True
+        Raises:
+            Exception: If there's an error fetching the forecast data
+        """
+        raise NotImplementedError
     
+    # Helper methods
     def save_settings(self) -> None:
         """Save provider settings to persistent storage."""
         settings = {
             'api_key': self._api_key,
-            'offline_mode': self._offline_mode,
-            'provider_name': self.name
+            'offline_mode': self._offline_mode
         }
         
         # Save to QSettings
@@ -170,6 +198,35 @@ class BaseProvider(QObject, ABC, Generic[T], metaclass=_BaseProviderMeta):
         
         # Also save to JSON file for backup/portability
         self._save_to_json(settings)
+    
+    def _save_to_json(self, settings: Dict[str, Any]) -> None:
+        """Save settings to JSON file.
+        
+        Args:
+            settings: Dictionary of settings to save
+        """
+        try:
+            # Create config directory if it doesn't exist
+            self.DEFAULT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # Load existing settings
+            existing_settings = {}
+            if self.DEFAULT_CONFIG_FILE.exists():
+                with open(self.DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    try:
+                        existing_settings = json.load(f)
+                    except json.JSONDecodeError:
+                        logger.warning("Invalid JSON in config file, overwriting")
+            
+            # Update with new settings
+            existing_settings[self.name] = settings
+            
+            # Save to file
+            with open(self.DEFAULT_CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(existing_settings, f, indent=4)
+                
+        except Exception as e:
+            logger.error("Error saving settings to JSON: %s", e)
     
     def load_settings(self) -> None:
         """Load provider settings from persistent storage."""
@@ -184,96 +241,72 @@ class BaseProvider(QObject, ABC, Generic[T], metaclass=_BaseProviderMeta):
         
         # If no settings found, try loading from JSON
         if not self._api_key:
-            settings = self._load_from_json()
-            if settings:
-                self._api_key = settings.get('api_key')
-                self._offline_mode = settings.get('offline_mode', self._offline_mode)
+            self._load_from_json()
     
-    def _save_to_json(self, settings: Dict[str, Any]) -> None:
-        """Save settings to JSON file.
-        
-        Args:
-            settings: Dictionary of settings to save
-        """
-        try:
-            # Ensure config directory exists
-            self.DEFAULT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            
-            # Load existing settings
-            existing = {}
-            if self.DEFAULT_CONFIG_FILE.exists():
-                with open(self.DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
-                    try:
-                        existing = json.load(f)
-                    except json.JSONDecodeError:
-                        logger.warning("Invalid JSON in config file, will be overwritten")
-            
-            # Update with new settings
-            providers = existing.get('providers', {})
-            providers[self.name] = settings
-            existing['providers'] = providers
-            
-            # Save back to file
-            with open(self.DEFAULT_CONFIG_FILE, 'w', encoding='utf-8') as f:
-                json.dump(existing, f, indent=4)
-                
-        except Exception as e:
-            logger.error(f"Error saving settings to JSON: {e}")
-    
-    def _load_from_json(self) -> Dict[str, Any]:
-        """Load settings from JSON file.
-        
-        Returns:
-            Dictionary of settings for this provider, or empty dict if not found
-        """
+    def _load_from_json(self) -> None:
+        """Load settings from JSON file."""
         try:
             if not self.DEFAULT_CONFIG_FILE.exists():
-                return {}
+                return
                 
             with open(self.DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('providers', {}).get(self.name, {})
+                settings = json.load(f)
                 
+            if self.name in settings:
+                provider_settings = settings[self.name]
+                if not self._api_key and 'api_key' in provider_settings:
+                    self._api_key = provider_settings['api_key']
+                if 'offline_mode' in provider_settings:
+                    self._offline_mode = provider_settings['offline_mode']
+                    
         except Exception as e:
-            logger.error(f"Error loading settings from JSON: {e}")
-            return {}
+            logger.error("Error loading settings from JSON: %s", e)
     
-    def _make_request(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _make_request(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make an HTTP request to the provider's API.
         
         Args:
-            url: The URL to request
-            params: Query parameters to include in the request
+            url: API endpoint URL
+            params: Query parameters
             
         Returns:
-            The JSON response as a dictionary
+            Dictionary containing the JSON response
             
         Raises:
-            requests.exceptions.RequestException: If the request fails
+            Exception: If the request fails or returns an error
         """
         if self._offline_mode:
-            raise ConnectionError("Offline mode is enabled")
+            raise RuntimeError("Cannot make HTTP request in offline mode")
             
-        if not self._api_key and self.requires_api_key:
+        if not self._api_key and self.settings_schema.get('api_key', {}).get('required', True):
             raise ValueError(f"API key is required for {self.name}")
             
-        # Add API key to params if needed
-        if self.requires_api_key and self.api_key_name not in (params or {}):
-            params = params or {}
-            params[self.api_key_name] = self._api_key
+        # Add API key to params if required
+        request_params = params.copy() if params else {}
+        if self._api_key and 'key' not in request_params:
+            request_params['key'] = self._api_key
             
+        # Make the request asynchronously
+        import aiohttp
+        
         try:
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=request_params, timeout=10) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed: {e}")
-            raise
+            # Update connection status
+            self.connection_status_changed.emit(True)
+            return data
+            
+        except aiohttp.ClientError as e:
+            self.connection_status_changed.emit(False)
+            logger.error("API request failed: %s", str(e))
+            raise Exception(f"Failed to fetch data from {self.name}: {str(e)}") from e
     
     @classmethod
     def get_provider_class(cls, provider_name: str) -> Type['BaseProvider']:
-        """Get a provider class by name.
+        """Get the provider class by name.
         
         Args:
             provider_name: The name of the provider to get
@@ -285,14 +318,10 @@ class BaseProvider(QObject, ABC, Generic[T], metaclass=_BaseProviderMeta):
             ValueError: If the provider is not found
         """
         # Import all provider modules to register them
-        from script.weather_providers.openweathermap import OpenWeatherMapProvider
-        from script.weather_providers.weatherapi import WeatherAPIProvider
-        from script.weather_providers.accuweather import AccuWeatherProvider
+        from script.weather_providers.openmeteo import OpenMeteoProvider
         
         providers = {
-            'openweathermap': OpenWeatherMapProvider,
-            'weatherapi': WeatherAPIProvider,
-            'accuweather': AccuWeatherProvider,
+            'openmeteo': OpenMeteoProvider,
         }
         
         provider_class = providers.get(provider_name.lower())

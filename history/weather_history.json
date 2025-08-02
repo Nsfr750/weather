@@ -1,0 +1,20 @@
+{
+    "Locations":  [ 
+        {
+            "date": "2025-07-31",
+            "location": "London",
+            "temperature": "22",
+            "humidity": "80",
+            "wind_speed": "10",
+            "conditions": "Sunny"
+        },
+        {
+            "date": "2025-07-30",
+            "location": "Tokio",
+            "temperature": "27",
+            "humidity": "60",
+            "wind_speed": "8",
+            "conditions": "Sunny"
+        }
+    ]
+}

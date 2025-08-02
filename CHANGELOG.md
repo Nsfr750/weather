@@ -1,6 +1,29 @@
 # Changelog
 
-## [1.4.0] - Unreleased
+## [1.5.0] - 2025-08-02
+
+### Added
+
+- Multi-language support for error messages and UI elements
+- Enhanced logging system with file rotation
+
+### Changed
+
+- Improved error handling and recovery
+- Optimized API request batching
+- Enhanced weather data caching mechanism
+- Updated dependencies to their latest versions
+- Improved memory management
+
+### Fixed
+
+- Fixed timezone handling issues
+- Resolved race conditions in weather data updates
+- Fixed display issues in high-DPI environments
+- Addressed memory leaks in weather map rendering
+- Fixed translation loading for non-ASCII characters
+
+## [1.4.0] - 2025-07-30
 
 ### Added
 

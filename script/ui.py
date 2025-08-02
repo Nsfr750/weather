@@ -1,11 +1,18 @@
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLineEdit, QPushButton, QLabel, QComboBox, QFrame, QScrollArea,
-                             QStatusBar, QMenuBar, QMenu, QSizePolicy, QSpacerItem, QSizePolicy)
+                             QStatusBar, QMenuBar, QMenu, QSizePolicy, QSpacerItem, QSizePolicy,
+                             QDialog, QDialogButtonBox, QMessageBox)
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QIcon, QPixmap, QFont, QPalette, QColor, QAction
+from PyQt6.QtGui import QIcon, QPixmap, QFont, QPalette, QColor, QAction, QCloseEvent
 from pathlib import Path
 import logging
-from typing import Dict, Any, List, Optional, Callable
+import sys
+from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
+from script.version import get_version
+from script.menu import create_menu_bar
+
+if TYPE_CHECKING:
+    from .plugin_system.plugin_manager import PluginManager
 
 class WeatherAppUI(QMainWindow):
     # Signals for UI events
@@ -15,12 +22,13 @@ class WeatherAppUI(QMainWindow):
     favorite_toggled = pyqtSignal(str)  # Emitted when favorite is toggled
     favorite_selected = pyqtSignal(str)  # Emitted when a favorite is selected
 
-    def __init__(self, config_manager, translations_manager, weather_provider, notification_manager):
+    def __init__(self, config_manager, translations_manager, weather_provider, notification_manager, plugin_manager: 'PluginManager' = None):
         super().__init__()
         self.config_manager = config_manager
         self.translations_manager = translations_manager
         self.weather_provider = weather_provider
         self.notification_manager = notification_manager
+        self.plugin_manager = plugin_manager
         
         # Initialize UI
         self._setup_window()
@@ -29,8 +37,8 @@ class WeatherAppUI(QMainWindow):
     
     def _setup_window(self):
         """Set up the main window properties."""
-        self.setWindowTitle('Weather App')
-        self.setMinimumSize(600, 800)
+        self.setWindowTitle('Weather v. ' + get_version())
+        self.setMinimumSize(800, 800)
         
         # Set application icon
         try:
@@ -39,6 +47,16 @@ class WeatherAppUI(QMainWindow):
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:
             logging.warning(f'Could not set application icon: {e}')
+            
+        # Create menu bar
+        self._create_menu_bar()
+    
+    def _create_menu_bar(self):
+        """Create the application menu bar."""
+        # Create the menu bar using the menu module
+        # The menu bar is already created in the MenuBar class
+        # and set as the main window's menu bar there
+        pass
     
     def _init_ui(self):
         """Initialize the main UI components."""
@@ -123,7 +141,7 @@ class WeatherAppUI(QMainWindow):
                 background-color: #3498db;
                 color: white;
                 border: none;
-                border-radius: 3px;
+                border-radius: 3px 0 0 3px;
                 padding: 5px 15px;
                 font-weight: bold;
             }
@@ -135,6 +153,30 @@ class WeatherAppUI(QMainWindow):
             }
         ''')
         search_layout.addWidget(self.search_btn)
+        
+        # Refresh button
+        self.refresh_btn = QPushButton('🔄')
+        self.refresh_btn.setToolTip('Aggiorna')
+        self.refresh_btn.clicked.connect(self._on_refresh_clicked)
+        self.refresh_btn.setStyleSheet('''
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 0 3px 3px 0;
+                padding: 5px 10px;
+                font-size: 16px;
+                font-weight: bold;
+                min-width: 30px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:pressed {
+                background-color: #219653;
+            }
+        ''')
+        search_layout.addWidget(self.refresh_btn)
         
         # Settings frame
         settings_frame = QFrame()
@@ -301,6 +343,15 @@ class WeatherAppUI(QMainWindow):
         
         # Add the weather frame to the scroll layout
         self.scroll_layout.insertWidget(2, self.weather_frame)
+    
+    def _on_refresh_clicked(self):
+        """Handle refresh button click."""
+        current_city = self.search_input.text().strip()
+        if current_city:
+            self.search_clicked.emit(current_city)
+            self.set_status(f"Aggiornamento meteo per {current_city}...")
+        else:
+            self.set_status("Inserisci una città per aggiornare il meteo")
     
     def _on_search_clicked(self):
         """Handle search button click."""

@@ -61,7 +61,7 @@ class AboutDialog(QDialog):
             'Author': 'Nsfr750',
             'GitHub': 'https://github.com/Nsfr750/weather',
             'License': 'GNU General Public License v3.0',
-            'Copyright': f' 2023-{datetime.now().year} Nsfr750. All rights reserved.'
+            'Copyright': f'© 2023-{datetime.now().year} Nsfr750. All rights reserved.'
         }
     
     @classmethod
@@ -116,7 +116,7 @@ class AboutDialog(QDialog):
         
         # App icon
         icon_label = QLabel()
-        icon_label.setPixmap(QPixmap('assets/meteo.png').scaled(64, 64, 
+        icon_label.setPixmap(QPixmap('assets/meteo.png').scaled(96, 96, 
             Qt.AspectRatioMode.KeepAspectRatio, 
             Qt.TransformationMode.SmoothTransformation))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -227,12 +227,12 @@ class AboutDialog(QDialog):
             QLabel#titleLabel {
                 font-size: 18px;
                 font-weight: bold;
-                color: #2c3e50;
+                color: #3498db;
             }
             
             QLabel#versionLabel {
                 font-size: 12px;
-                color: #7f8c8d;
+                color: #ffa162;
             }
             
             QFrame#sysGroup {

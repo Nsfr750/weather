@@ -1,5 +1,24 @@
 # Project To-Do List
 
+## ✅ Completed (v1.5.0)
+
+- [x] Comprehensive test suite with pytest
+- [x] Multi-language support for error messages and UI elements
+- [x] Enhanced logging system with file rotation
+- [x] Improved error handling and recovery
+- [x] Optimized API request batching
+- [x] Enhanced weather data caching
+- [x] Fixed timezone handling issues
+- [x] Resolved race conditions in data updates
+- [x] Fixed high-DPI display issues
+- [x] Addressed memory leaks in map rendering
+- [x] Fixed translation loading for non-ASCII characters
+- [x] Implemented a plugin system for weather providers
+- [x] Implemented a notification system for weather alerts
+- [x] Added support for weather history data
+- [x] Added support for weather widgets
+- [x] Added support for async/await
+
 ## ✅ Completed (v1.4.0)
 
 - [x] Comprehensive documentation update
@@ -17,11 +36,6 @@
 - [x] Support for multiple weather providers
   - [x] OpenWeatherMap
   - [x] Open-Meteo
-  - [x] Weather.com
-  - [x] Breezy Weather
-  - [x] QuickWeather
-  - [x] Weather Company (IBM)
-  - [x] Alliander
   - [x] AccuWeather
 - [x] Support for imperial units (°F, mph)
 - [x] Error logging and log viewer
@@ -42,30 +56,37 @@
 
 - [ ] Implement unit tests for all weather providers
 - [ ] Add CI/CD pipeline for automated testing and deployment
-- [ ] Improve test coverage to 80%+
+- [ ] Improve test coverage to 90%+
 - [ ] Set up automated documentation deployment
+- [ ] Implement weather data export functionality
 
-## 📅 Upcoming (v1.4.0)
+## 📅 Upcoming (v1.6.0)
+
+- [ ] New weather visualization features
+  - [ ] Interactive weather maps
+  - [ ] Radar animations
+  - [ ] Weather condition timelines
+- [ ] Support for additional weather metrics
+  - [ ] Feels-like temperature
+  - [ ] Wind chill
+  - [ ] Heat index
+  - [ ] UV index
 
 ### High Priority
 - [ ] Add more weather data visualization (charts, graphs)
 - [ ] Implement weather map integration
 - [ ] Improve offline functionality
 - [ ] Add more customization options for the UI
-- [ ] Implement a plugin system for weather providers
+
 
 ### Medium Priority
-- [ ] Add support for weather history data
 - [ ] Improve accessibility features
 - [ ] Add support for more weather data points (UV index, air quality, etc.)
-- [ ] Implement a notification system for weather alerts
 - [ ] Add support for custom themes
 
 ### Low Priority
-- [ ] Add more language translations
 - [ ] Implement a RESTful API for the application
 - [ ] Add support for weather widgets
-- [ ] Create a plugin for popular IDEs
 - [ ] Add support for voice commands
 
 ## 🔮 Future Ideas
@@ -79,7 +100,6 @@
 ### Technical Improvements
 - [ ] Migrate to PySide6 for better licensing
 - [ ] Implement a more modular architecture
-- [ ] Add support for async/await
 - [ ] Improve performance with caching
 - [ ] Add support for more platforms
 

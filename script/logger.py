@@ -20,9 +20,9 @@ def setup_logging():
     log_dir = Path('logs')
     log_dir.mkdir(exist_ok=True, parents=True)
     
-    # Create log file with timestamp
-    log_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = log_dir / f'weather_app_{log_timestamp}.log'
+    # Create log file with date only (one file per day)
+    log_date = datetime.now().strftime('%Y%m%d')
+    log_file = log_dir / f'weather_{log_date}.log'
     
     # Configure logging
     logging.basicConfig(

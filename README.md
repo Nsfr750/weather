@@ -1,6 +1,6 @@
 # 🌦️ Weather App
 
-A modern, feature-rich Python weather application with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, and alerts for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
+A modern, feature-rich Python weather application (v1.5.0) with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, and alerts for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -8,6 +8,25 @@ A modern, feature-rich Python weather application with a beautiful, responsive G
 [![Discord](https://img.shields.io/discord/1234567890123456789?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/ryqNeuRYjD)
 
 ![Weather App Screenshot](assets/screenshot.png)
+
+## 🚀 What's New in v1.5.0
+
+- **Enhanced Visualizations**
+  - Interactive weather maps with radar animations
+  - Weather condition timelines for better forecasting
+  - Support for additional weather metrics (feels-like, wind chill, heat index, UV index)
+
+- **Improved Reliability**
+  - Comprehensive test suite with pytest
+  - Optimized API request batching
+  - Enhanced error handling and recovery
+  - Fixed timezone handling and race conditions
+
+- **Better User Experience**
+  - Multi-language support for all UI elements
+  - Improved high-DPI display support
+  - Enhanced logging with file rotation
+  - Memory optimizations for better performance
 
 ## ✨ Features
 

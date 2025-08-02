@@ -74,6 +74,15 @@ class ExampleWeatherProvider(BaseWeatherProvider):
         self.offline_mode = config.get('offline_mode', False)
         self._weather_cache: Dict[str, WeatherForecast] = {}
     
+    @classmethod
+    def __call__(cls, **kwargs):
+        """Support legacy provider instantiation.
+        
+        This allows the provider to be instantiated using the legacy syntax:
+            provider = ExampleWeatherProvider(units='metric', language='en')
+        """
+        return cls(config=kwargs)
+    
     async def initialize(self, app=None) -> bool:
         """Initialize the provider.
         

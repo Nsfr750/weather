@@ -370,10 +370,10 @@ class PluginManager:
             Dict mapping plugin names to plugin instances
         """
         if base_class is None:
-            return self.instances.copy()
+            return self.plugin_instances.copy()
                 
         return {
-            name: instance for name, instance in self.instances.items()
+            name: instance for name, instance in self.plugin_instances.items()
             if isinstance(instance, base_class)
         }
             
@@ -388,4 +388,4 @@ class PluginManager:
         Returns:
             bool: True if the plugin is loaded, False otherwise
         """
-        return plugin_name in self.instances
+        return plugin_name in self.plugin_instances

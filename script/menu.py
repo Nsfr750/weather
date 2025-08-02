@@ -190,30 +190,7 @@ class MenuBar(QMenuBar):
             if action.data() == current_unit:
                 action.setChecked(True)
                 break
-        
-        # Provider selection
-        provider_menu = settings_menu.addMenu(self._tr('Weather Provider'))
-        provider_menu.setObjectName("providerMenu")  # Add this line
-        self.provider_group = QActionGroup(self)
-        
-        # Add available providers
-        providers = [
-            "AccuWeather",
-            "OpenMeteo",
-            "OpenWeatherMap",
-        ]
-        current_provider = self.settings.value("weather_provider", "OpenWeatherMap", str)
-        
-        for provider in providers:
-            action = QAction(provider, self, checkable=True)
-            action.setChecked(provider == current_provider)
-            action.triggered.connect(
-                lambda checked, p=provider: self._on_provider_changed(p)
-            )
-            self.provider_group.addAction(action)
-            provider_menu.addAction(action)
-            action.setData(provider)
-        
+                
         # Separator
         settings_menu.addSeparator()
         
@@ -235,30 +212,6 @@ class MenuBar(QMenuBar):
     def _create_view_menu(self) -> None:
         """Create the View menu with display options."""
         view_menu = self.addMenu(self._tr('≔ &View'))
-        
-        # Theme submenu
-        theme_menu = view_menu.addMenu(self._tr("&Theme"))
-        
-        # Get current theme from settings or use default
-        current_theme = self.settings.value("theme", "system", str)
-        
-        # Theme actions
-        theme_actions = [
-            ("System", "system"),
-            ("Light", "light"),
-            ("Dark", "dark"),
-            ("High Contrast", "high_contrast")
-        ]
-        
-        for text, data in theme_actions:
-            action = QAction(self._tr(text), self, checkable=True)
-            action.setData(data)
-            action.setChecked(data == current_theme)
-            action.triggered.connect(lambda checked, t=data: self._on_theme_changed(t))
-            self.theme_group.addAction(action)
-            theme_menu.addAction(action)
-        
-        view_menu.addSeparator()
         
         # Layout submenu
         layout_menu = view_menu.addMenu(self._tr("&Layout"))
@@ -333,7 +286,7 @@ class MenuBar(QMenuBar):
             (self._tr('&Help'), 'F1', self._show_help_dialog),
             (self._tr('&Documentation'), 'F2', self._show_documentation),
             (self._tr('View &Logs'), 'F3', self._show_log_viewer),
-            (self._tr('&Sponsor'), 'F4', self._show_sponsor_dialog),
+            (self._tr('&Sponsor'), None, self._show_sponsor_dialog),
             (self._tr('Check for &Updates'), None, self._check_for_updates)
         ]
         
@@ -919,15 +872,17 @@ class MenuBar(QMenuBar):
         config_action = QAction(
             self._tr('&Configure Plugins...'),
             self,
+            shortcut='F6',
             statusTip=self._tr('Configure installed plugins'),
             triggered=self._show_plugin_config_dialog
-        )
+        )       
         plugins_menu.addAction(config_action)
-        
+
         # Feature configuration action
         feature_config_action = QAction(
             self._tr('Configure &Features...'),
             self,
+            shortcut='F7',
             statusTip=self._tr('Configure feature plugins'),
             triggered=self._show_feature_config_dialog
         )

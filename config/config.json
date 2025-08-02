@@ -2,7 +2,7 @@
   "units": "metric",
   "language": "IT",
   "theme": "dark",
-  "provider": "openweathermap",
+  "provider": "open-meteo",
   "providers": {
     "openweathermap": {
       "api_key": "",
@@ -12,25 +12,11 @@
     "open-meteo": {
       "api_key": ""
     },
-    "weather.com": {
-      "api_key": ""
-    },
-    "breezy-weather": {
-      "api_key": ""
-    },
-    "quickweather": {
-      "api_key": ""
-    },
-    "weathercompany": {
-      "api_key": "",
-      "username": "",
-      "password": ""
-    },
-    "alliander": {
-      "api_key": ""
+    "accuweather": {
+      "apy_key": ""
     }
   },
   "last_city": "Bolzano Novarese",
-  "weather_provider": "openmeteo",
-  "layout": "standard"
+  "weather_provider": "open-meteo",
+   "layout": "standard"
 }

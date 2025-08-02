@@ -1,5 +1,6 @@
 import sys
 import os
+import asyncio
 import requests
 import json
 import webbrowser
@@ -193,97 +194,55 @@ class WeatherApp(QMainWindow):
         logger.info(f"Initializing weather provider: {self.weather_provider_name}")
         
         # First try to use the plugin system
-        weather_plugins = self.plugin_manager.get_plugins_by_type(BaseWeatherProvider)
-        
-        # Handle both list and dictionary return types from get_plugins_by_type
-        if isinstance(weather_plugins, list):
-            weather_plugins_dict = {plugin.__name__: plugin for plugin in weather_plugins}
-            logger.info(f"Found {len(weather_plugins_dict)} weather provider plugins: {list(weather_plugins_dict.keys())}")
-        else:  # It's a dictionary
-            weather_plugins_dict = weather_plugins
-            logger.info(f"Found {len(weather_plugins_dict)} weather provider plugins: {list(weather_plugins_dict.keys())}")
-        
-        # Debug: List all available plugin classes
-        all_plugin_classes = self.plugin_manager.plugins
-        if hasattr(all_plugin_classes, 'keys'):
-            logger.debug(f"All available plugin classes: {list(all_plugin_classes.keys())}")
-        else:
-            logger.debug(f"All available plugin classes: {all_plugin_classes}")
-        
-        # Try to initialize the requested provider from plugins
-        for name, plugin_class in weather_plugins_dict.items():
-            logger.debug(f"Checking plugin: {name} (class: {plugin_class.__name__})")
-            if name.lower() == self.weather_provider_name.lower():
-                try:
-                    logger.info(f"Initializing plugin: {name}")
-                    plugin_instance = plugin_class()
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    initialized = loop.run_until_complete(plugin_instance.initialize())
-                    loop.close()
-                    if initialized:
-                        logger.info(f"Successfully initialized plugin: {name}")
-                        self.weather_provider = plugin_instance
-                        return
-                    else:
-                        logger.error(f"Plugin {name} failed to initialize")
-                except Exception as e:
-                    logger.error(f"Error initializing plugin {name}: {e}", exc_info=True)
-        
-        # Fall back to legacy providers if plugin not found or failed to initialize
-        logger.warning(f"Weather provider plugin '{self.weather_provider_name}' not found or failed to initialize, falling back to legacy system")
-        
-        try:
-            logger.info(f"Trying to initialize legacy provider: {self.weather_provider_name}")
-            available_providers = get_available_providers()
-            logger.info(f"Available legacy providers: {available_providers}")
+        if hasattr(self, 'plugin_manager'):
+            logger.info(f"Found {len(self.plugin_manager.plugins)} plugins")
             
-            # Try to initialize the requested legacy provider
-            try:
-                legacy_provider = get_provider(
-                    self.weather_provider_name,
-                    units=self.units,
-                    language=self.language
-                )
-                # Wrap legacy provider in compatibility layer
-                self.weather_provider = LegacyWeatherProvider(legacy_provider)
-                logger.info(f"Successfully initialized legacy provider: {self.weather_provider_name}")
-                return
-            except Exception as e:
-                logger.error(f"Failed to initialize requested legacy provider {self.weather_provider_name}: {e}")
+            # Get all weather provider plugins
+            weather_plugin_classes = self.plugin_manager.get_plugins_by_type(BaseWeatherProvider)
+            logger.info(f"Found {len(weather_plugin_classes)} weather provider plugins: {list(weather_plugin_classes.keys())}")
             
-            # If we still don't have a provider, try any available one
-            logger.info(f"Trying fallback providers: {available_providers}")
-            
-            for provider_name in available_providers:
-                if provider_name.lower() != self.weather_provider_name.lower():  # Don't try the same one again
+            # Try to find and initialize the requested provider
+            for name, plugin_class in weather_plugin_classes.items():
+                if name.lower() == self.weather_provider_name.lower():
                     try:
-                        logger.info(f"Trying fallback provider: {provider_name}")
-                        legacy_provider = get_provider(
-                            provider_name,
-                            units=self.units,
-                            language=self.language
-                        )
-                        # Wrap legacy provider in compatibility layer
-                        self.weather_provider = LegacyWeatherProvider(legacy_provider)
-                        logger.warning(f"Fell back to provider: {provider_name}")
-                        return
+                        logger.info(f"Initializing plugin: {name}")
+                        # Create a config dictionary with required parameters
+                        config = {
+                            'units': self.units,
+                            'language': self.language,
+                            'api_key': None,  # OpenMeteo doesn't require an API key
+                            'offline_mode': not self.online  # Use the online status we detected
+                        }
+                        
+                        # Create plugin instance with config
+                        plugin_instance = plugin_class(config=config)
+                        
+                        # Initialize the plugin asynchronously
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        initialized = loop.run_until_complete(plugin_instance.initialize())
+                        loop.close()
+                        
+                        if initialized:
+                            self.weather_provider = plugin_instance
+                            logger.info(f"Successfully initialized plugin: {name}")
+                            return
+                        else:
+                            logger.error(f"Plugin {name} failed to initialize")
                     except Exception as e:
-                        logger.error(f"Failed to initialize fallback provider {provider_name}: {e}")
-            
-            # If we get here, no providers worked
-            error_msg = "Failed to initialize any weather provider. No working providers found."
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+                        logger.error(f"Error initializing plugin {name}: {e}", exc_info=True)
         
-        except Exception as e:
-            error_msg = f"Failed to initialize any weather provider: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise RuntimeError(error_msg) from e
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize weather provider: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to initialize weather provider: {e}") from e
+        # If we get here, no providers worked
+        error_msg = "Failed to initialize any weather provider. No working providers found."
+        logger.error(error_msg)
+        
+        # Try to provide more detailed error information
+        if not hasattr(self, 'plugin_manager'):
+            error_msg += " Plugin manager not available."
+        elif not weather_plugins:
+            error_msg += " No weather provider plugins found."
+        
+        raise RuntimeError(error_msg)
     
     def setup_connections(self):
         """Set up signal connections."""
@@ -422,23 +381,65 @@ class WeatherApp(QMainWindow):
                 return None, error_msg
         
         def fetch_weather():
+            loop = None
             try:
                 # Create a new event loop for this thread
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 
+                # Initialize the weather provider's session in this thread
+                if hasattr(self.weather_provider, 'initialize'):
+                    loop.run_until_complete(self.weather_provider.initialize())
+                
                 # Run the async function and get the result
-                future = asyncio.ensure_future(fetch_weather_async())
-                return loop.run_until_complete(future)
+                future = asyncio.ensure_future(fetch_weather_async(), loop=loop)
+                result = loop.run_until_complete(asyncio.shield(future))
+                return result
+                
+            except asyncio.CancelledError:
+                logger.warning("Weather fetch was cancelled")
+                return None, "Weather fetch was cancelled"
+                
             except Exception as e:
                 error_msg = f"Error in weather fetch thread: {str(e)}"
                 logger.error(error_msg, exc_info=True)
                 return None, error_msg
+                
             finally:
-                # Properly close the loop
-                if loop.is_running():
-                    loop.stop()
-                loop.close()
+                # Clean up the weather provider's session
+                if hasattr(self.weather_provider, 'cleanup'):
+                    try:
+                        loop.run_until_complete(self.weather_provider.cleanup())
+                    except Exception as e:
+                        logger.error(f"Error during provider cleanup: {e}", exc_info=True)
+                
+                # Clean up the event loop
+                if loop is not None:
+                    try:
+                        # Cancel all pending tasks
+                        pending = asyncio.all_tasks(loop)
+                        for task in pending:
+                            task.cancel()
+                            try:
+                                loop.run_until_complete(task)
+                            except (asyncio.CancelledError, Exception):
+                                pass
+                        
+                        # Run one more time to process any pending callbacks
+                        loop.run_until_complete(asyncio.sleep(0))
+                        
+                        # Stop the loop if it's still running
+                        if loop.is_running():
+                            loop.stop()
+                        
+                        # Close the loop
+                        loop.close()
+                        
+                    except Exception as e:
+                        logger.error(f"Error cleaning up event loop: {e}", exc_info=True)
+                    
+                    # Set the event loop to None
+                    asyncio.set_event_loop(None)
         
         def update_ui(result):
             weather_data, error = result

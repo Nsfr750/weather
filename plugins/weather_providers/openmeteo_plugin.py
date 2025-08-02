@@ -14,7 +14,7 @@ if str(project_root) not in sys.path:
 
 import asyncio
 import aiohttp
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from script.plugin_system.weather_provider import Dict, Any, List, Optional, Tuple
 import logging
 import os
@@ -144,6 +144,15 @@ class OpenMeteoProvider(BaseWeatherProvider):
         self.version = "2.0.0"
         self.requires_api_key = False  # Open-Meteo doesn't require an API key for basic usage
     
+    @classmethod
+    def __call__(cls, **kwargs):
+        """Support legacy provider instantiation.
+        
+        This allows the provider to be instantiated using the legacy syntax:
+            provider = OpenMeteoProvider(units='metric', language='en')
+        """
+        return cls(config=kwargs)
+    
     async def initialize(self, app=None) -> bool:
         """Initialize the provider.
         
@@ -162,11 +171,33 @@ class OpenMeteoProvider(BaseWeatherProvider):
             logger.error(f"Failed to initialize OpenMeteoProvider: {e}")
             return False
     
-    async def cleanup(self) -> None:
+    def cleanup(self) -> None:
         """Clean up resources."""
-        if self.session and not self.session.closed:
-            await self.session.close()
-        await super().cleanup()
+        if not hasattr(self, 'session') or self.session is None:
+            return
+            
+        if not self.session.closed:
+            try:
+                # Run the async close in the event loop
+                loop = None
+                if self.session._loop and self.session._loop.is_running():
+                    # If there's a running loop, schedule the close
+                    self.session._loop.create_task(self.session.close())
+                else:
+                    # Otherwise, run it in a new event loop
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(self.session.close())
+                    finally:
+                        if loop.is_running():
+                            loop.stop()
+                        loop.close()
+                        asyncio.set_event_loop(None)
+            except Exception as e:
+                logger.error(f"Error during session cleanup: {e}", exc_info=True)
+            finally:
+                self.session = None
     
     async def _geocode_location(self, location: str) -> Tuple[float, float]:
         """Convert location name to coordinates using Open-Meteo's geocoding."""
@@ -385,7 +416,7 @@ class OpenMeteoProvider(BaseWeatherProvider):
                 if 'time' in data.get('daily', {}):
                     for i in range(min(7, len(data['daily']['time']))):
                         day_str = data['daily']['time'][i]
-                        day_dt = datetime.strptime(day_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                        day_dt = datetime.strptime(day_str, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc)
                         
                         forecast.daily.append(WeatherDataPoint(
                             timestamp=day_dt,

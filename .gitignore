@@ -84,3 +84,4 @@ tests/*.py
 !tests/__init__.py
 !tests/conftest.py
 !tests/test_*.py
+/tests

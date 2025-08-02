@@ -1,12 +1,86 @@
-Setup.txt
-__pycache__
-/venv
-*.spec
-setup.py 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
 dist/
-pyproject.toml
-weather_app.egg-info/
-weather_app.egg-info/*
-tests/*
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+coverage/
+
+# Translations
+*.mo
+*.pot
+
+# Project specific
+*.spec
+Setup.txt
 installer.nsi
-/weather_app.egg-info
+*.json
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build and release files
+build/
+dist/
+*.egg-info/
+*.egg
+setup.py 
+*.toml
+pyproject.*
+
+# Local development settings
+local_settings.py
+db.sqlite3
+
+# Logs
+*.log
+
+# Project specific test files
+tests/*.py
+!tests/__init__.py
+!tests/conftest.py
+!tests/test_*.py

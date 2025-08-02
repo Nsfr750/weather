@@ -70,18 +70,11 @@ Welcome to the Weather App development guide. This document provides information
 weather/
 ├── script/               # Main application code
 │   ├── api/             # API endpoints
-│   ├── core/            # Core functionality
-│   ├── models/          # Database models
-│   ├── providers/       # Weather provider implementations
-│   ├── static/          # Static files (CSS, JS, images)
-│   ├── templates/       # HTML templates
 │   ├── tests/           # Test files
 │   ├── utils/           # Utility functions
 │   ├── __init__.py
 │   ├── config.py        # Configuration settings
-│   ├── extensions.py    # Flask extensions
 │   └── main.py          # Application entry point
-├── migrations/          # Database migrations
 ├── tests/               # Integration and end-to-end tests
 ├── .env.example         # Example environment variables
 ├── .gitignore

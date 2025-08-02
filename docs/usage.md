@@ -119,13 +119,6 @@ weather-app --config ~/.config/weather/config.ini
 - **Pin** the window to stay on top of other applications
 - Use **system tray** icon for quick access
 
-## Mobile Experience
-
-- **Swipe left/right** to switch between locations
-- **Pull down** to refresh
-- **Pinch to zoom** on the map
-- **Tap and hold** for context menus
-
 ## Troubleshooting
 
 If you encounter any issues:

@@ -64,6 +64,9 @@ class WeatherApp(QMainWindow):
         self.language = self.config_manager.get('language', 'en')
         self.api_key = self.config_manager.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
         
+        # Initialize online status
+        self.online = True  # Default to online, will be updated by check_connection()
+        
         # Set offline mode if no internet
         self.check_connection()
         
@@ -176,8 +179,10 @@ class WeatherApp(QMainWindow):
         try:
             requests.head('http://www.google.com', timeout=5)
             set_offline_mode(False)
+            self.online = True
         except requests.RequestException:
             set_offline_mode(True)
+            self.online = False
             QMessageBox.warning(
                 self,
                 'Offline Mode',
@@ -793,7 +798,7 @@ class WeatherApp(QMainWindow):
             except Exception as e:
                 logging.error(f"Error checking for updates: {e}")
                 return False, None, ("Error", str(e))
-        
+    
         def update_ui(result):
             update_available, update_info, error_info = result
             

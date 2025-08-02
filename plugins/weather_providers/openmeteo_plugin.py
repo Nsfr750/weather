@@ -15,7 +15,10 @@ if str(project_root) not in sys.path:
 import asyncio
 import aiohttp
 from datetime import datetime, timedelta, timezone
-from script.plugin_system.weather_provider import Dict, Any, List, Optional, Tuple
+import pytz
+import os
+import re
+from typing import Dict, List, Optional, Tuple, Union, Any
 import logging
 import os
 
@@ -171,33 +174,41 @@ class OpenMeteoProvider(BaseWeatherProvider):
             logger.error(f"Failed to initialize OpenMeteoProvider: {e}")
             return False
     
-    def cleanup(self) -> None:
-        """Clean up resources."""
-        if not hasattr(self, 'session') or self.session is None:
-            return
+    def cleanup(self):
+        """Clean up resources asynchronously.
+        
+        Returns:
+            asyncio.Future: A future that completes when cleanup is done
+        """
+        if not hasattr(self, 'session') or self.session is None or self.session.closed:
+            return asyncio.Future()
             
-        if not self.session.closed:
-            try:
-                # Run the async close in the event loop
-                loop = None
-                if self.session._loop and self.session._loop.is_running():
-                    # If there's a running loop, schedule the close
-                    self.session._loop.create_task(self.session.close())
-                else:
-                    # Otherwise, run it in a new event loop
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        loop.run_until_complete(self.session.close())
-                    finally:
-                        if loop.is_running():
-                            loop.stop()
-                        loop.close()
-                        asyncio.set_event_loop(None)
-            except Exception as e:
-                logger.error(f"Error during session cleanup: {e}", exc_info=True)
-            finally:
-                self.session = None
+        try:
+            # Create a new event loop for cleanup if needed
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If there's a running loop, schedule the close and return the task
+                task = asyncio.create_task(self._close_session())
+                return task
+            else:
+                # Otherwise, run it in a new event loop
+                return asyncio.ensure_future(self._close_session())
+        except Exception as e:
+            logger.warning(f"Error during session cleanup: {e}")
+            future = asyncio.Future()
+            future.set_result(None)
+            return future
+            
+    async def _close_session(self):
+        """Helper method to close the aiohttp session."""
+        try:
+            if hasattr(self, 'session') and self.session and not self.session.closed:
+                await self.session.close()
+                logger.debug("Successfully closed OpenMeteo session")
+        except Exception as e:
+            logger.warning(f"Error closing session: {e}")
+        finally:
+            self.session = None
     
     async def _geocode_location(self, location: str) -> Tuple[float, float]:
         """Convert location name to coordinates using Open-Meteo's geocoding."""
@@ -393,7 +404,12 @@ class OpenMeteoProvider(BaseWeatherProvider):
                 if 'time' in data.get('hourly', {}):
                     for i in range(min(48, len(data['hourly']['time']))):
                         time_str = data['hourly']['time'][i]
-                        hour_dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+                        try:
+                            # Try parsing with timezone first
+                            hour_dt = datetime.fromisoformat(time_str)
+                        except ValueError:
+                            # Fallback to UTC if timezone not specified
+                            hour_dt = datetime.strptime(time_str, '%Y-%m-%dT%H:%M').replace(tzinfo=pytz.UTC)
                         is_day_hour = data['hourly'].get('is_day', [1] * len(data['hourly']['time']))[i]
                         
                         forecast.hourly.append(WeatherDataPoint(
@@ -416,7 +432,14 @@ class OpenMeteoProvider(BaseWeatherProvider):
                 if 'time' in data.get('daily', {}):
                     for i in range(min(7, len(data['daily']['time']))):
                         day_str = data['daily']['time'][i]
-                        day_dt = datetime.strptime(day_str, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc)
+                        try:
+                            # Try parsing with timezone if present
+                            day_dt = datetime.fromisoformat(day_str)
+                            if day_dt.tzinfo is None:
+                                day_dt = day_dt.replace(tzinfo=pytz.UTC)
+                        except ValueError:
+                            # Fallback to basic date parsing with UTC timezone
+                            day_dt = datetime.strptime(day_str, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
                         
                         forecast.daily.append(WeatherDataPoint(
                             timestamp=day_dt,
@@ -495,26 +518,23 @@ class OpenMeteoProvider(BaseWeatherProvider):
                         date = datetime.fromisoformat(daily_data['time'][i])
                         
                         # Create a WeatherDataPoint for each day
+                        # For daily forecasts, we'll use the max temperature as the main temperature
                         forecast = WeatherDataPoint(
                             timestamp=date,
                             temperature=daily_data.get('temperature_2m_max', [0.0])[i],
                             feels_like=daily_data.get('apparent_temperature_max', [0.0])[i],
-                            temperature_min=daily_data.get('temperature_2m_min', [0.0])[i],
-                            feels_like_min=daily_data.get('apparent_temperature_min', [0.0])[i],
+                            humidity=None,  # Not available in daily forecast
+                            pressure=None,  # Not available in daily forecast
+                            wind_speed=daily_data.get('wind_speed_10m_max', [0.0])[i],
+                            wind_direction=daily_data.get('wind_direction_10m_dominant', [0])[i],
                             condition=self._map_weather_code(daily_data.get('weather_code', [0])[i]),
                             description=self._get_weather_description(daily_data.get('weather_code', [0])[i]),
                             icon=self._get_weather_icon(daily_data.get('weather_code', [0])[i], is_day=True),
-                            wind_speed=daily_data.get('wind_speed_10m_max', [0.0])[i],
-                            wind_direction=daily_data.get('wind_direction_10m_dominant', [0])[i],
-                            wind_gust=daily_data.get('wind_gusts_10m_max', [0.0])[i],
                             precipitation=daily_data.get('precipitation_sum', [0.0])[i],
-                            precipitation_hours=daily_data.get('precipitation_hours', [0.0])[i],
-                            sunrise=datetime.fromisoformat(daily_data['sunrise'][i]) if i < len(daily_data.get('sunrise', [])) else None,
-                            sunset=datetime.fromisoformat(daily_data['sunset'][i]) if i < len(daily_data.get('sunset', [])) else None,
-                            humidity=None,  # Not available in daily forecast
-                            pressure=None,  # Not available in daily forecast
+                            visibility=None,  # Not available in daily forecast
                             uv_index=None,  # Not available in daily forecast
-                            dew_point=None  # Not available in daily forecast
+                            dew_point=None,  # Not available in daily forecast
+                            wind_gust=daily_data.get('wind_gusts_10m_max', [0.0])[i] if 'wind_gusts_10m_max' in daily_data else None
                         )
                         daily_forecasts.append(forecast)
                     except (IndexError, KeyError, ValueError) as e:

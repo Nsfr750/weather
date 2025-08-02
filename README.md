@@ -11,13 +11,7 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
 
 ## 🚀 What's New in v1.5.0
 
-- **Enhanced Visualizations**
-  - Interactive weather maps with radar animations
-  - Weather condition timelines for better forecasting
-  - Support for additional weather metrics (feels-like, wind chill, heat index, UV index)
-
 - **Improved Reliability**
-  - Comprehensive test suite with pytest
   - Optimized API request batching
   - Enhanced error handling and recovery
   - Fixed timezone handling and race conditions
@@ -31,13 +25,8 @@ A modern, feature-rich Python weather application (v1.5.0) with a beautiful, res
 ## ✨ Features
 
 - **Multiple Weather Providers**: Choose from 8 different weather data sources
-  - OpenWeatherMap (default)
-  - Open-Meteo
-  - Weather.com
-  - Breezy Weather
-  - QuickWeather
-  - Weather Company (IBM)
-  - Alliander
+  - OpenWeatherMap
+  - Open-Meteo (default)
   - Accuweather
   
 - **Comprehensive Weather Data**

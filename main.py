@@ -171,10 +171,16 @@ class WeatherApp(QMainWindow):
         """Set up signal connections."""
         # Connect UI signals to slots
         self.ui.search_clicked.connect(self.on_search)
-        self.ui.language_changed.connect(self.on_language_changed)
-        self.ui.units_changed.connect(self.on_units_changed)
         self.ui.favorite_toggled.connect(self.on_toggle_favorite)
         self.ui.favorite_selected.connect(self.on_favorite_selected)
+        self.ui.units_changed.connect(self.on_units_changed)
+        
+    def on_language_changed(self, language: str):
+        """Handle language change."""
+        self.language = language
+        self.translations_manager.set_language(language)
+        self.config_manager.set('language', language)
+        self.refresh_weather()  # Refresh to update all text in the new language
     
     def update_weather_provider(self, provider_name: str):
         """Update the weather provider dynamically.
@@ -960,7 +966,6 @@ class WeatherApp(QMainWindow):
                     QFrame#forecastFrame {
                         background-color: rgba(44, 62, 80, 0.7);
                         border-radius: 10px;
-                        padding: 15px;
                         padding: 20px;
                         margin: 10px 0;
                     }
@@ -968,30 +973,15 @@ class WeatherApp(QMainWindow):
                         color: white;
                     }
                     .temp {
-                    font-size: 36px;
-                    font-weight: bold;
-                }
-                .desc {
-                    font-size: 16px;
-                    margin: 8px 0;
-                    opacity: 0.9;
-                }
-            ''')
-            
-            layout = QVBoxLayout(current_widget)
-            
-            # City name and date
-            city = getattr(weather_data, 'city', self.city) if hasattr(weather_data, 'city') else self.city
-            timestamp = getattr(weather_data, 'timestamp', None)
-            date_str = timestamp.strftime('%A, %B %d, %Y') if hasattr(timestamp, 'strftime') else datetime.now().strftime('%A, %B %d, %Y')
-            
-            city_label = QLabel(f"{city.title()}")
-            city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
-            city_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            city_label.setWordWrap(True)
-            layout.addWidget(city_label)
-            
-            date_label = QLabel(date_str)
+                        font-size: 36px;
+                        font-weight: bold;
+                    }
+                    .desc {
+                        font-size: 16px;
+                        margin: 8px 0;
+                        opacity: 0.9;
+                    }
+                ''')
             date_label.setStyleSheet('font-size: 14px; opacity: 0.8; margin-bottom: 10px;')
             date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(date_label)
@@ -1279,13 +1269,13 @@ class WeatherApp(QMainWindow):
         self._run_in_background(load_icon, update_ui)
         
         # Update window title
-        self.setWindowTitle(self.translations_manager.t('app_title', language) or 'Weather App')
+        self.setWindowTitle(self.translations_manager.t('app_title', self.language) or 'Weather App')
         
         # Update menu bar
         if hasattr(self, 'menu_bar'):
             self.menu_bar.set_languages(
                 self.translations_manager.translations.get('languages', {}), 
-                language
+                self.language
             )
     
     def on_units_changed(self, units: str):
@@ -1447,189 +1437,191 @@ class WeatherApp(QMainWindow):
             app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
             app.setPalette(app.style().standardPalette())
 
-def _create_detail_widget(self, icon: str, text: str) -> QWidget:
-    """Create a widget for displaying a weather detail."""
-    widget = QWidget()
-    layout = QVBoxLayout(widget)
-    layout.setContentsMargins(0, 0, 0, 0)
-    
-    icon_label = QLabel(icon)
-    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    
-    text_label = QLabel(text)
-    text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    
-    layout.addWidget(icon_label)
-    layout.addWidget(text_label)
-    
-    return widget
-
-def on_language_changed(self, language: str):
-    """Handle language change."""
-    self.language = language
-    self.config_manager.set('language', language)
-    self.translations_manager.set_default_lang(language)
-    self.weather_provider.language = language
-    self.refresh_weather()
-
-def on_units_changed(self, units: str):
-    """Handle units change."""
-    self.units = units
-    self.config_manager.set('units', units)
-    self.weather_provider.units = units
-    self.refresh_weather()
-
-def on_toggle_favorite(self, city: str):
-    """Toggle a city as favorite."""
-    if not city:
-        return
+    def _create_detail_widget(self, icon: str, text: str) -> QWidget:
+        """Create a widget for displaying a weather detail."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
         
-    if self.favorites_manager.is_favorite(city):
-        self.favorites_manager.remove_favorite(city)
-        self.ui.update_favorite_button(False)
-    else:
-        self.favorites_manager.add_favorite(city)
-        self.ui.update_favorite_button(True)
+        icon_label = QLabel(icon)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-    self.update_favorites_menu()
-
-def on_favorite_selected(self, city: str):
-    """Handle selection of a favorite city."""
-    if city:
-        self.city = city
-        self.ui.set_city(city)
+        text_label = QLabel(text)
+        text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(icon_label)
+        layout.addWidget(text_label)
+        
+        return widget
+        
+    def on_language_changed(self, language: str):
+        """Handle language change."""
+        self.language = language
+        self.config_manager.set('language', language)
+        self.translations_manager.set_default_lang(language)
+        if hasattr(self, 'weather_provider') and hasattr(self.weather_provider, 'language'):
+            self.weather_provider.language = language
         self.refresh_weather()
 
-def update_favorites_menu(self):
-    """Update the favorites dropdown in the UI."""
-    favorites = self.favorites_manager.get_favorites()
-    self.ui.update_favorites_list(favorites)
-    
-    # Update the favorite button state
-    city = self.ui.search_input.text().strip()
-    if city and city.lower() != 'enter city name...':
-        is_favorite = self.favorites_manager.is_favorite(city)
-        self.ui.update_favorite_button(is_favorite)
+    def on_units_changed(self, units: str):
+        """Handle units change."""
+        self.units = units
+        self.config_manager.set('units', units)
+        if hasattr(self, 'weather_provider') and hasattr(self.weather_provider, 'units'):
+            self.weather_provider.units = units
+        self.refresh_weather()
 
-def check_for_updates(self):
-    """Check for application updates."""
-    def check():
-        try:
-            checker = UpdateChecker(get_version())
-            update_available, update_info = checker.check_for_updates(force=True)
-            return update_available, update_info, None
-        except Exception as e:
-            logging.error(f"Error checking for updates: {e}")
-            return False, None, ("Error", str(e))
-    
-    def update_ui(result):
-        update_available, update_info, error_info = result
-        
-        if update_available and update_info:
-            # Show update dialog
-            checker = UpdateChecker(get_version())
-            checker.show_update_dialog(self, update_info)
-        elif error_info and error_info[0] and error_info[1]:
-            QMessageBox.information(
-                self,
-                error_info[0],
-                error_info[1],
-                QMessageBox.StandardButton.Ok
-            )
+    def on_toggle_favorite(self, city: str):
+        """Toggle a city as favorite."""
+        if not city:
+            return
+            
+        if self.favorites_manager.is_favorite(city):
+            self.favorites_manager.remove_favorite(city)
+            self.ui.update_favorite_button(False)
         else:
-            QMessageBox.information(
+            self.favorites_manager.add_favorite(city)
+            self.ui.update_favorite_button(True)
+            
+        self.update_favorites_menu()
+
+    def on_favorite_selected(self, city: str):
+        """Handle selection of a favorite city."""
+        if city:
+            self.city = city
+            self.ui.set_city(city)
+            self.refresh_weather()
+
+    def update_favorites_menu(self):
+        """Update the favorites dropdown in the UI."""
+        favorites = self.favorites_manager.get_favorites()
+        self.ui.update_favorites_list(favorites)
+        
+        # Update the favorite button state
+        city = self.ui.search_input.text().strip()
+        if city and city.lower() != 'enter city name...':
+            is_favorite = self.favorites_manager.is_favorite(city)
+            self.ui.update_favorite_button(is_favorite)
+
+    def check_for_updates(self):
+        """Check for application updates."""
+        def check():
+            try:
+                checker = UpdateChecker(get_version())
+                update_available, update_info = checker.check_for_updates(force=True)
+                return update_available, update_info, None
+            except Exception as e:
+                logging.error(f"Error checking for updates: {e}")
+                return False, None, ("Error", str(e))
+        
+        def update_ui(result):
+            update_available, update_info, error_info = result
+            
+            if update_available and update_info:
+                # Show update dialog
+                checker = UpdateChecker(get_version())
+                checker.show_update_dialog(self, update_info)
+            elif error_info and error_info[0] and error_info[1]:
+                QMessageBox.information(
+                    self,
+                    error_info[0],
+                    error_info[1],
+                    QMessageBox.StandardButton.Ok
+                )
+            else:
+                QMessageBox.information(
+                    self,
+                    'No Updates',
+                    'You are using the latest version.',
+                    QMessageBox.StandardButton.Ok
+                )
+        
+        # Start the background task
+        self._run_in_background(check, update_ui)
+
+    def show_about_dialog(self):
+        """Show the about dialog."""
+        from script.about import About
+        About.show_about()
+
+    def show_help_dialog(self):
+        """Show the help dialog."""
+        from script.help import Help
+        Help.show_help(self, self.translations_manager, self.language)
+
+    def _run_in_background(self, func, callback):
+        """Run a function in the background and call callback with the result."""
+        def run():
+            result = func()
+            QApplication.instance().postEvent(
                 self,
-                'No Updates',
-                'You are using the latest version.',
-                QMessageBox.StandardButton.Ok
+                _CallbackEvent(callback, result)
             )
-    
-    # Start the background task
-    self._run_in_background(check, update_ui)
+        
+        import threading
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
 
-def show_about_dialog(self):
-    """Show the about dialog."""
-    from script.about import About
-    About.show_about()
+    def event(self, event):
+        """Handle custom events."""
+        if isinstance(event, _CallbackEvent):
+            event.callback(event.result)
+            return True
+        return super().event(event)
 
-def show_help_dialog(self):
-    """Show the help dialog."""
-    from script.help import Help
-    Help.show_help(self, self.translations_manager, self.language)
-
-def _run_in_background(self, func, callback):
-    """Run a function in the background and call callback with the result."""
-    def run():
-        result = func()
-        QApplication.instance().postEvent(
-            self,
-            _CallbackEvent(callback, result)
-        )
-    
-    import threading
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
-
-def event(self, event):
-    """Handle custom events."""
-    if isinstance(event, _CallbackEvent):
-        event.callback(event.result)
-        return True
-    return super().event(event)
-
-def on_theme_changed(self, theme: str):
-    """Handle theme change.
-    
-    Args:
-        theme (str): The selected theme ('system', 'light', or 'dark')
-    """
-    # Save the theme preference
-    self.config_manager.set('theme', theme)
-    
-    # Apply the theme
-    if theme == 'dark':
-        self.setStyleSheet('')
+    def on_theme_changed(self, theme: str):
+        """Handle theme change.
+        
+        Args:
+            theme (str): The selected theme ('system', 'light', or 'dark')
+        """
+        # Save the theme preference
+        self.config_manager.set('theme', theme)
+        
+        # Get the application instance
         app = QApplication.instance()
-        app.setStyle('Fusion')
-        dark_palette = QPalette()
-        dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-        dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
-        dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-        dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-        app.setPalette(dark_palette)
-    elif theme == 'light':
-        self.setStyleSheet('')
-        app = QApplication.instance()
-        app.setStyle('Fusion')
-        light_palette = QPalette()
-        light_palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
-        light_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
-        light_palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(233, 231, 227))
-        light_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-        light_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
-        light_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
-        light_palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-        light_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
-        light_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        light_palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
-        light_palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 120, 215))
-        light_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-        app.setPalette(light_palette)
-    else:  # system
-        self.setStyleSheet('')
-        app = QApplication.instance()
-        app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
-        app.setPalette(app.style().standardPalette())
+        
+        # Apply the theme
+        if theme == 'dark':
+            self.setStyleSheet('')
+            app.setStyle('Fusion')
+            dark_palette = QPalette()
+            dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+            dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
+            dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
+            dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+            dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+            dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+            dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+            dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+            dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+            dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+            app.setPalette(dark_palette)
+        elif theme == 'light':
+            self.setStyleSheet('')
+            app.setStyle('Fusion')
+            light_palette = QPalette()
+            light_palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
+            light_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
+            light_palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
+            light_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(233, 231, 227))
+            light_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
+            light_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
+            light_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
+            light_palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
+            light_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
+            light_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+            light_palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
+            light_palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 120, 215))
+            light_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+            app.setPalette(light_palette)
+        else:  # system
+            self.setStyleSheet('')
+            app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
+            app.setPalette(app.style().standardPalette())
 
     def update_weather_provider(self, provider_name: str):
         """Update the weather provider dynamically.

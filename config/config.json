@@ -1,6 +1,6 @@
 {
   "units": "metric",
-  "language": "IT",
+  "language": "it",
   "theme": "dark",
   "provider": "open-meteo",
   "providers": {

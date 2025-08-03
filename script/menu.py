@@ -328,6 +328,16 @@ class MenuBar(QMenuBar):
         """Create the View menu with display options."""
         view_menu = self.addMenu(self._tr('👁️ &View'))
         
+        # Add Weather Maps & Radar action
+        self.maps_action = QAction(
+            QIcon(str(Path('assets/map.png'))) if Path('assets/map.png').exists() else QIcon(),
+            self._tr('Weather &Maps && Radar'),
+            self
+        )
+        self.maps_action.triggered.connect(self._show_maps_dialog)
+        view_menu.addAction(self.maps_action)
+        view_menu.addSeparator()
+        
         # Toggle History action
         self.toggle_history_action = QAction(
             self._tr('Show &History'),
@@ -519,12 +529,16 @@ class MenuBar(QMenuBar):
         Returns:
             The translated text or the original if no translation is found
         """
-        # First try to get translation from the translations manager if available
+        # First check the local translations dictionary
+        if text in self._translations:
+            return self._translations[text]
+            
+        # Fall back to the translations manager if available
         if self.translations_manager:
             return self.translations_manager.t(text)
             
-        # Fall back to the translations dictionary
-        return self._translations.get(text, text)
+        # Return the original text if no translation is found
+        return text
         
     def update_translations(self, translations: Dict[str, str]) -> None:
         """Update the translations for the menu bar.
@@ -534,88 +548,57 @@ class MenuBar(QMenuBar):
         """
         try:
             logger.info("Updating menu translations...")
+            # Update the translations dictionary
             self._translations.update(translations)
             
-            # Update File menu
-            if hasattr(self, 'file_menu'):
-                self.file_menu.setTitle(self._tr('file'))
+            # Force a complete UI refresh
+            self.setVisible(False)
+            
+            # Update all menu titles and actions
+            for menu in self.findChildren(QMenu):
+                # Get the menu title without mnemonic for lookup
+                menu_title = menu.title().replace('&', '')
+                if menu_title in self._translations:
+                    # Preserve the mnemonic if it exists
+                    if '&' in menu.title():
+                        menu.setTitle('&' + self._translations[menu_title])
+                    else:
+                        menu.setTitle(self._translations[menu_title])
+            
+            # Update all actions
+            for action in self.findChildren(QAction):
+                if not action.text():
+                    continue
+                    
+                # Get the action text without mnemonic for lookup
+                action_text = action.text().replace('&', '')
+                if action_text in self._translations:
+                    translated = self._translations[action_text]
+                    # Preserve the mnemonic if it exists
+                    if '&' in action.text():
+                        translated = '&' + translated
+                    action.setText(translated)
                 
-            # Update Favorites menu
-            if hasattr(self, 'favorites_menu'):
-                self.favorites_menu.setTitle(self._tr('favorites'))
-                
-            # Update View menu
-            if hasattr(self, 'view_menu'):
-                self.view_menu.setTitle(self._tr('view'))
-                
-            # Update Settings menu
-            if hasattr(self, 'settings_menu'):
-                self.settings_menu.setTitle(self._tr('settings'))
-                
-            # Update Help menu
-            if hasattr(self, 'help_menu'):
-                self.help_menu.setTitle(self._tr('help'))
-                
-            # Update action texts
-            if hasattr(self, 'refresh_action'):
-                self.refresh_action.setText(self._tr('refresh'))
-                
-            if hasattr(self, 'exit_action'):
-                self.exit_action.setText(self._tr('exit'))
-                
-            if hasattr(self, 'add_to_favorites_action'):
-                self.add_to_favorites_action.setText(self._tr('add_to_favorites'))
-                
-            if hasattr(self, 'manage_favorites_action'):
-                self.manage_favorites_action.setText(self._tr('manage_favorites'))
-                
-            if hasattr(self, 'toggle_history_action'):
-                self.toggle_history_action.setText(self._tr('show_history'))
-                
-            if hasattr(self, 'about_action'):
-                self.about_action.setText(self._tr('about'))
-                
-            if hasattr(self, 'help_action'):
-                self.help_action.setText(self._tr('help'))
-                
-            if hasattr(self, 'check_updates_action'):
-                self.check_updates_action.setText(self._tr('check_updates'))
-                
-            if hasattr(self, 'sponsor_action'):
-                self.sponsor_action.setText(self._tr('sponsor'))
-                
-            logger.info("Menu translations updated successfully")
+                # Update tooltips and status tips
+                if action.toolTip() and action.toolTip() in self._translations:
+                    action.setToolTip(self._translations[action.toolTip()])
+                if action.statusTip() and action.statusTip() in self._translations:
+                    action.setStatusTip(self._translations[action.statusTip()])
+            
+            # Update favorites submenu if it exists
+            if hasattr(self, 'favorites_submenu'):
+                self._update_favorites_submenu()
+            
+            # Force a UI update
+            self.update()
+            self.setVisible(True)
+            
+            logger.info("Menu translations updated and UI refreshed")
             
         except Exception as e:
             logger.error(f"Error updating menu translations: {str(e)}", exc_info=True)
-        
-        # Update menu titles
-        for menu in self.findChildren(QMenu):
-            menu_title = menu.title()
-            if menu_title.startswith('&') and menu_title[1:] in self._translations:
-                menu.setTitle('&' + self._translations[menu_title[1:]])
-            elif menu_title in self._translations:
-                menu.setTitle(self._translations[menu_title])
-        
-        # Update action texts
-        for action in self.actions():
-            if not action.text():
-                continue
-                
-            # Remove '&' for translation lookup
-            text = action.text().replace('&', '')
-            if text in self._translations:
-                translated = self._translations[text]
-                # Preserve the original mnemonic if it had one
-                if '&' in action.text():
-                    translated = '&' + translated
-                action.setText(translated)
-            
-            # Update tooltips and status tips
-            if action.toolTip() and action.toolTip() in self._translations:
-                action.setToolTip(self._translations[action.toolTip()])
-            if action.statusTip() and action.statusTip() in self._translations:
-                action.setStatusTip(self._translations[action.statusTip()])
+            # Make sure the menu stays visible even if there's an error
+            self.setVisible(True)
     
     def set_units(self, units: str) -> None:
         """Set the currently selected units."""
@@ -779,10 +762,23 @@ class MenuBar(QMenuBar):
                 self._translations.get('error_loading_file', 'Error loading file:') + f" {str(e)}"
             )
     
-    def _show_about_dialog(self) -> None:
+    def _show_maps_dialog(self):
+        """Show the Weather Maps & Radar dialog."""
+        try:
+            from script.maps_dialog import show_maps_dialog
+            show_maps_dialog(self.parent, self._translations)
+        except ImportError as e:
+            logger.error(f"Failed to load maps dialog: {e}")
+            QMessageBox.critical(
+                self,
+                self._tr("Error"),
+                self._tr("Failed to load the Weather Maps & Radar feature.")
+            )
+    
+    def _show_about_dialog(self):
         """Show the about dialog."""
-        about = About(self)
-        about.exec()
+        about_dialog = About(self, self._translations, self.current_language)
+        about_dialog.exec()
     
     def _check_for_updates(self) -> None:
         """Check for application updates."""

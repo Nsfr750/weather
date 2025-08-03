@@ -87,6 +87,7 @@ class WeatherApp(QMainWindow):
         
         # Initialize translations
         self.translations_manager = TranslationsManager(TRANSLATIONS, default_lang=self.language)
+        self.translations_manager.language_changed.connect(self.on_language_changed)
         
         # Initialize weather provider
         self.weather_provider = OpenMeteoProvider(units=self.units)
@@ -920,6 +921,87 @@ class WeatherApp(QMainWindow):
         from script.sponsor import Sponsor
         sponsor_dialog = Sponsor(self)
         sponsor_dialog.exec()
+        
+    def set_language(self, language_code):
+        """Set the application language.
+        
+        Args:
+            language_code: Two-letter language code (e.g., 'en', 'it')
+        """
+        if self.translations_manager.set_language(language_code):
+            self.language = language_code
+            self.config_manager.set('language', language_code)
+            
+    def on_language_changed(self, language_code):
+        """Handle language change signal by retranslating the UI and menu bar."""
+        logger.info(f"Language changed to: {language_code}")
+        
+        # Update the UI with new translations
+        self.retranslate_ui()
+        if hasattr(self, 'menu_bar') and self.menu_bar:
+            # Get all translations for the current language from the translations manager
+            translations = self.translations_manager.translations.get(language_code.upper(), {})
+            if translations:
+                self.menu_bar.update_translations(translations)
+            if hasattr(self.menu_bar, 'language_group'):
+                for action in self.menu_bar.language_group.actions():
+                    action.setChecked(action.data() == language_code.lower())
+        self.update_status(f"Language changed to {language_code}", 3000)
+        
+    def retranslate_ui(self):
+        """Update all UI text elements with the current language."""
+        try:
+            logger.info("Updating UI translations...")
+            
+            # Get translations manager
+            t = self.translations_manager.t
+            
+            # Get the current language translations
+            current_lang = self.translations_manager.get_current_language()
+            translations = self.translations_manager.translations.get(current_lang, {})
+            
+            # Update window title
+            self.setWindowTitle(f'{t("app_name", "Weather")} v{get_version()}')
+            
+            # Update menu bar if it exists
+            if hasattr(self, 'menu_bar') and self.menu_bar:
+                self.menu_bar.update_translations(translations)
+            
+            # Update search box
+            if hasattr(self, 'search_input'):
+                self.search_input.setPlaceholderText(t('enter_city', 'Enter city name'))
+            
+            if hasattr(self, 'search_button'):
+                self.search_button.setText(t('search', 'Search'))
+            
+            # Update status bar
+            self.update_status(t('ready', 'Ready'))
+            
+            # Update other UI elements if they exist
+            if hasattr(self, 'current_weather_label'):
+                self.current_weather_label.setText(t('current_weather', 'Current Weather'))
+                
+            if hasattr(self, 'forecast_label'):
+                self.forecast_label.setText(t('forecast', 'Forecast'))
+                
+            if hasattr(self, 'favorites_label'):
+                self.favorites_label.setText(t('favorites', 'Favorites'))
+                
+            if hasattr(self, 'history_label'):
+                self.history_label.setText(t('history', 'History'))
+                
+            if hasattr(self, 'clear_history_btn'):
+                self.clear_history_btn.setText(t('clear_history', 'Clear History'))
+                
+            # Force refresh the UI
+            self.update()
+            if hasattr(self, 'central_widget'):
+                self.central_widget.update()
+                
+            logger.info("UI translations updated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error updating UI translations: {str(e)}", exc_info=True)
     
     def closeEvent(self, event):
         """Handle window close event."""

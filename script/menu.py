@@ -9,6 +9,7 @@ It is designed to be imported and used by the main WeatherApp class.
 import importlib
 import logging
 import os
+import json
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Callable
@@ -48,30 +49,48 @@ class MenuBar(QMenuBar):
     refresh_triggered = pyqtSignal()
     units_changed = pyqtSignal(str)
     language_changed = pyqtSignal(str)
+    toggle_history = pyqtSignal(bool)
+    add_to_favorites = pyqtSignal()
+    manage_favorites = pyqtSignal()
+    favorite_selected = pyqtSignal(str)  # Signal emitted when a favorite is selected
+    show_about = pyqtSignal()
+    show_help = pyqtSignal()
+    check_updates = pyqtSignal()
+    show_sponsor = pyqtSignal()
+    exit_triggered = pyqtSignal()
+    
     theme_changed = pyqtSignal(str)
-    offline_mode_changed = pyqtSignal(bool)  # New signal for offline mode
-    settings_updated = pyqtSignal()  # New signal for settings updates
-    provider_changed = pyqtSignal(str)  # New signal for provider changes
+    offline_mode_changed = pyqtSignal(bool)
+    settings_updated = pyqtSignal()
+    provider_changed = pyqtSignal(str)
     
     def __init__(self, parent: Optional[QWidget] = None, 
-                 translations: Optional[Dict[str, str]] = None) -> None:
+                 translations: Optional[Dict[str, str]] = None,
+                 translations_manager=None,
+                 current_language: str = 'en',
+                 current_units: str = 'metric') -> None:
         """Initialize the menu bar.
         
         Args:
             parent: The parent widget (main window)
             translations: Dictionary containing translations for menu items
+            translations_manager: The translations manager instance
+            current_language: The current language code (e.g., 'en', 'it')
+            current_units: The current units system ('metric' or 'imperial')
         """
         super().__init__(parent)
         
         # Store parent and translations
         self.parent = parent
         self._translations = translations or {}
+        self.translations_manager = translations_manager
+        self.current_language = current_language
+        self.current_units = current_units
         
         # Initialize settings
         self.settings = QSettings("WeatherApp", "WeatherApp")
         
-        # Initialize instance variables
-        self.current_language = DEFAULT_LANGUAGE
+        # Initialize theme and mode
         self.current_theme = DEFAULT_THEME
         self.offline_mode = False  # Default to online mode
         
@@ -83,16 +102,21 @@ class MenuBar(QMenuBar):
         self.mode_group = QActionGroup(self)  # For online/offline mode
         self.lang_actions: Dict[str, QAction] = {}
         
+        # Set up the UI
+        self.setup_ui()
+        
         # Create menus
         self._create_file_menu()
         self._create_view_menu()
-        self._create_settings_menu()  # Add this line to create the settings menu
+        self._create_favorites_menu()
+        self._create_settings_menu()
         self._create_language_menu()
         self._create_help_menu()
-        
-        # Create plugins menu if plugin manager is available
-        if hasattr(parent, 'plugin_manager') and parent.plugin_manager:
-            self._create_plugins_menu()
+    
+    def setup_ui(self):
+        """Set up the menu bar UI components."""
+        # This method is intentionally left empty as the UI setup is handled
+        # by the individual _create_*_menu methods called in __init__
         
         # Apply styling
         self._apply_styling()
@@ -160,6 +184,95 @@ class MenuBar(QMenuBar):
         self.refresh_action = refresh_action
         self.exit_action = exit_action
     
+    def _create_favorites_menu(self) -> None:
+        """Create the Favorites menu with options to manage favorite cities."""
+        favorites_menu = self.addMenu(self._tr('⭐ &Favorites'))
+        
+        # Add to Favorites action
+        self.add_to_favorites_action = QAction(
+            self._tr('&Add Current Location'),
+            self,
+            statusTip=self._tr('Add current location to favorites'),
+            triggered=self.add_to_favorites.emit
+        )
+        favorites_menu.addAction(self.add_to_favorites_action)
+        
+        # Manage Favorites action
+        manage_favorites_action = QAction(
+            self._tr('&Manage Favorites...'),
+            self,
+            statusTip=self._tr('Add, edit, or remove favorite locations'),
+            triggered=self.manage_favorites.emit
+        )
+        favorites_menu.addAction(manage_favorites_action)
+        
+        # Separator
+        favorites_menu.addSeparator()
+        
+        # Favorites list submenu
+        self.favorites_submenu = QMenu(self._tr('Select Favorite'), self)
+        self.favorites_submenu.setStatusTip(self._tr('Select a favorite location to display'))
+        favorites_menu.addMenu(self.favorites_submenu)
+        
+        # Store the menu for dynamic updates
+        self.favorites_menu = favorites_menu
+        self.favorites_actions = {}
+        self._favorites = {}  # Store favorites for the submenu
+        
+        # Connect the aboutToShow signal to update the favorites list
+        self.favorites_submenu.aboutToShow.connect(self._update_favorites_submenu)
+        
+        # Add a placeholder action (will be updated when favorites are loaded)
+        no_favs = QAction(self._tr('No favorites yet'), self)
+        no_favs.setEnabled(False)
+        self.favorites_submenu.addAction(no_favs)
+        
+        # Load initial favorites
+        self._load_favorites()
+        
+    def _load_favorites(self) -> None:
+        """Load favorites from the config/favorites.json file."""
+        try:
+            favorites_path = Path('config/favorites.json')
+            if favorites_path.exists():
+                with open(favorites_path, 'r', encoding='utf-8') as f:
+                    favorites_list = json.load(f)
+                    # Convert list to dict with city as both key and value for compatibility
+                    self._favorites = {city: city for city in favorites_list}
+            else:
+                self._favorites = {}
+        except Exception as e:
+            logger.error(f"Error loading favorites: {e}")
+            self._favorites = {}
+    
+    def _update_favorites_submenu(self) -> None:
+        """Update the favorites submenu with the current list of favorites."""
+        if not hasattr(self, 'favorites_submenu'):
+            return
+            
+        # Reload favorites from file
+        self._load_favorites()
+            
+        # Clear existing actions
+        self.favorites_submenu.clear()
+        
+        # Add a disabled action if no favorites
+        if not self._favorites:
+            no_favs = QAction(self._tr('No favorites yet'), self)
+            no_favs.setEnabled(False)
+            self.favorites_submenu.addAction(no_favs)
+            return
+            
+        # Add each favorite as a selectable action
+        for name, location in self._favorites.items():
+            action = QAction(
+                f"{name}: {location}",
+                self,
+                statusTip=f"Show weather for {name} ({location})",
+                triggered=lambda checked, loc=location: self.favorite_selected.emit(loc)
+            )
+            self.favorites_submenu.addAction(action)
+    
     def _create_settings_menu(self) -> None:
         """Create the Settings menu with configuration options."""
         settings_menu = self.addMenu(self._tr('⚙️ &Settings'))
@@ -210,34 +323,30 @@ class MenuBar(QMenuBar):
     
     def _create_view_menu(self) -> None:
         """Create the View menu with display options."""
-        view_menu = self.addMenu(self._tr('≔ &View'))
+        view_menu = self.addMenu(self._tr('👁️ &View'))
         
-        # Layout submenu
-        layout_menu = view_menu.addMenu(self._tr("&Layout"))
+        # Toggle History action
+        self.toggle_history_action = QAction(
+            self._tr('Show &History'),
+            self,
+            checkable=True,
+            checked=False,
+            statusTip=self._tr('Show or hide the history panel')
+        )
+        self.toggle_history_action.triggered.connect(self.toggle_history.emit)
+        view_menu.addAction(self.toggle_history_action)
         
-        # Get current layout from settings or use default
-        current_layout = self.settings.value("layout", "standard", str)
-        
-        # Layout actions
-        layout_actions = [
-            ("Standard", "standard"),
-            ("Compact", "compact"),
-            ("Detailed", "detailed")
-        ]
-        
-        for text, data in layout_actions:
-            action = QAction(self._tr(text), self, checkable=True)
-            action.setData(data)
-            action.setChecked(data == current_layout)
-            action.triggered.connect(lambda checked, l=data: self._on_layout_changed(l))
-            layout_menu.addAction(action)
-        
+        # Add a separator
         view_menu.addSeparator()
         
         # Fullscreen toggle
-        fullscreen_action = QAction(self._tr("Fullscreen"), self, checkable=True)
-        fullscreen_action.setShortcut("F11")
-        fullscreen_action.triggered.connect(self._toggle_fullscreen)
+        fullscreen_action = QAction(
+            self._tr('&Fullscreen'),
+            self,
+            shortcut=QKeySequence.StandardKey.FullScreen,
+            statusTip=self._tr('Toggle fullscreen mode'),
+            triggered=self._toggle_fullscreen
+        )
         view_menu.addAction(fullscreen_action)
         
         # Store actions for later reference
@@ -323,73 +432,80 @@ class MenuBar(QMenuBar):
     
     def _apply_styling(self) -> None:
         """Apply consistent styling to the menu bar and its components."""
-        self.setStyleSheet("""
-            QMenuBar {
-                background-color: #f0f0f0;
-                padding: 2px;
-                border: none;
-                border-bottom: 1px solid #d0d0d0;
-            }
+        # Only apply styling if the widget is properly initialized
+        if not self.isVisible():
+            return
             
-            QMenuBar::item {
-                padding: 5px 10px;
-                background: transparent;
-                border-radius: 4px;
-                color: #333;
-            }
-            
-            QMenuBar::item:selected {
-                background: #e0e0e0;
-            }
-            
-            QMenuBar::item:disabled {
-                color: #999999;
-            }
-            
-            QMenu {
-                background-color: #ffffff;
-                border: 1px solid #d0d0d0;
-                padding: 5px;
-                border-radius: 4px;
-            }
-            
-            QMenu::item {
-                padding: 5px 25px 5px 20px;
-                margin: 2px;
-                border-radius: 3px;
-                color: #333;
-            }
-            
-            QMenu::item:selected {
-                background-color: #e6f0ff;
-                color: #0066cc;
-            }
-            
-            QMenu::item:disabled {
-                color: #999999;
-            }
-            
-            QMenu::separator {
-                height: 1px;
-                background: #e0e0e0;
-                margin: 5px 0;
-            }
-            
-            QMenu::icon {
-                left: 5px;
-            }
-            
-            QMenu::indicator {
-                width: 13px;
-                height: 13px;
-            }
-            
-            QMenu::indicator:checked {
-                background-color: #0066cc;
-                border: 1px solid #0052a3;
-                border-radius: 3px;
-            }
-        """)
+        # Use a more robust approach to styling
+        try:
+            self.setStyleSheet("""
+                QMenuBar {
+                    background-color: #2c3e50;
+                    padding: 2px;
+                    border: none;
+                    color: #ecf0f1;
+                }
+                
+                QMenuBar::item {
+                    padding: 5px 10px;
+                    background: transparent;
+                    border-radius: 4px;
+                    color: #ecf0f1;
+                }
+                
+                QMenuBar::item:selected {
+                    background: #34495e;
+                }
+                
+                QMenuBar::item:disabled {
+                    color: #7f8c8d;
+                }
+                
+                QMenu {
+                    background-color: #2c3e50;
+                    border: 1px solid #34495e;
+                    padding: 5px;
+                    color: #ecf0f1;
+                    border-radius: 4px;
+                }
+                
+                QMenu::item {
+                    padding: 5px 25px 5px 20px;
+                    background: transparent;
+                }
+                
+                QMenu::item:selected {
+                    background: #3498db;
+                    color: white;
+                }
+                
+                QMenu::item:disabled {
+                    color: #7f8c8d;
+                }
+                
+                QMenu::separator {
+                    height: 1px;
+                    background: #34495e;
+                    margin: 5px 5px;
+                }
+                
+                QMenu::icon {
+                    left: 5px;
+                }
+                
+                QMenu::indicator {
+                    width: 13px;
+                    height: 13px;
+                }
+                
+                QMenu::indicator:checked {
+                    background-color: #3498db;
+                    border: 1px solid #2980b9;
+                    border-radius: 3px;
+                }
+            """)
+        except Exception as e:
+            logger.error(f"Error applying menu styling: {e}")
     
     def _tr(self, text: str) -> str:
         """Translate text using the current translations.

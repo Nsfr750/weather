@@ -36,10 +36,6 @@ class LogViewer(QMainWindow):
         self.setup_ui()
         self.translate_ui()
         
-        # Initialize log levels
-        self.log_levels = ['ALL', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-        self.level_combo.addItems(self.log_levels)
-        
         # Load logs
         self.load_log_files()
         

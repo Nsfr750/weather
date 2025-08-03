@@ -226,27 +226,54 @@ class WeatherAppUI(QMainWindow):
         fav_layout.addWidget(fav_icon)
         
         self.favorites_combo = QComboBox()
+        self.favorites_combo.setObjectName('favoritesCombo')
         self.favorites_combo.setPlaceholderText('Favorites')
+        self.favorites_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.favorites_combo.setEditable(False)
+        self.favorites_combo.setMaxVisibleItems(10)
         self.favorites_combo.currentTextChanged.connect(self._on_favorite_selected)
         self.favorites_combo.setStyleSheet('''
-            QComboBox {
-                padding: 3px;
+            QComboBox#favoritesCombo {
+                padding: 3px 6px;
                 border: 1px solid #3d4f5e;
                 border-radius: 3px;
                 background: #2c3e50;
                 color: white;
-                min-width: 120px;
+                min-width: 150px;
+                max-width: 200px;
             }
-            QComboBox::drop-down {
+            QComboBox#favoritesCombo::drop-down {
                 border: none;
+                width: 20px;
             }
-            QComboBox::down-arrow {
+            QComboBox#favoritesCombo::down-arrow {
                 image: none;
                 width: 0;
                 height: 0;
                 border-left: 4px solid transparent;
                 border-right: 4px solid transparent;
-                border-top: 6px solid white;
+                border-top: 6px solid #95a5a6;
+            }
+            QComboBox#favoritesCombo:hover::down-arrow {
+                border-top-color: #f1c40f;
+            }
+            QComboBox#favoritesCombo QAbstractItemView {
+                background: #2c3e50;
+                color: white;
+                selection-background-color: #3498db;
+                selection-color: white;
+                border: 1px solid #3d4e5d;
+                border-radius: 3px;
+                padding: 5px 0;
+                outline: none;
+            }
+            QComboBox#favoritesCombo QAbstractItemView::item {
+                padding: 3px 8px;
+                border-radius: 2px;
+                margin: 1px 5px;
+            }
+            QComboBox#favoritesCombo QAbstractItemView::item:hover {
+                background-color: #3d4e5d;
             }
         ''')
         fav_layout.addWidget(self.favorites_combo)
@@ -328,32 +355,117 @@ class WeatherAppUI(QMainWindow):
         self.units_changed.emit(units)
     
     def _on_toggle_favorite(self):
-        """Handle toggle favorite button click."""
+        """Handle toggle favorite button click.
+        
+        Emits the favorite_toggled signal with the current city name and updates the UI
+        to reflect the new favorite state.
+        """
         city = self.search_input.text().strip()
         if city:
+            # Visual feedback
+            current_icon = self.fav_btn.text()
+            if current_icon == '☆':
+                self.fav_btn.setText('★')
+                self.fav_btn.setToolTip('Remove from favorites')
+                self.status_bar.showMessage(f'Added {city} to favorites', 3000)
+            else:
+                self.fav_btn.setText('☆')
+                self.fav_btn.setToolTip('Add to favorites')
+                self.status_bar.showMessage(f'Removed {city} from favorites', 3000)
+            
+            # Emit the signal
             self.favorite_toggled.emit(city)
     
     def _on_favorite_selected(self, value):
-        """Handle favorite selection."""
-        if value:
+        """Handle favorite selection from the dropdown.
+        
+        Args:
+            value (str): The selected favorite city name
+        """
+        if value and value != self.search_input.text().strip():
+            self.search_input.setText(value)
             self.favorite_selected.emit(value)
     
     def update_favorite_button(self, is_favorite):
-        """Update the favorite button state."""
+        """Update the favorite button state based on whether the current city is a favorite.
+        
+        Args:
+            is_favorite (bool): Whether the current city is in favorites
+        """
         if is_favorite:
             self.fav_btn.setText('★')
+            self.fav_btn.setStyleSheet('''
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    font-size: 16px;
+                    padding: 0 5px;
+                    color: #f1c40f;
+                }
+                QPushButton:hover {
+                    color: #f39c12;
+                }
+            ''')
             self.fav_btn.setToolTip('Remove from favorites')
         else:
             self.fav_btn.setText('☆')
+            self.fav_btn.setStyleSheet('''
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    font-size: 16px;
+                    padding: 0 5px;
+                    color: #95a5a6;
+                }
+                QPushButton:hover {
+                    color: #f1c40f;
+                }
+            ''')
             self.fav_btn.setToolTip('Add to favorites')
     
     def update_favorites_list(self, favorites):
-        """Update the favorites dropdown list."""
+        """Update the favorites dropdown list with the latest favorites.
+        
+        Args:
+            favorites (list): List of favorite city names
+        """
+        if not isinstance(favorites, list):
+            favorites = []
+            
+        # Sort favorites alphabetically
+        favorites = sorted(favorites, key=str.lower)
+        
+        # Store current selection
         current = self.favorites_combo.currentText()
-        self.favorites_combo.clear()
-        self.favorites_combo.addItems(favorites)
-        if current in favorites:
-            self.favorites_combo.setCurrentText(current)
+        
+        # Block signals to prevent triggering selection change
+        self.favorites_combo.blockSignals(True)
+        
+        try:
+            self.favorites_combo.clear()
+            
+            # Add a placeholder if no favorites
+            if not favorites:
+                self.favorites_combo.addItem('No favorites yet')
+                self.favorites_combo.setEnabled(False)
+                return
+                
+            # Add favorites to the combo box
+            self.favorites_combo.addItems(favorites)
+            self.favorites_combo.setEnabled(True)
+            
+            # Try to restore previous selection if it still exists
+            if current in favorites:
+                self.favorites_combo.setCurrentText(current)
+            elif favorites:  # Select first item if previous selection is gone
+                self.favorites_combo.setCurrentIndex(0)
+                
+            # Update tooltip with count
+            self.favorites_combo.setToolTip(f"{len(favorites)} favorite{'s' if len(favorites) != 1 else ''} saved")
+            
+        finally:
+            # Always unblock signals when done
+            self.favorites_combo.blockSignals(False)
     
     def set_city(self, city):
         """Set the current city in the search input."""

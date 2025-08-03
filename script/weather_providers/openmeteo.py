@@ -1,486 +1,434 @@
 """
-Open-Meteo provider implementation.
+OpenMeteo Weather Provider
+
+This module provides weather data using the Open-Meteo.com API.
+It implements the standard weather provider interface used by the application.
 """
+
 import logging
-import aiohttp
-import asyncio
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
-from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional
+import requests
+from pathlib import Path
 
-from PyQt6.QtCore import QObject, pyqtSignal, QSettings, QMetaType, pyqtSlot
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout, QFormLayout, QLineEdit
+logger = logging.getLogger(__name__)
 
-# Set up logger
-logger = logging.getLogger('script.weather_providers.openmeteo')
-
-# Create a session for aiohttp
-async def get_session():
-    return aiohttp.ClientSession()
-
-@dataclass
-class WeatherDataPoint:
-    """A single data point of weather information."""
-    temperature: float
-    condition: str
-    icon: str
-    time: datetime
-    humidity: float
-    wind_speed: float
-    wind_direction: float
-    pressure: float
-    precipitation: float
-    cloud_cover: int
-    visibility: float
-    uv_index: float
-    feels_like: float
-    dew_point: float
+class OpenMeteoProvider:
+    """Weather provider implementation for Open-Meteo.com API."""
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert the data point to a dictionary."""
-        return {
-            'temperature': self.temperature,
-            'condition': self.condition,
-            'icon': self.icon,
-            'time': self.time.isoformat(),
-            'humidity': self.humidity,
-            'wind_speed': self.wind_speed,
-            'wind_direction': self.wind_direction,
-            'pressure': self.pressure,
-            'precipitation': self.precipitation,
-            'cloud_cover': self.cloud_cover,
-            'visibility': self.visibility,
-            'uv_index': self.uv_index,
-            'feels_like': self.feels_like,
-            'dew_point': self.dew_point
-        }
-
-class BaseWeatherProvider(QObject):
-    """Base class for weather providers.
+    BASE_URL = "https://api.open-meteo.com/v1/"
     
-    This class defines the interface that all weather providers must implement.
-    """
-    # Signals
-    weather_updated = pyqtSignal(dict)  # Emitted when weather data is updated
-    forecast_updated = pyqtSignal(list)  # Emitted when forecast data is updated
-    error_occurred = pyqtSignal(str)    # Emitted when an error occurs
-    
-    # Provider metadata
-    name = "Base Weather Provider"
-    description = "Base class for weather providers"
-    author = ""
-    version = "0.0.0"
-    api_key_required = True
-    
-    def __init__(self, **kwargs):
-        """Initialize the weather provider."""
-        super().__init__()
-        self._api_key = kwargs.get('api_key', '')
-        self._units = kwargs.get('units', 'metric')
-        self._language = kwargs.get('language', 'en')
-        self._offline_mode = kwargs.get('offline_mode', False)
-        self._initialized = False
-    
-    async def initialize(self):
-        """Initialize the provider."""
-        self._initialized = True
-        return True
-    
-    async def cleanup(self):
-        """Clean up resources used by the provider."""
-        self._initialized = False
-    
-    async def get_current_weather(self, location: str) -> Dict[str, Any]:
-        """Get current weather for a location.
-        
-        Args:
-            location: Location string (city name, coordinates, etc.)
-            
-        Returns:
-            Dictionary containing current weather data
-        """
-        raise NotImplementedError
-    
-    async def get_forecast(self, location: str, days: int = 5) -> List[Dict[str, Any]]:
-        """Get weather forecast for a location.
-        
-        Args:
-            location: Location string (city name, coordinates, etc.)
-            days: Number of days to forecast (default: 5)
-            
-        Returns:
-            List of dictionaries containing forecast data
-        """
-        raise NotImplementedError
-    
-    def get_settings_widget(self) -> QWidget:
-        """Get a widget for configuring the provider.
-        
-        Returns:
-            QWidget: Settings widget
-        """
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.addWidget(QLabel("No configuration available for this provider."))
-        return widget
-    
-    def save_settings(self):
-        """Save provider settings."""
-        pass
-    
-    def load_settings(self):
-        """Load provider settings."""
-        pass
-
-# Create a metaclass that combines QObject's metaclass
-class OpenMeteoMeta(type(QObject)):
-    pass
-
-class OpenMeteoProvider(BaseWeatherProvider, QObject, metaclass=OpenMeteoMeta):
-    """Weather data provider for Open-Meteo API."""
-    
-    # Plugin metadata
-    name = "Open-Meteo"
-    description = "Open-Meteo Weather API Provider"
-    author = "Nsfr750"
-    version = "1.0.0"
-    api_key_required = False  # Open-Meteo doesn't require an API key for basic usage
-    
-    # Signals
-    api_key_changed = pyqtSignal(str)
-    error_occurred = pyqtSignal(str)
-    
-    BASE_URL = 'https://api.open-meteo.com/v1/'
-    
-    def __init__(self, **kwargs):
+    def __init__(self, api_key: str = "", units: str = "metric"):
         """Initialize the OpenMeteo provider.
         
         Args:
-            **kwargs: Configuration options including:
-                - api_key: API key (not required for Open-Meteo)
-                - units: Units system ('metric' or 'imperial')
-                - language: Language code for responses
+            api_key: Not required for Open-Meteo.com (kept for interface compatibility)
+            units: Units system to use (metric or imperial)
         """
-        # Initialize QObject first
-        QObject.__init__(self)
+        self.units = units
+        self.cache = {}
+        self.history = []
+        self.max_history = 10  # Number of historical queries to keep
         
-        # Initialize the _api_key attribute before BaseWeatherProvider.__init__
-        self._api_key = kwargs.get('api_key', '')
+    def get_weather(self, location: str) -> Dict[str, Any]:
+        """Get current weather for a location.
         
-        # Initialize BaseWeatherProvider with plugin metadata
-        BaseWeatherProvider.__init__(self, api_key=self._api_key)
-        
-        # Initialize instance variables
-        self._settings = QSettings("WeatherApp", "WeatherProviders")
-        self.units = kwargs.get('units', 'metric')
-        self.language = kwargs.get('language', 'en')
-        self._offline_mode = kwargs.get('offline_mode', False)
-        self._initialized = False
-        
-        # Load provider-specific settings
-        self._load_settings()
-    
-    def _load_settings(self):
-        """Load provider settings from QSettings."""
+        Args:
+            location: City name or coordinates (lat,lon)
+            
+        Returns:
+            Dictionary containing weather data
+        """
         try:
-            # Load settings from QSettings
-            settings = self._settings.value("OpenMeteo", {})
-            
-            if not isinstance(settings, dict):
-                settings = {}
-            
-            # Apply loaded settings
-            self.units = settings.get('units', self.units)
-            self.language = settings.get('language', self.language)
-            self._offline_mode = settings.get('offline_mode', self._offline_mode)
-            
-        except Exception as e:
-            logger.error(f"Error loading settings: {e}")
-    
-    def save_settings(self):
-        """Save provider settings to QSettings."""
-        try:
-            # Prepare settings to save
-            settings = {
-                'units': self.units,
-                'language': self.language,
-                'offline_mode': self._offline_mode
+            # First get coordinates for the location
+            coords = self._geocode(location)
+            if not coords:
+                return {"error": f"Could not find location: {location}"}
+                
+            # Get current weather
+            params = {
+                "latitude": coords["latitude"],
+                "longitude": coords["longitude"],
+                "current_weather": "true",
+                "temperature_unit": "celsius" if self.units == "metric" else "fahrenheit",
+                "windspeed_unit": "kmh" if self.units == "metric" else "mph",
+                "precipitation_unit": "mm",
+                "timezone": "auto",
+                "forecast_days": 1
             }
             
-            # Save to QSettings
-            self._settings.setValue("OpenMeteo", settings)
-            self._settings.sync()
+            response = requests.get(f"{self.BASE_URL}forecast", params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Format the data to match our standard format
+            current = data.get("current_weather", {})
+            location_name = self._reverse_geocode(coords["latitude"], coords["longitude"])
+            
+            weather_data = {
+                "location": location_name or location,
+                "temperature": current.get("temperature"),
+                "feels_like": current.get("apparent_temperature"),
+                "description": self._get_weather_description(current.get("weathercode")),
+                "icon": self._get_weather_icon(current.get("weathercode")),
+                "humidity": None,  # Not available in basic API
+                "wind_speed": current.get("windspeed"),
+                "wind_direction": current.get("winddirection"),
+                "pressure": None,  # Not available in basic API
+                "visibility": None,  # Not available in basic API
+                "clouds": None,  # Not available in basic API
+                "sunrise": None,  # Available in daily forecast
+                "sunset": None,  # Available in daily forecast
+                "timestamp": datetime.fromisoformat(current.get("time")),
+                "coordinates": coords,
+                "source": "Open-Meteo.com"
+            }
+            
+            # Add to history
+            self._add_to_history(weather_data)
+            
+            return weather_data
             
         except Exception as e:
-            logger.error(f"Error saving settings: {e}")
-        
-    async def initialize(self, app=None):
-        """Initialize the plugin.
+            logger.error(f"Error getting weather data: {e}")
+            return {"error": str(e)}
+    
+    def get_forecast(self, location: str, days: int = 5) -> Dict[str, Any]:
+        """Get weather forecast for a location.
         
         Args:
-            app: Reference to the main application instance (optional)
+            location: City name or coordinates (lat,lon)
+            days: Number of days to forecast (1-16)
             
         Returns:
-            bool: True if initialization was successful, False otherwise
-        """
-        if self._initialized:
-            return True
-            
-        try:
-            # Perform any necessary initialization here
-            logger.info(f"Initializing {self.name} provider")
-            self._initialized = True
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize {self.name} provider: {str(e)}")
-            self._initialized = False
-            return False
-            
-    async def cleanup(self):
-        """Clean up resources used by the provider.
-        
-        This is a coroutine that will be awaited by the application.
+            Dictionary containing forecast data
         """
         try:
-            # Perform any necessary cleanup here
-            logger.info(f"Cleaning up {self.name} provider")
-            self._initialized = False
-        except Exception as e:
-            logger.error(f"Error during {self.name} cleanup: {str(e)}")
-        
-    @property
-    def api_key(self):
-        """Get the API key."""
-        return getattr(self, '_api_key', '')
-        
-    @api_key.setter
-    def api_key(self, value):
-        """Set the API key and emit signal if changed."""
-        old_value = getattr(self, '_api_key', '')
-        self._api_key = value if value is not None else ''
-        if old_value != self._api_key:
-            self.api_key_changed.emit(self._api_key)
-    
-    async def _make_request(self, endpoint, params=None):
-        """Make an async request to the Open-Meteo API.
-        
-        Args:
-            endpoint (str): API endpoint
-            params (dict, optional): Additional parameters
-            
-        Returns:
-            dict: JSON response
-        """
-        if params is None:
-            params = {}
-            
-        # Open-Meteo doesn't require an API key for basic usage
-        params.update({
-            'temperature_unit': 'celsius' if self.units == 'metric' else 'fahrenheit',
-            'windspeed_unit': 'kmh' if self.units == 'metric' else 'mph',
-            'precipitation_unit': 'mm',
-            'timezone': 'auto',
-            'timeformat': 'iso8601'
-        })
-        
-        session = await get_session()
-        try:
-            async with session.get(f"{self.BASE_URL}{endpoint}", params=params) as response:
-                response.raise_for_status()
-                return await response.json()
-        except Exception as e:
-            logger.error(f"Request failed: {str(e)}")
-            raise
-        finally:
-            await session.close()
-    
-    async def _geocode_location(self, location):
-        """Convert location name to coordinates using Open-Meteo's geocoding."""
-        if ',' in location:  # Already coordinates
-            lat, lon = location.split(',')
-            return float(lat.strip()), float(lon.strip())
-            
-        # Geocode the location name
-        session = await get_session()
-        try:
-            async with session.get(
-                'https://geocoding-api.open-meteo.com/v1/search',
-                params={'name': location, 'count': 1, 'language': self.language, 'format': 'json'}
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
+            # First get coordinates for the location
+            coords = self._geocode(location)
+            if not coords:
+                return {"error": f"Could not find location: {location}"}
                 
-                if not data.get('results'):
-                    raise ValueError(f"Location '{location}' not found")
-                    
-                return data['results'][0]['latitude'], data['results'][0]['longitude']
-        except Exception as e:
-            logger.error(f"Geocoding failed: {str(e)}")
-            raise
-        finally:
-            await session.close()
-    
-    async def get_current_weather(self, location):
-        """Get current weather for a location."""
-        try:
-            lat, lon = await self._geocode_location(location)
+            # Get forecast
+            params = {
+                "latitude": coords["latitude"],
+                "longitude": coords["longitude"],
+                "daily": [
+                    "weathercode", "temperature_2m_max", "temperature_2m_min",
+                    "apparent_temperature_max", "apparent_temperature_min",
+                    "sunrise", "sunset", "precipitation_sum", "windspeed_10m_max"
+                ],
+                "temperature_unit": "celsius" if self.units == "metric" else "fahrenheit",
+                "windspeed_unit": "kmh" if self.units == "metric" else "mph",
+                "precipitation_unit": "mm",
+                "timezone": "auto",
+                "forecast_days": min(max(days, 1), 16)  # Clamp between 1-16 days
+            }
             
-            # Get current weather and daily forecast in one request
-            data = await self._make_request('forecast', {
-                'latitude': lat,
-                'longitude': lon,
-                'current_weather': 'true',
-                'daily': 'weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,winddirection_10m_dominant',
-                'hourly': 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,pressure_msl,visibility,windspeed_10m,winddirection_10m',
-                'models': 'best_match'
-            })
+            response = requests.get(f"{self.BASE_URL}forecast", params=params)
+            response.raise_for_status()
+            data = response.json()
             
-            current = data['current_weather']
+            # Format the forecast data
+            daily = data.get("daily", {})
+            forecast_days = []
             
-            # Get additional data from hourly (nearest hour)
-            now = datetime.utcnow()
-            hourly = data['hourly']
-            time_index = min(range(len(hourly['time'])), 
-                          key=lambda i: abs(datetime.fromisoformat(hourly['time'][i]) - now))
+            for i in range(len(daily.get("time", []))):
+                day = {
+                    "date": daily["time"][i],
+                    "temp_max": daily["temperature_2m_max"][i],
+                    "temp_min": daily["temperature_2m_min"][i],
+                    "feels_like_max": daily["apparent_temperature_max"][i],
+                    "feels_like_min": daily["apparent_temperature_min"][i],
+                    "weather_code": daily["weathercode"][i],
+                    "description": self._get_weather_description(daily["weathercode"][i]),
+                    "icon": self._get_weather_icon(daily["weathercode"][i]),
+                    "precipitation": daily["precipitation_sum"][i],
+                    "wind_speed": daily["windspeed_10m_max"][i],
+                    "sunrise": daily["sunrise"][i],
+                    "sunset": daily["sunset"][i]
+                }
+                forecast_days.append(day)
             
             return {
-                'temp': current['temperature'],
-                'feels_like': hourly['apparent_temperature'][time_index],
-                'humidity': hourly['relativehumidity_2m'][time_index] if 'relativehumidity_2m' in hourly else None,
-                'pressure': hourly['pressure_msl'][time_index] if 'pressure_msl' in hourly else None,
-                'wind_speed': current['windspeed'],
-                'wind_direction': current['winddirection'],
-                'description': self._get_weather_description(current['weathercode']),
-                'icon': self._get_weather_icon(current['weathercode']),
-                'visibility': hourly['visibility'][time_index] if 'visibility' in hourly else 10000,  # Default 10km
-                'clouds': 0,  # Not directly available in Open-Meteo
-                'rain': hourly['precipitation'][time_index] if 'precipitation' in hourly else 0,
-                'snow': 0,  # Not directly available in Open-Meteo
-                'dt': datetime.fromisoformat(current['time']).timestamp(),
-                'sunrise': 0,  # Will be updated from daily data if available
-                'sunset': 0,   # Will be updated from daily data if available
-                'location': location,
-                'coord': {'lat': lat, 'lon': lon}
+                "location": self._reverse_geocode(coords["latitude"], coords["longitude"]) or location,
+                "days": forecast_days,
+                "coordinates": coords,
+                "source": "Open-Meteo.com"
             }
             
         except Exception as e:
-            raise Exception(f"Failed to get current weather: {str(e)}")
+            logger.error(f"Error getting forecast: {e}")
+            return {"error": str(e)}
     
-    async def get_forecast(self, location, days=5):
-        """Get weather forecast for a location."""
+    def get_historical_weather(self, location: str, date: str) -> Dict[str, Any]:
+        """Get historical weather data for a location and date.
+        
+        Args:
+            location: City name or coordinates (lat,lon)
+            date: Date in YYYY-MM-DD format
+            
+        Returns:
+            Dictionary containing historical weather data
+        """
         try:
-            lat, lon = await self._geocode_location(location)
-            
-            data = await self._make_request('forecast', {
-                'latitude': lat,
-                'longitude': lon,
-                'daily': 'weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_hours,windspeed_10m_max,winddirection_10m_dominant',
-                'timezone': 'auto',
-                'forecast_days': min(days, 16)  # Open-Meteo supports up to 16 days
-            })
-            
-            forecast = []
-            for i in range(min(len(data['daily']['time']), days)):
-                forecast.append({
-                    'dt': datetime.fromisoformat(data['daily']['time'][i]).timestamp(),
-                    'temp': {
-                        'max': data['daily']['temperature_2m_max'][i],
-                        'min': data['daily']['temperature_2m_min'][i]
-                    },
-                    'feels_like': {
-                        'max': data['daily']['apparent_temperature_max'][i],
-                        'min': data['daily']['apparent_temperature_min'][i]
-                    },
-                    'weather': [{
-                        'description': self._get_weather_description(data['daily']['weathercode'][i]),
-                        'icon': self._get_weather_icon(data['daily']['weathercode'][i]),
-                        'code': data['daily']['weathercode'][i]
-                    }],
-                    'wind_speed': data['daily']['windspeed_10m_max'][i],
-                    'wind_deg': data['daily']['winddirection_10m_dominant'][i],
-                    'pop': 0,  # Probability of precipitation not directly available
-                    'rain': data['daily']['precipitation_sum'][i],
-                    'snow': 0,  # Snow not directly available
-                    'humidity': None,  # Not available in daily data
-                    'pressure': None   # Not available in daily data
-                })
+            # First get coordinates for the location
+            coords = self._geocode(location)
+            if not coords:
+                return {"error": f"Could not find location: {location}"}
                 
-            return forecast
+            # Check if date is in the future or too far in the past
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+            today = datetime.utcnow().date()
+            
+            if target_date > today:
+                return {"error": "Cannot get historical data for future dates"}
+                
+            if (today - target_date).days > 365 * 10:  # Limit to 10 years
+                return {"error": "Historical data only available for the past 10 years"}
+            
+            # Get historical data
+            params = {
+                "latitude": coords["latitude"],
+                "longitude": coords["longitude"],
+                "start_date": date,
+                "end_date": date,
+                "hourly": ["temperature_2m", "weathercode", "windspeed_10m", "precipitation"],
+                "temperature_unit": "celsius" if self.units == "metric" else "fahrenheit",
+                "windspeed_unit": "kmh" if self.units == "metric" else "mph",
+                "precipitation_unit": "mm",
+                "timezone": "auto"
+            }
+            
+            response = requests.get(f"{self.BASE_URL}archive", params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Calculate daily aggregates
+            hourly = data.get("hourly", {})
+            if not hourly.get("time"):
+                return {"error": f"No historical data available for {date}"}
+                
+            temps = hourly.get("temperature_2m", [])
+            weather_codes = hourly.get("weathercode", [])
+            
+            if not temps or not weather_codes:
+                return {"error": "Incomplete historical data"}
+            
+            # Get most common weather code for the day
+            from collections import Counter
+            most_common_code = Counter(weather_codes).most_common(1)[0][0]
+            
+            historical_data = {
+                "location": self._reverse_geocode(coords["latitude"], coords["longitude"]) or location,
+                "date": date,
+                "temperature_avg": sum(temps) / len(temps) if temps else None,
+                "temperature_max": max(temps) if temps else None,
+                "temperature_min": min(temps) if temps else None,
+                "weather_code": most_common_code,
+                "description": self._get_weather_description(most_common_code),
+                "icon": self._get_weather_icon(most_common_code),
+                "precipitation": sum(hourly.get("precipitation", [0])),
+                "wind_speed_avg": sum(hourly.get("windspeed_10m", [0])) / len(hourly.get("windspeed_10m", [1])),
+                "coordinates": coords,
+                "source": "Open-Meteo.com (Historical)"
+            }
+            
+            return historical_data
             
         except Exception as e:
-            raise Exception(f"Failed to get forecast: {str(e)}")
+            logger.error(f"Error getting historical weather: {e}")
+            return {"error": str(e)}
     
-    def get_alerts(self, location):
-        """Get weather alerts for a location."""
-        # Open-Meteo doesn't provide alerts in the free tier
-        return []
+    def _geocode(self, location: str) -> Optional[Dict[str, float]]:
+        """Convert location name to coordinates using Open-Meteo geocoding."""
+        if not location:
+            return None
+            
+        # Check if location is already in coordinates format (lat,lon)
+        if "," in location:
+            try:
+                lat, lon = map(float, location.split(","))
+                return {"latitude": lat, "longitude": lon}
+            except (ValueError, IndexError):
+                pass
+                
+        # Try to geocode the location name
+        try:
+            params = {
+                "name": location,
+                "count": 1,
+                "language": "en",
+                "format": "json"
+            }
+            
+            response = requests.get("https://geocoding-api.open-meteo.com/v1/search", params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("results") and len(data["results"]) > 0:
+                result = data["results"][0]
+                return {
+                    "latitude": result.get("latitude"),
+                    "longitude": result.get("longitude"),
+                    "name": result.get("name"),
+                    "admin1": result.get("admin1"),
+                    "country": result.get("country")
+                }
+                
+        except Exception as e:
+            logger.error(f"Geocoding error for {location}: {e}")
+            
+        return None
     
-    def validate_api_key(self, api_key):
-        """Validate the API key."""
-        # Open-Meteo doesn't require an API key for basic usage
-        return True, "API key validation not required for Open-Meteo"
+    def _reverse_geocode(self, lat: float, lon: float) -> str:
+        """Convert coordinates to location name using OpenStreetMap Nominatim as fallback.
+        
+        Note: According to Nominatim's usage policy, you must include a custom user agent
+        and respect their usage limits (max 1 request per second).
+        """
+        # First try OpenStreetMap Nominatim as it's more reliable for reverse geocoding
+        try:
+            # Create a proper user agent that identifies your application
+            headers = {
+                'User-Agent': 'WeatherApp/1.0 (https://github.com/Nsfr750/weather; nsfr750@yandex.com)'
+            }
+            
+            response = requests.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={
+                    'lat': lat,
+                    'lon': lon,
+                    'format': 'jsonv2',  # Use v2 of the API
+                    'accept-language': 'en',
+                    'zoom': 10,  # Get more detailed location info
+                    'addressdetails': 1
+                },
+                headers=headers,
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Extract location name from the response
+            if 'display_name' in data:
+                return data['display_name']
+                
+            # Fallback to address components if display_name is not available
+            address = data.get('address', {})
+            location_parts = []
+            for key in ['city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state', 'country']:
+                if key in address:
+                    location_parts.append(address[key])
+            
+            if location_parts:
+                return ', '.join(location_parts[:3])  # Return up to 3 most specific parts
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                logger.warning("Nominatim API rate limit exceeded. Please provide a custom user agent and respect the usage policy.")
+            else:
+                logger.warning(f"Nominatim reverse geocoding failed for ({lat}, {lon}): {e}")
+        except Exception as e:
+            logger.warning(f"Error in reverse geocoding for ({lat}, {lon}): {e}")
+        
+        # Fallback to just showing coordinates
+        return f"{lat:.4f}, {lon:.4f}"
     
-    def update_config(self, **kwargs):
-        """Update provider configuration."""
-        if 'api_key' in kwargs:
-            self.api_key = kwargs['api_key']
-        if 'units' in kwargs:
-            self.units = kwargs['units']
-        if 'language' in kwargs:
-            self.language = kwargs['language']
-    
-    def _get_weather_description(self, code):
+    def _get_weather_description(self, code: int) -> str:
         """Convert weather code to description."""
-        # WMO Weather interpretation codes (https://open-meteo.com/en/docs)
-        codes = {
-            0: 'Clear sky',
-            1: 'Mainly clear',
-            2: 'Partly cloudy',
-            3: 'Overcast',
-            45: 'Fog',
-            48: 'Depositing rime fog',
-            51: 'Light drizzle',
-            53: 'Moderate drizzle',
-            55: 'Dense drizzle',
-            56: 'Light freezing drizzle',
-            57: 'Dense freezing drizzle',
-            61: 'Slight rain',
-            63: 'Moderate rain',
-            65: 'Heavy rain',
-            66: 'Light freezing rain',
-            67: 'Heavy freezing rain',
-            71: 'Slight snow fall',
-            73: 'Moderate snow fall',
-            75: 'Heavy snow fall',
-            77: 'Snow grains',
-            80: 'Slight rain showers',
-            81: 'Moderate rain showers',
-            82: 'Violent rain showers',
-            85: 'Slight snow showers',
-            86: 'Heavy snow showers',
-            95: 'Thunderstorm',
-            96: 'Thunderstorm with slight hail',
-            99: 'Thunderstorm with heavy hail'
+        # WMO Weather interpretation codes (WW)
+        weather_codes = {
+            0: "Clear sky",
+            1: "Mainly clear",
+            2: "Partly cloudy",
+            3: "Overcast",
+            45: "Fog",
+            48: "Depositing rime fog",
+            51: "Light drizzle",
+            53: "Moderate drizzle",
+            55: "Dense drizzle",
+            56: "Light freezing drizzle",
+            57: "Dense freezing drizzle",
+            61: "Slight rain",
+            63: "Moderate rain",
+            65: "Heavy rain",
+            66: "Light freezing rain",
+            67: "Heavy freezing rain",
+            71: "Slight snow fall",
+            73: "Moderate snow fall",
+            75: "Heavy snow fall",
+            77: "Snow grains",
+            80: "Slight rain showers",
+            81: "Moderate rain showers",
+            82: "Violent rain showers",
+            85: "Slight snow showers",
+            86: "Heavy snow showers",
+            95: "Thunderstorm",
+            96: "Thunderstorm with slight hail",
+            99: "Thunderstorm with heavy hail"
         }
-        return codes.get(code, 'Unknown')
+        return weather_codes.get(code, "Unknown")
     
-    def _get_weather_icon(self, code):
+    def _get_weather_icon(self, code: int) -> str:
         """Convert weather code to icon name."""
-        # Map Open-Meteo weather codes to icon names
-        if code in [0, 1]:
-            return '01d'  # Clear sky
-        elif code == 2:
-            return '02d'  # Partly cloudy
-        elif code == 3:
-            return '03d'  # Overcast
-        elif code in [45, 48]:
-            return '50d'  # Fog
-        elif code in [51, 53, 55, 56, 57]:
-            return '09d'  # Drizzle
-        elif code in [61, 63, 65, 66, 67, 80, 81, 82]:
-            return '10d'  # Rain
-        elif code in [71, 73, 75, 77, 85, 86]:
-            return '13d'  # Snow
-        elif code in [95, 96, 99]:
-            return '11d'  # Thunderstorm
-        return '01d'  # Default
+        # Map weather codes to icon names
+        icon_map = {
+            # Clear
+            0: "01d",
+            # Mainly clear, partly cloudy, and overcast
+            1: "02d", 2: "03d", 3: "04d",
+            # Fog and fog depositing rime
+            45: "50d", 48: "50d",
+            # Drizzle
+            51: "09d", 53: "09d", 55: "09d",
+            56: "13d", 57: "13d",  # Freezing drizzle
+            # Rain
+            61: "10d", 63: "10d", 65: "10d",
+            66: "13d", 67: "13d",  # Freezing rain
+            # Snow fall
+            71: "13d", 73: "13d", 75: "13d", 77: "13d",
+            # Rain showers
+            80: "09d", 81: "09d", 82: "09d",
+            # Snow showers
+            85: "13d", 86: "13d",
+            # Thunderstorm
+            95: "11d", 96: "11d", 99: "11d"
+        }
+        return icon_map.get(code, "01d")
+    
+    def _add_to_history(self, weather_data: Dict[str, Any]) -> None:
+        """Add weather data to history."""
+        if not weather_data or "error" in weather_data:
+            return
+            
+        # Add timestamp if not present
+        if "timestamp" not in weather_data:
+            weather_data["timestamp"] = datetime.utcnow()
+            
+        # Add to history
+        self.history.insert(0, weather_data)
+        
+        # Trim history to max size
+        if len(self.history) > self.max_history:
+            self.history = self.history[:self.max_history]
+    
+    def get_history(self) -> List[Dict[str, Any]]:
+        """Get weather query history."""
+        return self.history
+    
+    def clear_history(self) -> None:
+        """Clear weather query history."""
+        self.history = []
+    
+    def set_units(self, units: str) -> None:
+        """Set the units system.
+        
+        Args:
+            units: Units system to use (metric or imperial)
+        """
+        if units in ["metric", "imperial"]:
+            self.units = units
+            logger.info(f"Units set to: {units}")
+        else:
+            logger.warning(f"Invalid units: {units}. Must be 'metric' or 'imperial'.")

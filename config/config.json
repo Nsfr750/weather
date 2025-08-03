@@ -8,7 +8,10 @@
       "api_key": ""
     }
   },
-  "last_city": "Bolzano Novarese",
+  "last_city": "Ho Chi Minh",
   "weather_provider": "open-meteo",
-  "layout": "standard"
+  "layout": "standard",
+  "window/geometry": "01d9d0cb000300000000000800000000000003270000033e000000080000001f000003270000033e00000000000000000640000000080000001f000003270000033e",
+  "window/state": "000000ff00000000fd0000000000000320000002f500000004000000040000000800000008fc00000000",
+  "ui/show_history": false
 }

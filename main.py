@@ -1,24 +1,34 @@
+#!/usr/bin/env python3
+"""
+Weather Application
+
+A modern weather application that displays current weather, 5-day forecast,
+and historical weather data using the Open-Meteo.com API.
+"""
+
 import sys
 import os
-import asyncio
-import requests
 import json
 import webbrowser
-import logging
+import requests
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, Optional, List, Callable
 
-# Import logger from script module
-from script.logger import logger
-
-# PyQt6 imports
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                            QLabel, QPushButton, QComboBox, QFrame, QMessageBox, QMenuBar,
-                            QMenu, QStatusBar, QInputDialog, QLineEdit, QFileDialog, QScrollArea)
+# Import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QLineEdit, QPushButton, QListWidget, QListWidgetItem, QSplitter, QStatusBar,
+    QMessageBox, QDialog, QMenuBar, QMenu, QComboBox, QSystemTrayIcon, 
+    QStyle, QGridLayout, QTabWidget, QFrame, QSizePolicy, QSpacerItem,
+    QScrollArea, QStackedWidget, QInputDialog, QFileDialog, QDialogButtonBox
+)
+from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent, QThread, QMetaObject
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont, QPalette, QColor, QDesktopServices
+
+# Import logger
+from script.logger import setup_logging, logger
 
 # Add script directory to path for module imports
 script_dir = Path(__file__).parent.absolute()
@@ -33,19 +43,27 @@ from script.help import Help
 from script.sponsor import Sponsor
 from script.menu import create_menu_bar
 from script.favorites_utils import FavoritesManager
+from script.history_utils import HistoryManager
 from script.config_utils import ConfigManager
 from script.translations import TRANSLATIONS
 from script.translations_utils import TranslationsManager
-from script.notifications import NotificationManager, check_severe_weather
-from script.weather_providers import get_provider, get_available_providers
-from script.ui import WeatherAppUI
+from script.notifications import NotificationManager
 from script.weather_providers.openmeteo import OpenMeteoProvider
 
-# ----------- CONFIGURATION -----------
-DEFAULT_CITY = 'London'
+# Constants
+DEFAULT_CITY = "Rome, IT"
+REFRESH_INTERVAL = 30 * 60 * 1000  # 30 minutes in milliseconds
+
+# Configure logging
+logger = setup_logging()
+logger = logger.getChild('main')
+
 
 class WeatherApp(QMainWindow):
+    """Main application window for the Weather application."""
+    
     def __init__(self):
+        """Initialize the weather application."""
         super().__init__()
         
         # Setup config and data directories
@@ -60,66 +78,201 @@ class WeatherApp(QMainWindow):
         self.config = self.config_manager.get_config()
         self.units = self.config_manager.get('units', 'metric')
         self.language = self.config_manager.get('language', 'en')
-        self.api_key = self.config_manager.get('api_key') or os.environ.get('OPENWEATHER_API_KEY', 'YOUR_API_KEY_HERE')
         
         # Initialize online status
         self.online = True  # Default to online, will be updated by check_connection()
-        
-        # Set offline mode if no internet
         self.check_connection()
         
         # Initialize translations
         self.translations_manager = TranslationsManager(TRANSLATIONS, default_lang=self.language)
         
         # Initialize weather provider
-        self.initialize_weather_provider()
+        self.weather_provider = OpenMeteoProvider(units=self.units)
         
         # Initialize UI
-        self.setWindowTitle('Weather App')
-        self.setMinimumSize(600, 800)
+        self.setWindowTitle(f'Weather v{get_version()}')
+        self.setMinimumSize(800, 800)
         
         # Set application icon
         self.set_application_icon()
         
-        # Initialize the UI
-        self.ui = WeatherAppUI(
-            config_manager=self.config_manager,
-            translations_manager=self.translations_manager,
-            weather_provider=self.weather_provider,
-            notification_manager=self.notification_manager
-        )
-        
-        # Set up signals
-        self.setup_connections()
-        
-        # Set initial city from config or default
-        self.city = self.config_manager.get('last_city', DEFAULT_CITY)
-        self.ui.set_city(self.city)
-        
-        # Set initial units
-        self.ui.set_units(self.units)
-        
-        # Set initial language
-        self.ui.set_language(self.language)
-        
-        # Load favorites
-        self.favorites_manager = FavoritesManager()
-        self.update_favorites_menu()
-        
-        # Check for updates on startup
-        self.check_for_updates()
-        
-        # Load initial weather data
-        self.refresh_weather()
-        
-        # Set central widget
-        self.setCentralWidget(self.ui)
+        # Create main widget and layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QVBoxLayout(self.central_widget)
         
         # Create menu bar
         self.create_menu_bar()
         
-        # Show the window
-        self.show()
+        # Create status bar first to ensure it's at the bottom
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.update_status("Ready")
+        
+        # Create main content area
+        self.create_main_content()
+        
+        # Set initial city from config or default
+        self.city = self.config_manager.get('last_city', DEFAULT_CITY)
+        
+        # Load favorites and history
+        self.favorites_manager = FavoritesManager()
+        self.history_manager = HistoryManager()
+        self.update_favorites_menu()
+        
+        # Set up refresh timer
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.timeout.connect(self.refresh_weather)
+        self.refresh_timer.start(REFRESH_INTERVAL)
+        
+        # Initial weather update
+        self.refresh_weather()
+        
+    def update_status(self, message: str, timeout: int = 0) -> None:
+        """Update the status bar with a message.
+        
+        Args:
+            message: The message to display
+            timeout: Time in milliseconds to display the message (0 = show until next message)
+        """
+        if hasattr(self, 'status_bar') and self.status_bar is not None:
+            self.status_bar.showMessage(message, timeout)
+            self.status_bar.repaint()  # Force immediate update
+    
+    def create_menu_bar(self):
+        """Create and set up the menu bar."""
+        from script.menu import MenuBar
+        
+        # Create the menu bar
+        self.menu_bar = MenuBar(
+            parent=self,
+            translations_manager=self.translations_manager,
+            current_language=self.language,
+            current_units=self.units
+        )
+        
+        # Connect signals
+        self.menu_bar.refresh_triggered.connect(self.refresh_weather)
+        self.menu_bar.units_changed.connect(self.set_units)
+        self.menu_bar.language_changed.connect(self.set_language)
+        self.menu_bar.toggle_history.connect(self.toggle_history)
+        self.menu_bar.add_to_favorites.connect(self.add_current_to_favorites)
+        self.menu_bar.manage_favorites.connect(self.manage_favorites)
+        self.menu_bar.favorite_selected.connect(self.set_location)
+        self.menu_bar.show_about.connect(self.show_about)
+        self.menu_bar.show_help.connect(self.show_help)
+        self.menu_bar.check_updates.connect(self.check_for_updates)
+        self.menu_bar.show_sponsor.connect(self.show_sponsor)
+        self.menu_bar.exit_triggered.connect(self.close)
+        
+        # Set the menu bar
+        self.setMenuBar(self.menu_bar)
+        
+        # Set the menu bar
+        self.setMenuBar(self.menu_bar)
+        
+        # Update favorites menu state
+        self.update_favorites_menu()
+    
+    def create_main_content(self):
+        """Create the main content area with current weather, forecast, and history."""
+        # Create main splitter for resizable panels
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left panel - Current weather
+        self.left_panel = QWidget()
+        self.left_layout = QVBoxLayout(self.left_panel)
+        
+        # Search box
+        self.search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search location...")
+        self.search_input.returnPressed.connect(self.on_search)
+        self.search_button = QPushButton("Search")
+        self.search_button.clicked.connect(self.on_search)
+        
+        self.search_layout.addWidget(self.search_input)
+        self.search_layout.addWidget(self.search_button)
+        
+        # Current weather widget
+        self.current_weather_widget = QWidget()
+        self.current_weather_layout = QVBoxLayout(self.current_weather_widget)
+        
+        # Location and date
+        self.location_label = QLabel("Location")
+        self.location_label.setObjectName("locationLabel")
+        self.date_label = QLabel("Date")
+        self.date_label.setObjectName("dateLabel")
+        
+        # Current weather icon and temperature
+        self.weather_icon = QLabel()
+        self.weather_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.temperature_label = QLabel("--°C")
+        self.temperature_label.setObjectName("temperatureLabel")
+        self.weather_description = QLabel("Weather description")
+        self.weather_description.setObjectName("weatherDescription")
+        
+        # Weather details
+        self.details_widget = QWidget()
+        self.details_layout = QVBoxLayout(self.details_widget)
+        
+        self.feels_like_label = QLabel("Feels like: --°C")
+        self.humidity_label = QLabel("Humidity: --%")
+        self.wind_label = QLabel("Wind: -- km/h")
+        self.pressure_label = QLabel("Pressure: -- hPa")
+        self.visibility_label = QLabel("Visibility: -- km")
+        
+        for label in [self.feels_like_label, self.humidity_label, self.wind_label, 
+                     self.pressure_label, self.visibility_label]:
+            self.details_layout.addWidget(label)
+        
+        # Add widgets to current weather layout
+        self.current_weather_layout.addWidget(self.location_label)
+        self.current_weather_layout.addWidget(self.date_label)
+        self.current_weather_layout.addStretch()
+        self.current_weather_layout.addWidget(self.weather_icon)
+        self.current_weather_layout.addWidget(self.temperature_label)
+        self.current_weather_layout.addWidget(self.weather_description)
+        self.current_weather_layout.addStretch()
+        self.current_weather_layout.addWidget(self.details_widget)
+        self.current_weather_layout.addStretch()
+        
+        # Forecast widget
+        self.forecast_widget = QWidget()
+        self.forecast_layout = QHBoxLayout(self.forecast_widget)
+        self.forecast_layout.setSpacing(10)
+        
+        # Add widgets to left layout
+        self.left_layout.addLayout(self.search_layout)
+        self.left_layout.addWidget(self.current_weather_widget)
+        self.left_layout.addWidget(QLabel("5-Day Forecast:"))
+        self.left_layout.addWidget(self.forecast_widget)
+        
+        # Right panel - History (initially hidden)
+        self.history_widget = QWidget()
+        self.history_layout = QVBoxLayout(self.history_widget)
+        
+        self.history_title = QLabel("History")
+        self.history_title.setObjectName("historyTitle")
+        self.history_list = QListWidget()
+        self.history_list.itemClicked.connect(self.on_history_item_clicked)
+        self.clear_history_button = QPushButton("Clear History")
+        self.clear_history_button.clicked.connect(self.clear_history)
+        
+        self.history_layout.addWidget(self.history_title)
+        self.history_layout.addWidget(self.history_list)
+        self.history_layout.addWidget(self.clear_history_button)
+        
+        # Add widgets to splitter
+        self.splitter.addWidget(self.left_panel)
+        self.splitter.addWidget(self.history_widget)
+        self.history_widget.hide()  # Hide history by default
+        
+        # Set initial sizes (convert to integers)
+        self.splitter.setSizes([int(self.width() * 0.7), int(self.width() * 0.3)])
+        
+        # Add splitter to main layout
+        self.main_layout.addWidget(self.splitter)
     
     def set_application_icon(self):
         """Set the application icon."""
@@ -128,7 +281,7 @@ class WeatherApp(QMainWindow):
             if icon_path.exists():
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:
-            logging.warning(f'Could not set application icon: {e}')
+            logger.warning(f'Could not set application icon: {e}')
     
     def check_connection(self):
         """Check internet connection and set offline mode accordingly."""
@@ -145,1555 +298,408 @@ class WeatherApp(QMainWindow):
                 'Internet connection not available. Running in offline mode with limited functionality.'
             )
     
-    def initialize_weather_provider(self):
-        """Initialize the weather provider based on configuration."""
-        from script.weather_providers.openmeteo import OpenMeteoProvider
-        
-        # Set default provider to legacy OpenMeteo
-        self.weather_provider_name = 'openmeteo'
-        logger.info("Initializing legacy OpenMeteo provider")
-        
-        try:
-            # Initialize the legacy OpenMeteo provider with keyword arguments
-            self.weather_provider = OpenMeteoProvider(
-                api_key=self.config_manager.get('api_key', ''),
-                units=self.units,
-                language=self.language,
-                offline_mode=not self.online
-            )
-            logger.info("Successfully initialized legacy OpenMeteo provider")
-        except Exception as e:
-            error_msg = f"Failed to initialize legacy OpenMeteo provider: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise RuntimeError(error_msg) from e
-    
-    def setup_connections(self):
-        """Set up signal connections."""
-        # Connect UI signals to slots
-        self.ui.search_clicked.connect(self.on_search)
-        self.ui.favorite_toggled.connect(self.on_toggle_favorite)
-        self.ui.favorite_selected.connect(self.on_favorite_selected)
-        self.ui.units_changed.connect(self.on_units_changed)
-        
-    def on_language_changed(self, language: str):
-        """Handle language change."""
-        self.language = language
-        self.translations_manager.set_language(language)
-        self.config_manager.set('language', language)
-        self.refresh_weather()  # Refresh to update all text in the new language
-    
-    def update_weather_provider(self, provider_name: str):
-        """Update the weather provider dynamically.
-        
-        Args:
-            provider_name: Name of the weather provider to switch to
-        """
-        logger.info(f"Switching to weather provider: {provider_name}")
-        
-        # Show a status message
-        self.statusBar().showMessage(f"Switching to {provider_name} provider...")
-        
-        try:
-            # Save the new provider to config
-            self.config_manager.set('weather_provider', provider_name)
-            
-            # Store the current city to restore it after provider switch
-            current_city = self.city
-            
-            # Re-initialize the weather provider
-            self.weather_provider_name = provider_name
-            self.initialize_weather_provider()
-            
-            # Update the UI with the new provider
-            if hasattr(self.ui, 'weather_provider'):
-                self.ui.weather_provider = self.weather_provider
-            
-            # Update the provider in the menu bar if it exists
-            if hasattr(self, 'menuBar') and hasattr(self.menuBar(), 'set_current_provider'):
-                self.menuBar().set_current_provider(provider_name)
-            
-            # Restore the city and refresh weather data
-            self.city = current_city
-            self.refresh_weather()
-            
-            # Show success message
-            self.statusBar().showMessage(f"Successfully switched to {provider_name}", 3000)
-            logger.info(f"Successfully switched to {provider_name} provider")
-            
-        except Exception as e:
-            error_msg = f"Failed to switch to {provider_name} provider: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            
-            # Show error in status bar and message box
-            self.statusBar().showMessage("Failed to switch weather provider", 3000)
-            QMessageBox.critical(
-                self,
-                self.tr('Provider Error'),
-                self.tr(error_msg)
-            )
-    
-    def create_menu_bar(self):
-        """Create the application menu bar."""
-        # Get translations for the current language
-        translations = self.translations_manager.translations
-        
-        # Create the custom menu bar with translations
-        menubar = create_menu_bar(self, translations=translations)
-        
-        # Connect signals
-        menubar.refresh_triggered.connect(self.refresh_weather)
-        menubar.units_changed.connect(self.on_units_changed)
-        menubar.language_changed.connect(self.on_language_changed)
-        menubar.theme_changed.connect(self.on_theme_changed)
-        menubar.provider_changed.connect(self.update_weather_provider)
-        
-        # Set initial values
-        menubar.set_units(self.units)
-        menubar.set_languages(TRANSLATIONS.get('languages', {}), self.language)
-        menubar.set_theme(self.config_manager.get('theme', 'dark'))
-        
-        # Set the menu bar
-        self.setMenuBar(menubar)
-    
-    def on_search(self, city: str):
-        """Handle search for a city's weather."""
-        if not city or city.lower() == 'enter city name...':
-            return
-            
-        self.city = city
-        self.config_manager.set('last_city', city)
-        self.refresh_weather()
-    
     def refresh_weather(self):
-        """Refresh the weather data for the current city."""
+        """Refresh weather data for the current location."""
         if not self.city:
             return
             
-        self.ui.set_status(f'Fetching weather for {self.city}...')
-        self.ui.show_loading(True)
+        self.update_status(f"Fetching weather data for {self.city}...")
         
-        # Use a thread to avoid blocking the UI
-        async def fetch_weather_async():
-            try:
-                # Fetch both current weather and forecast
-                current, forecast = await asyncio.gather(
-                    self.weather_provider.get_current_weather(self.city),
-                    self.weather_provider.get_forecast(self.city, days=5)
-                )
-                
-                # Debug log the structure of the forecast data
-                logger.debug(f"Forecast data type: {type(forecast)}")
-                logger.debug(f"Forecast data: {forecast}")
-                
-                # Combine the data
-                if isinstance(forecast, list):
-                    logger.debug("Forecast is a list")
-                    # If forecast is a list, use it directly as the daily forecast
-                    if isinstance(current, dict):
-                        logger.debug("Current is a dictionary, adding 'daily' key")
-                        current['daily'] = forecast
-                    else:
-                        logger.debug("Current is an object, setting daily attribute")
-                        current.daily = forecast
-                    logger.debug(f"Set forecast data with {len(forecast)} items")
-                elif isinstance(forecast, dict):
-                    logger.debug("Forecast is a dictionary")
-                    # If forecast is a dictionary, check for 'daily' or 'forecast' keys
-                    if 'daily' in forecast and forecast['daily']:
-                        logger.debug("Found 'daily' key in forecast dictionary")
-                        if isinstance(current, dict):
-                            current['daily'] = forecast['daily']
-                        else:
-                            current.daily = forecast['daily']
-                    elif 'forecast' in forecast and forecast['forecast']:
-                        logger.debug("Found 'forecast' key in forecast dictionary")
-                        if isinstance(current, dict):
-                            current['daily'] = forecast['forecast']
-                        else:
-                            current.daily = forecast['forecast']
-                    else:
-                        logger.debug("No valid forecast data found in dictionary")
-                else:
-                    logger.debug("Forecast is an object")
-                    # If forecast is an object, check for attributes
-                    if hasattr(forecast, 'daily') and forecast.daily:
-                        logger.debug("Found 'daily' attribute in forecast object")
-                        if isinstance(current, dict):
-                            current['daily'] = forecast.daily
-                        else:
-                            current.daily = forecast.daily
-                    elif hasattr(forecast, 'forecast') and forecast.forecast:
-                        logger.debug("Found 'forecast' attribute in forecast object")
-                        if isinstance(current, dict):
-                            current['daily'] = forecast.forecast
-                        else:
-                            current.daily = forecast.forecast
-                    else:
-                        logger.debug("No valid forecast data found in object")
-                
-                logger.debug(f"Current weather data: {current}")
-                logger.debug(f"Current weather data has 'daily' attribute: {hasattr(current, 'daily')}")
-                if hasattr(current, 'daily'):
-                    logger.debug(f"Current.daily data: {current.daily}")
-                
-                return current, None
-                
-            except requests.exceptions.HTTPError as http_err:
-                error_msg = f"HTTP error occurred: {http_err}"
-                if hasattr(http_err, 'response') and http_err.response.status_code == 404:
-                    error_msg = f"City '{self.city}' not found. Please check the city name and try again."
-                logger.error(error_msg, exc_info=True)
-                return None, error_msg
-            except Exception as e:
-                error_msg = f"Error fetching weather data: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                return None, error_msg
-        
-        def fetch_weather():
-            loop = None
-            try:
-                # Create a new event loop for this thread
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                # Initialize the weather provider's session in this thread
-                if hasattr(self.weather_provider, 'initialize'):
-                    loop.run_until_complete(self.weather_provider.initialize())
-                
-                # Run the async function and get the result
-                future = asyncio.ensure_future(fetch_weather_async(), loop=loop)
-                result = loop.run_until_complete(asyncio.shield(future))
-                return result
-                
-            except asyncio.CancelledError:
-                logger.warning("Weather fetch was cancelled")
-                return None, "Weather fetch was cancelled"
-                
-            except Exception as e:
-                error_msg = f"Error in weather fetch thread: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                return None, error_msg
-                
-            finally:
-                # Clean up the weather provider's session
-                if hasattr(self.weather_provider, 'cleanup'):
-                    try:
-                        loop.run_until_complete(self.weather_provider.cleanup())
-                    except Exception as e:
-                        logger.error(f"Error during provider cleanup: {e}", exc_info=True)
-                
-                # Clean up the event loop
-                if loop is not None:
-                    try:
-                        # Cancel all pending tasks
-                        pending = asyncio.all_tasks(loop)
-                        for task in pending:
-                            task.cancel()
-                            try:
-                                loop.run_until_complete(task)
-                            except (asyncio.CancelledError, Exception):
-                                pass
-                        
-                        # Run one more time to process any pending callbacks
-                        loop.run_until_complete(asyncio.sleep(0))
-                        
-                        # Stop the loop if it's still running
-                        if loop.is_running():
-                            loop.stop()
-                        
-                        # Close the loop
-                        loop.close()
-                        
-                    except Exception as e:
-                        logger.error(f"Error cleaning up event loop: {e}", exc_info=True)
-                    
-                    # Set the event loop to None
-                    asyncio.set_event_loop(None)
-        
-        def update_ui(result):
-            weather_data, error = result
-            self.ui.show_loading(False)
+        try:
+            # Get current weather
+            current_weather = self.weather_provider.get_weather(self.city)
             
-            if error:
-                self.ui.show_error(f"Failed to fetch weather: {error}")
+            if "error" in current_weather:
+                self.status_bar.showMessage(f"Error: {current_weather['error']}")
                 return
-                
-            self.update_weather_display(weather_data)
-            self.ui.set_status('Ready')
-        
-        # Start the background task
-        self._run_in_background(fetch_weather, update_ui)
+            
+            # Update UI with current weather
+            self.update_current_weather(current_weather)
+            
+            # Get 5-day forecast
+            forecast = self.weather_provider.get_forecast(self.city, days=5)
+            
+            if "error" not in forecast:
+                self.update_forecast(forecast)
+            
+            # Update status bar
+            self.update_status(f"Weather data for {self.city} updated at {datetime.now().strftime('%H:%M:%S')}", 5000)
+            
+            # Save last city to config
+            self.config_manager.set('last_city', self.city)
+            
+        except Exception as e:
+            logger.error(f"Error refreshing weather: {e}")
+            self.update_status(f"Error: {str(e)}", 0)
     
-    def update_weather_display(self, weather_data):
-        """Update the UI with weather data."""
-        # Ensure we're on the main thread for UI updates
-        if QThread.currentThread() != self.thread():
-            # If not on the main thread, use QMetaObject.invokeMethod to call this method on the main thread
-            QMetaObject.invokeMethod(
-                self, 
-                'update_weather_display', 
-                Qt.ConnectionType.QueuedConnection,
-                Q_ARG(object, weather_data)
-            )
-            return
-            
-        try:
-            # Clear previous weather display
-            self.ui.clear_weather_display()
-            
-            if not weather_data:
-                self.ui.show_error("No weather data available")
-                return
-                
-            # Debug log the structure of the weather data
-            logger.debug(f"Weather data type: {type(weather_data)}")
-            if hasattr(weather_data, '__dict__'):
-                logger.debug(f"Weather data attributes: {vars(weather_data)}")
-            
-            # Create a widget for the current weather
-            current_widget = QFrame()
-            current_widget.setObjectName('currentWeather')
-            current_widget.setStyleSheet('''
-                QFrame#currentWeather {
-                    background-color: #2c3e50;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin: 10px 0;
-                }
-                QLabel {
-                    color: white;
-                }
-                .temp {
-                    font-size: 36px;
-                    font-weight: bold;
-                }
-                .desc {
-                    font-size: 16px;
-                    margin: 8px 0;
-                    opacity: 0.9;
-                }
-            ''')
-            
-            layout = QVBoxLayout(current_widget)
-            
-            # City name and date
-            city = getattr(weather_data, 'city', self.city) if hasattr(weather_data, 'city') else self.city
-            timestamp = getattr(weather_data, 'timestamp', None)
-            date_str = timestamp.strftime('%A, %B %d, %Y') if hasattr(timestamp, 'strftime') else datetime.now().strftime('%A, %B %d, %Y')
-            
-            city_label = QLabel(f"{city.title()}")
-            city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
-            city_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            city_label.setWordWrap(True)
-            layout.addWidget(city_label)
-            
-            date_label = QLabel(date_str)
-            date_label.setStyleSheet('font-size: 14px; opacity: 0.8; margin-bottom: 10px;')
-            date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(date_label)
-            
-            # Weather icon and temperature
-            weather_layout = QHBoxLayout()
-            
-            # Weather icon - use a placeholder first
-            icon_label = QLabel()
-            icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            icon_label.setMinimumSize(80, 80)
-            icon_label.setMaximumSize(80, 80)
-            weather_layout.addWidget(icon_label, 1)
-            
-            # Temperature and description
-            temp = getattr(weather_data, 'temperature', 'N/A')
-            temp_text = f"{round(float(temp))}°" if temp != 'N/A' and str(temp).replace('.', '').isdigit() else 'N/A'
-            temp_label = QLabel(temp_text)
-            temp_label.setProperty('class', 'temp')
-            
-            condition = getattr(weather_data, 'description', getattr(weather_data, 'condition', 'N/A'))
-            desc_text = str(condition).title() if condition != 'N/A' else 'N/A'
-            desc_label = QLabel(desc_text)
-            desc_label.setProperty('class', 'desc')
-            
-            temp_layout = QVBoxLayout()
-            temp_layout.addWidget(temp_label)
-            temp_layout.addWidget(desc_label)
-            temp_layout.addStretch()
-            weather_layout.addLayout(temp_layout, 1)
-            
-            layout.addLayout(weather_layout)
-            
-            # Additional weather details
-            details = QFrame()
-            details_layout = QHBoxLayout(details)
-            details_layout.setSpacing(10)
-            
-            # Humidity
-            humidity = getattr(weather_data, 'humidity', 'N/A')
-            humidity_text = f"{humidity}%" if humidity != 'N/A' and str(humidity).isdigit() else 'N/A'
-            humidity_widget = self._create_detail_widget("💧", f"Humidity\n{humidity_text}")
-            details_layout.addWidget(humidity_widget)
-            
-            # Wind
-            wind_speed = getattr(weather_data, 'wind_speed', 'N/A')
-            wind_text = f"{wind_speed} m/s" if wind_speed != 'N/A' and str(wind_speed).replace('.', '').isdigit() else 'N/A'
-            wind_widget = self._create_detail_widget("💨", f"Wind\n{wind_text}")
-            details_layout.addWidget(wind_widget)
-            
-            # Pressure
-            pressure = getattr(weather_data, 'pressure', 'N/A')
-            pressure_text = f"{pressure} hPa" if pressure != 'N/A' and str(pressure).isdigit() else 'N/A'
-            pressure_widget = self._create_detail_widget("📊", f"Pressure\n{pressure_text}")
-            details_layout.addWidget(pressure_widget)
-            
-            layout.addWidget(details)
-            
-            # Add current weather to the UI
-            self.ui.add_weather_widget(current_widget)
-            
-            # Load the icon asynchronously to prevent UI freezing
-            self._load_weather_icon_async(icon_label, getattr(weather_data, 'icon', None) or getattr(weather_data, 'condition', 'clear'))
-            
-            # Add 5-day forecast if available
-            daily_forecast = getattr(weather_data, 'daily', None)
-            if daily_forecast and len(daily_forecast) > 0:
-                # Create forecast container
-                forecast_frame = QFrame()
-                forecast_frame.setObjectName('forecastFrame')
-                forecast_frame.setStyleSheet('''
-                    QFrame#forecastFrame {
-                        background-color: rgba(44, 62, 80, 0.7);
-                        border-radius: 10px;
-                        padding: 15px;
-                        margin: 10px 0;
-                    }
-                    QLabel {
-                        color: white;
-                    }
-                ''')
-                
-                forecast_layout = QVBoxLayout(forecast_frame)
-                forecast_layout.setContentsMargins(5, 5, 5, 5)
-                forecast_layout.setSpacing(10)
-                
-                # Add section title
-                title_label = QLabel('5-Day Forecast')
-                title_font = QFont()
-                title_font.setBold(True)
-                title_font.setPointSize(14)
-                title_label.setFont(title_font)
-                title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                forecast_layout.addWidget(title_label)
-                
-                # Create scroll area for forecast days
-                scroll = QScrollArea()
-                scroll.setWidgetResizable(True)
-                scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-                scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-                scroll.setStyleSheet('''
-                    QScrollArea {
-                        border: none;
-                        background: transparent;
-                    }
-                    QScrollBar:vertical {
-                        border: none;
-                        background: rgba(200, 200, 200, 50);
-                        width: 8px;
-                        margin: 0px;
-                        border-radius: 4px;
-                    }
-                    QScrollBar::handle:vertical {
-                        background: rgba(255, 255, 255, 150);
-                        border-radius: 4px;
-                        min-height: 20px;
-                    }
-                    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                        height: 0px;
-                    }
-                ''')
-                
-                # Container widget for forecast days
-                days_container = QWidget()
-                days_layout = QHBoxLayout(days_container)
-                days_layout.setSpacing(15)
-                days_layout.setContentsMargins(5, 5, 5, 5)
-                
-                # Get next 5 days (or as many as available)
-                for i, day in enumerate(daily_forecast[:5]):
-                    day_widget = QFrame()
-                    day_widget.setObjectName('dayWidget')
-                    day_widget.setStyleSheet('''
-                        QFrame#dayWidget {
-                            background-color: rgba(255, 255, 255, 0.1);
-                            border-radius: 8px;
-                            padding: 10px;
-                            min-width: 100px;
-                        }
-                    ''')
-                    
-                    day_layout = QVBoxLayout(day_widget)
-                    day_layout.setSpacing(8)
-                    day_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-                    
-                    # Handle both dictionary and object access for day data
-                    if isinstance(day, dict):
-                        # Handle dictionary format from OpenMeteo
-                        timestamp = day.get('dt', 0)
-                        if timestamp:
-                            day_dt = datetime.fromtimestamp(timestamp)
-                        else:
-                            day_dt = datetime.now() + timedelta(days=i+1)
-                        
-                        # Get weather condition
-                        weather_list = day.get('weather', [{}])
-                        condition = weather_list[0].get('description', 'clear') if weather_list else 'clear'
-                        
-                        # Get temperature values
-                        temp_min = day.get('temp', {}).get('min', 'N/A') if isinstance(day.get('temp'), dict) else 'N/A'
-                        temp_max = day.get('temp', {}).get('max', 'N/A') if isinstance(day.get('temp'), dict) else 'N/A'
-                        
-                        # Get precipitation probability
-                        pop = day.get('pop', 0)
-                    else:
-                        # Handle object access
-                        timestamp = getattr(day, 'timestamp', 0)
-                        if timestamp:
-                            day_dt = datetime.fromtimestamp(timestamp)
-                        else:
-                            day_dt = datetime.now() + timedelta(days=i+1)
-                        
-                        # Get weather condition
-                        condition = getattr(day, 'condition', 
-                                         getattr(day, 'weather', [{}])[0].get('main', 'clear') 
-                                         if hasattr(day, 'weather') else 'clear')
-                        
-                        # Get temperature values
-                        temp_min = getattr(day, 'temperature_min', 
-                                         getattr(day, 'temp', {}).get('min', 'N/A') 
-                                         if hasattr(day, 'temp') else 'N/A')
-                        temp_max = getattr(day, 'temperature_max', 
-                                         getattr(day, 'temp', {}).get('max', 'N/A') 
-                                         if hasattr(day, 'temp') else 'N/A')
-                        
-                        # Get precipitation probability
-                        pop = getattr(day, 'pop', 0)
-                    
-                    # Format day and date
-                    day_name = day_dt.strftime('%A')
-                    date_str = day_dt.strftime('%b %d')
-                    
-                    day_label = QLabel(day_name)
-                    day_label.setStyleSheet('font-size: 12px; font-weight: bold;')
-                    day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    date_label = QLabel(date_str)
-                    date_label.setStyleSheet('font-size: 11px; opacity: 0.8;')
-                    date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    # Weather icon
-                    icon_label = QLabel()
-                    icon_pixmap = get_icon_image(condition, 20)  # Reduced from 48px
-                    if icon_pixmap:
-                        icon_label.setPixmap(icon_pixmap)
-                    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    icon_label.setMinimumSize(20, 20)  # Ensure consistent icon size
-                    icon_label.setMaximumSize(20, 20)
-                    
-                    # Temperature display
-                    temp_text = 'N/A'
-                    if temp_min != 'N/A' and temp_max != 'N/A':
-                        temp_text = f"{round(float(temp_max))}° / {round(float(temp_min))}°"
-                    
-                    temp_label = QLabel(temp_text)
-                    temp_label.setStyleSheet('font-size: 13px; font-weight: bold;')
-                    temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    # Description
-                    desc = condition if isinstance(day, dict) else getattr(day, 'description', 'N/A')
-                    desc_text = str(desc).capitalize() if desc != 'N/A' else 'N/A'
-                    desc_label = QLabel(desc_text)
-                    desc_label.setStyleSheet('font-size: 11px; opacity: 0.9;')
-                    desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    desc_label.setWordWrap(True)
-                    
-                    # Add widgets to day layout with proper spacing
-                    day_layout.addWidget(day_label)
-                    day_layout.addWidget(date_label)
-                    day_layout.addSpacing(2)
-                    day_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
-                    day_layout.addSpacing(2)
-                    day_layout.addWidget(temp_label)
-                    day_layout.addWidget(desc_label)
-                    day_layout.addStretch()
-                    
-                    # Add day widget to days layout
-                    days_layout.addWidget(day_widget)
-                
-                # Add stretch to push days to the left
-                days_layout.addStretch()
-                
-                # Set up scroll area
-                scroll.setWidget(days_container)
-                forecast_layout.addWidget(scroll)
-                
-                # Add forecast frame to the UI
-                self.ui.add_weather_widget(forecast_frame)
-                
-        except Exception as e:
-            logger.error(f"Error updating weather display: {str(e)}", exc_info=True)
-            self.ui.show_error(f"Error displaying weather: {str(e)}")
-        
-    def fetch_weather():
-        loop = None
-        try:
-            # Create a new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Initialize the weather provider's session in this thread
-            if hasattr(self.weather_provider, 'initialize'):
-                loop.run_until_complete(self.weather_provider.initialize())
-            
-            # Run the async function and get the result
-            future = asyncio.ensure_future(fetch_weather_async(), loop=loop)
-            result = loop.run_until_complete(asyncio.shield(future))
-            return result
-            
-        except asyncio.CancelledError:
-            logger.warning("Weather fetch was cancelled")
-            return None, "Weather fetch was cancelled"
-            
-        except Exception as e:
-            error_msg = f"Error in weather fetch thread: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            return None, error_msg
-            
-        finally:
-            # Clean up the weather provider's session
-            if hasattr(self.weather_provider, 'cleanup'):
-                try:
-                    loop.run_until_complete(self.weather_provider.cleanup())
-                except Exception as e:
-                    logger.error(f"Error during provider cleanup: {e}", exc_info=True)
-            
-            # Clean up the event loop
-            if loop is not None:
-                try:
-                    # Cancel all pending tasks
-                    pending = asyncio.all_tasks(loop)
-                    for task in pending:
-                        task.cancel()
-                        try:
-                            loop.run_until_complete(task)
-                        except (asyncio.CancelledError, Exception):
-                            pass
-                    
-                    # Run one more time to process any pending callbacks
-                    loop.run_until_complete(asyncio.sleep(0))
-                    
-                    # Stop the loop if it's still running
-                    if loop.is_running():
-                        loop.stop()
-                    
-                    # Close the loop
-                    loop.close()
-                    
-                except Exception as e:
-                    logger.error(f"Error cleaning up event loop: {e}", exc_info=True)
-                
-                # Set the event loop to None
-                asyncio.set_event_loop(None)
-        
-    def update_ui(self, result):
-        weather_data, error = result
-        self.ui.show_loading(False)
-        
-        if error:
-            self.ui.show_error(f"Failed to fetch weather: {error}")
-            return
-            
-        self.update_weather_display(weather_data)
-        self.ui.set_status('Ready')
-    
-    def _fetch_weather(self):
-        async def fetch_weather_async():
-            try:
-                current = await self.weather_provider.get_current_weather(self.city)
-                forecast = await self.weather_provider.get_forecast(self.city, days=5)
-                return current, forecast
-            except Exception as e:
-                logger.error(f"Error fetching weather: {e}", exc_info=True)
-                return None, str(e)
-        
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(fetch_weather_async())
-            return result
-        except Exception as e:
-            logger.error(f"Error in weather fetch: {e}", exc_info=True)
-            return None, str(e)
-    def update_weather_display(self, weather_data):
-        """Update the UI with weather data."""
-        try:
-            # Ensure we're on the main thread for UI updates
-            if QThread.currentThread() != self.thread():
-                QMetaObject.invokeMethod(
-                    self, 
-                    'update_weather_display', 
-                    Qt.QueuedConnection, 
-                    Q_ARG(dict, weather_data)
-                )
-                return
-                
-            # Clear previous weather display
-            self.ui.clear_weather_display()
-            
-            if not weather_data:
-                self.ui.show_error("No weather data available")
-                return
-                
-            # Debug log the structure of the weather data
-            logger.debug(f"Weather data type: {type(weather_data)}")
-            
-            # Create a widget for the current weather
-            current_widget = QFrame()
-            current_widget.setObjectName('currentWeather')
-            current_widget.setStyleSheet('''
-                QFrame#currentWeather {
-                    background-color: #2c3e50;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin: 10px 0;
-                }
-                QLabel {
-                    color: white;
-                }
-                .temp {
-                    font-size: 36px;
-                    font-weight: bold;
-                }
-                .desc {
-                    font-size: 16px;
-                    margin: 8px 0;
-                    opacity: 0.9;
-                }
-            ''')
-            
-            layout = QVBoxLayout(current_widget)
-            
-            # City name and date
-            city = getattr(weather_data, 'city', self.city) if hasattr(weather_data, 'city') else self.city
-            timestamp = getattr(weather_data, 'timestamp', None)
-            date_str = timestamp.strftime('%A, %B %d, %Y') if hasattr(timestamp, 'strftime') else datetime.now().strftime('%A, %B %d, %Y')
-            
-            city_label = QLabel(f"{city.title()}")
-            city_label.setStyleSheet('font-size: 20px; font-weight: bold;')
-            city_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            city_label.setWordWrap(True)
-            layout.addWidget(city_label)
-            
-            date_label = QLabel(date_str)
-            date_label.setStyleSheet('font-size: 14px; opacity: 0.8; margin-bottom: 10px;')
-            date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(date_label)
-            
-            # Weather icon and temperature
-            weather_layout = QHBoxLayout()
-            
-            # Weather icon - use a placeholder first
-            icon_label = QLabel()
-            icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            icon_label.setMinimumSize(80, 80)
-            icon_label.setMaximumSize(80, 80)
-            weather_layout.addWidget(icon_label, 1)
-            
-            # Temperature and description
-            temp = getattr(weather_data, 'temperature', 'N/A')
-            temp_text = f"{round(float(temp))}°" if temp != 'N/A' and str(temp).replace('.', '').isdigit() else 'N/A'
-            temp_label = QLabel(temp_text)
-            temp_label.setProperty('class', 'temp')
-            
-            condition = getattr(weather_data, 'description', getattr(weather_data, 'condition', 'N/A'))
-            desc_text = str(condition).title() if condition != 'N/A' else 'N/A'
-            desc_label = QLabel(desc_text)
-            desc_label.setProperty('class', 'desc')
-            
-            temp_layout = QVBoxLayout()
-            temp_layout.addWidget(temp_label)
-            temp_layout.addWidget(desc_label)
-            temp_layout.addStretch()
-            weather_layout.addLayout(temp_layout, 1)
-        
-            layout.addLayout(weather_layout)
-            
-            # Additional weather details
-            details = QFrame()
-            details_layout = QHBoxLayout(details)
-            details_layout.setSpacing(10)
-            
-            # Humidity
-            humidity = getattr(weather_data, 'humidity', 'N/A')
-            humidity_text = f"{humidity}%" if humidity != 'N/A' and str(humidity).isdigit() else 'N/A'
-            humidity_widget = self._create_detail_widget("💧", f"Humidity\n{humidity_text}")
-            details_layout.addWidget(humidity_widget)
-            
-            # Wind
-            wind_speed = getattr(weather_data, 'wind_speed', 'N/A')
-            wind_text = f"{wind_speed} m/s" if wind_speed != 'N/A' and str(wind_speed).replace('.', '').isdigit() else 'N/A'
-            wind_widget = self._create_detail_widget("💨", f"Wind\n{wind_text}")
-            details_layout.addWidget(wind_widget)
-            
-            # Pressure
-            pressure = getattr(weather_data, 'pressure', 'N/A')
-            pressure_text = f"{pressure} hPa" if pressure != 'N/A' and str(pressure).isdigit() else 'N/A'
-            pressure_widget = self._create_detail_widget("📊", f"Pressure\n{pressure_text}")
-            details_layout.addWidget(pressure_widget)
-            
-            layout.addWidget(details)
-            
-            # Add current weather to the UI
-            self.ui.add_weather_widget(current_widget)
-            
-            # Load the icon asynchronously to prevent UI freezing
-            self._load_weather_icon_async(icon_label, getattr(weather_data, 'icon', None) or getattr(weather_data, 'condition', 'clear'))
-            
-            # Add 5-day forecast if available
-            daily_forecast = getattr(weather_data, 'daily', None)
-            if daily_forecast and len(daily_forecast) > 0:
-                # Create forecast container
-                forecast_frame = QFrame()
-                forecast_frame.setObjectName('forecastFrame')
-                forecast_frame.setStyleSheet('''
-                    QFrame#forecastFrame {
-                        background-color: rgba(44, 62, 80, 0.7);
-                        border-radius: 10px;
-                        padding: 20px;
-                        margin: 10px 0;
-                    }
-                    QLabel {
-                        color: white;
-                    }
-                    .temp {
-                        font-size: 36px;
-                        font-weight: bold;
-                    }
-                    .desc {
-                        font-size: 16px;
-                        margin: 8px 0;
-                        opacity: 0.9;
-                    }
-                ''')
-            date_label.setStyleSheet('font-size: 14px; opacity: 0.8; margin-bottom: 10px;')
-            date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(date_label)
-            
-            # Weather icon and temperature
-            weather_layout = QHBoxLayout()
-            
-            # Weather icon - use a placeholder first
-            icon_label = QLabel()
-            icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            icon_label.setMinimumSize(80, 80)  # Reduced from 100x100
-            icon_label.setMaximumSize(80, 80)  # Add maximum size to maintain consistency
-            weather_layout.addWidget(icon_label, 1)
-            
-            # Temperature and description
-            temp = getattr(weather_data, 'temperature', 'N/A')
-            temp_text = f"{round(float(temp))}°" if temp != 'N/A' and str(temp).replace('.', '').isdigit() else 'N/A'
-            temp_label = QLabel(temp_text)
-            temp_label.setProperty('class', 'temp')
-            
-            condition = getattr(weather_data, 'description', getattr(weather_data, 'condition', 'N/A'))
-            desc_text = str(condition).title() if condition != 'N/A' else 'N/A'
-            desc_label = QLabel(desc_text)
-            desc_label.setProperty('class', 'desc')
-            
-            temp_layout = QVBoxLayout()
-            temp_layout.addWidget(temp_label)
-            temp_layout.addWidget(desc_label)
-            temp_layout.addStretch()
-            weather_layout.addLayout(temp_layout, 1)
-            
-            layout.addLayout(weather_layout)
-            
-            # Additional weather details
-            details = QFrame()
-            details_layout = QHBoxLayout(details)
-            details_layout.setSpacing(10)
-            
-            # Humidity
-            humidity = getattr(weather_data, 'humidity', 'N/A')
-            humidity_text = f"{humidity}%" if humidity != 'N/A' and str(humidity).isdigit() else 'N/A'
-            humidity_widget = self._create_detail_widget("💧", f"Humidity\n{humidity_text}")
-            details_layout.addWidget(humidity_widget)
-            
-            # Wind
-            wind_speed = getattr(weather_data, 'wind_speed', 'N/A')
-            wind_text = f"{wind_speed} m/s" if wind_speed != 'N/A' and str(wind_speed).replace('.', '').isdigit() else 'N/A'
-            wind_widget = self._create_detail_widget("💨", f"Wind\n{wind_text}")
-            details_layout.addWidget(wind_widget)
-            
-            # Pressure
-            pressure = getattr(weather_data, 'pressure', 'N/A')
-            pressure_text = f"{pressure} hPa" if pressure != 'N/A' and str(pressure).isdigit() else 'N/A'
-            pressure_widget = self._create_detail_widget("📊", f"Pressure\n{pressure_text}")
-            details_layout.addWidget(pressure_widget)
-            
-            layout.addWidget(details)
-            
-            # Add current weather to the UI
-            self.ui.add_weather_widget(current_widget)
-            
-            # Load the icon asynchronously to prevent UI freezing
-            self._load_weather_icon_async(icon_label, getattr(weather_data, 'icon', None) or getattr(weather_data, 'condition', 'clear'))
-            
-            # Add 5-day forecast if available
-            daily_forecast = getattr(weather_data, 'daily', None)
-            if daily_forecast and len(daily_forecast) > 0:
-                # Create forecast container
-                forecast_frame = QFrame()
-                forecast_frame.setObjectName('forecastFrame')
-                forecast_frame.setStyleSheet('''
-                    QFrame#forecastFrame {
-                        background-color: rgba(44, 62, 80, 0.7);
-                        border-radius: 10px;
-                        padding: 15px;
-                        margin: 10px 0;
-                    }
-                    QLabel {
-                        color: white;
-                    }
-                ''')
-                
-                forecast_layout = QVBoxLayout(forecast_frame)
-                forecast_layout.setContentsMargins(5, 5, 5, 5)
-                forecast_layout.setSpacing(10)
-                
-                # Add section title
-                title_label = QLabel('5-Day Forecast')
-                title_font = QFont()
-                title_font.setBold(True)
-                title_font.setPointSize(14)
-                title_label.setFont(title_font)
-                title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                forecast_layout.addWidget(title_label)
-                
-                # Create scroll area for forecast days
-                scroll = QScrollArea()
-                scroll.setWidgetResizable(True)
-                scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-                scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-                scroll.setStyleSheet('''
-                    QScrollArea {
-                        border: none;
-                        background: transparent;
-                    }
-                    QScrollBar:vertical {
-                        border: none;
-                        background: rgba(200, 200, 200, 50);
-                        width: 8px;
-                        margin: 0px;
-                        border-radius: 4px;
-                    }
-                    QScrollBar::handle:vertical {
-                        background: rgba(255, 255, 255, 150);
-                        border-radius: 4px;
-                        min-height: 20px;
-                    }
-                    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                        height: 0px;
-                    }
-                ''')
-                
-                # Container widget for forecast days
-                days_container = QWidget()
-                days_layout = QHBoxLayout(days_container)
-                days_layout.setSpacing(15)
-                days_layout.setContentsMargins(5, 5, 5, 5)
-                
-                # Get next 5 days (or as many as available)
-                for i, day in enumerate(daily_forecast[:5]):
-                    day_widget = QFrame()
-                    day_widget.setObjectName('dayWidget')
-                    day_widget.setStyleSheet('''
-                        QFrame#dayWidget {
-                            background-color: rgba(255, 255, 255, 0.1);
-                            border-radius: 8px;
-                            padding: 10px;
-                            min-width: 100px;
-                        }
-                    ''')
-                    
-                    day_layout = QVBoxLayout(day_widget)
-                    day_layout.setSpacing(8)
-                    day_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-                    
-                    # Handle both dictionary and object access for day data
-                    if isinstance(day, dict):
-                        # Handle dictionary format from OpenMeteo
-                        timestamp = day.get('dt', 0)
-                        if timestamp:
-                            day_dt = datetime.fromtimestamp(timestamp)
-                        else:
-                            day_dt = datetime.now() + timedelta(days=i+1)
-                        
-                        # Get weather condition
-                        weather_list = day.get('weather', [{}])
-                        condition = weather_list[0].get('description', 'clear') if weather_list else 'clear'
-                        
-                        # Get temperature values
-                        temp_min = day.get('temp', {}).get('min', 'N/A') if isinstance(day.get('temp'), dict) else 'N/A'
-                        temp_max = day.get('temp', {}).get('max', 'N/A') if isinstance(day.get('temp'), dict) else 'N/A'
-                        
-                        # Get precipitation probability
-                        pop = day.get('pop', 0)
-                    else:
-                        # Handle object access
-                        timestamp = getattr(day, 'timestamp', 0)
-                        if timestamp:
-                            day_dt = datetime.fromtimestamp(timestamp)
-                        else:
-                            day_dt = datetime.now() + timedelta(days=i+1)
-                        
-                        # Get weather condition
-                        condition = getattr(day, 'condition', 
-                                         getattr(day, 'weather', [{}])[0].get('main', 'clear') 
-                                         if hasattr(day, 'weather') else 'clear')
-                        
-                        # Get temperature values
-                        temp_min = getattr(day, 'temperature_min', 
-                                         getattr(day, 'temp', {}).get('min', 'N/A') 
-                                         if hasattr(day, 'temp') else 'N/A')
-                        temp_max = getattr(day, 'temperature_max', 
-                                         getattr(day, 'temp', {}).get('max', 'N/A') 
-                                         if hasattr(day, 'temp') else 'N/A')
-                        
-                        # Get precipitation probability
-                        pop = getattr(day, 'pop', 0)
-                    
-                    # Format day and date
-                    day_name = day_dt.strftime('%A')
-                    date_str = day_dt.strftime('%b %d')
-                    
-                    day_label = QLabel(day_name)
-                    day_label.setStyleSheet('font-size: 12px; font-weight: bold;')
-                    day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    date_label = QLabel(date_str)
-                    date_label.setStyleSheet('font-size: 11px; opacity: 0.8;')
-                    date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    # Weather icon
-                    icon_label = QLabel()
-                    icon_pixmap = get_icon_image(condition, 20)  # Reduced from 48px
-                    if icon_pixmap:
-                        icon_label.setPixmap(icon_pixmap)
-                    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    icon_label.setMinimumSize(20, 20)  # Ensure consistent icon size
-                    icon_label.setMaximumSize(20, 20)
-                    
-                    # Temperature display
-                    temp_text = 'N/A'
-                    if temp_min != 'N/A' and temp_max != 'N/A':
-                        temp_text = f"{round(float(temp_max))}° / {round(float(temp_min))}°"
-                    
-                    temp_label = QLabel(temp_text)
-                    temp_label.setStyleSheet('font-size: 13px; font-weight: bold;')
-                    temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
-                    # Description
-                    desc = condition if isinstance(day, dict) else getattr(day, 'description', 'N/A')
-                    desc_text = str(desc).capitalize() if desc != 'N/A' else 'N/A'
-                    desc_label = QLabel(desc_text)
-                    desc_label.setStyleSheet('font-size: 11px; opacity: 0.9;')
-                    desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    desc_label.setWordWrap(True)
-                    
-                    # Add widgets to day layout with proper spacing
-                    day_layout.addWidget(day_label)
-                    day_layout.addWidget(date_label)
-                    day_layout.addSpacing(2)
-                    day_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
-                    day_layout.addSpacing(2)
-                    day_layout.addWidget(temp_label)
-                    day_layout.addWidget(desc_label)
-                    day_layout.addStretch()
-                    
-                    # Add day widget to days layout
-                    days_layout.addWidget(day_widget)
-                
-                # Add stretch to push days to the left
-                days_layout.addStretch()
-                
-                # Set up scroll area
-                scroll.setWidget(days_container)
-                forecast_layout.addWidget(scroll)
-                
-                # Add forecast frame to the UI
-                self.ui.add_weather_widget(forecast_frame)
-        
-        except Exception as e:
-            logger.error(f"Error updating weather display: {str(e)}", exc_info=True)
-            self.ui.show_error(f"Error displaying weather: {str(e)}")
-            return
-    
-    def _load_weather_icon_async(self, icon_label, icon_code, size=(20, 20)):
-        """Load a weather icon asynchronously to prevent UI freezing.
+    def update_current_weather(self, weather_data: Dict[str, Any]):
+        """Update the UI with current weather data.
         
         Args:
-            icon_label: The QLabel to set the icon on
-            icon_code: The icon code or URL to load
-            size: The size of the icon (width, height)
+            weather_data: Dictionary containing current weather data
         """
-        # Create a worker function to load the icon
-        def load_icon():
-            try:
-                # Load the icon (this is thread-safe as it doesn't interact with the UI)
-                pixmap = get_icon_image(icon_code, size)
-                if not pixmap or pixmap.isNull():
-                    return None
-                return pixmap
-            except Exception as e:
-                logging.error(f"Error loading icon {icon_code}: {e}")
-                return None
+        try:
+            # Update location and date
+            location = weather_data.get("location", "--")
+            self.location_label.setText(location)
+            self.date_label.setText(datetime.now().strftime("%A, %B %d, %Y"))
+            
+            # Update temperature and description
+            temp = weather_data.get("temperature", "--")
+            unit = "°C" if self.units == "metric" else "°F"
+            self.temperature_label.setText(f"{temp}{unit}" if temp != "--" else "--")
+            
+            # Update the history entry with the actual temperature if this was a new search
+            if location != "--" and temp != "--":
+                # Get the most recent history entry for this location
+                history = self.history_manager.get_history()
+                for entry in history:
+                    if entry.get("location") == location and entry.get("temperature") == 0:
+                        # Update the temperature in the history
+                        entry["temperature"] = temp
+                        self.history_manager.save_history()
+                        self.update_history_list()
+                        break
+            
+            self.weather_description.setText(weather_data.get("description", "--"))
+            
+            # Update weather icon
+            icon_name = weather_data.get("icon", "01d")
+            icon_path = Path(f"assets/weather_icons/{icon_name}.png")
+            if icon_path.exists():
+                pixmap = QPixmap(str(icon_path)).scaled(100, 100, 
+                                                       Qt.AspectRatioMode.KeepAspectRatio,
+                                                       Qt.TransformationMode.SmoothTransformation)
+                self.weather_icon.setPixmap(pixmap)
+            
+            # Update details
+            feels_like = weather_data.get("feels_like", "--")
+            humidity = weather_data.get("humidity", "--")
+            wind_speed = weather_data.get("wind_speed", "--")
+            pressure = weather_data.get("pressure", "--")
+            visibility = weather_data.get("visibility", "--")
+            
+            wind_unit = "km/h" if self.units == "metric" else "mph"
+            visibility_unit = "km" if self.units == "metric" else "miles"
+            
+            self.feels_like_label.setText(f"Feels like: {feels_like}{unit}" if feels_like != "--" else "Feels like: --")
+            self.humidity_label.setText(f"Humidity: {humidity}%" if humidity != "--" else "Humidity: --")
+            self.wind_label.setText(f"Wind: {wind_speed} {wind_unit}" if wind_speed != "--" else "Wind: --")
+            self.pressure_label.setText(f"Pressure: {pressure} hPa" if pressure != "--" else "Pressure: --")
+            self.visibility_label.setText(f"Visibility: {visibility} {visibility_unit}" if visibility != "--" else "Visibility: --")
+            
+        except Exception as e:
+            logger.error(f"Error updating current weather: {e}")
+    
+    def update_forecast(self, forecast_data: Dict[str, Any]):
+        """Update the UI with forecast data.
         
-        # Create a callback function to update the UI on the main thread
-        def update_ui(pixmap):
-            if pixmap and not pixmap.isNull() and icon_label:
-                try:
-                    # This runs on the main thread
+        Args:
+            forecast_data: Dictionary containing forecast data
+        """
+        try:
+            # Clear previous forecast
+            for i in reversed(range(self.forecast_layout.count())):
+                widget = self.forecast_layout.itemAt(i).widget()
+                if widget is not None:
+                    widget.deleteLater()
+            
+            # Add forecast days
+            for day in forecast_data.get("days", [])[:5]:  # Limit to 5 days
+                day_widget = QWidget()
+                day_layout = QVBoxLayout(day_widget)
+                day_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Day of week
+                date = datetime.strptime(day["date"], "%Y-%m-%d")
+                day_label = QLabel(date.strftime("%a"))
+                day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Weather icon
+                icon_label = QLabel()
+                icon_path = Path(f"assets/weather_icons/{day['icon']}.png")
+                if icon_path.exists():
+                    pixmap = QPixmap(str(icon_path)).scaled(50, 50, 
+                                                           Qt.AspectRatioMode.KeepAspectRatio,
+                                                           Qt.TransformationMode.SmoothTransformation)
                     icon_label.setPixmap(pixmap)
-                except Exception as e:
-                    logging.error(f"Error updating icon UI: {e}")
-        
-        # Run the icon loading in a thread
-        self._run_in_background(load_icon, update_ui)
-        
-        # Update window title
-        self.setWindowTitle(self.translations_manager.t('app_title', self.language) or 'Weather App')
-        
-        # Update menu bar
-        if hasattr(self, 'menu_bar'):
-            self.menu_bar.set_languages(
-                self.translations_manager.translations.get('languages', {}), 
-                self.language
-            )
+                icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Temperature range
+                temp_max = day.get("temp_max", "--")
+                temp_min = day.get("temp_min", "--")
+                unit = "°C" if self.units == "metric" else "°F"
+                
+                if temp_max != "--" and temp_min != "--":
+                    temp_label = QLabel(f"{temp_max}{unit} / {temp_min}{unit}")
+                else:
+                    temp_label = QLabel("--")
+                
+                temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Add widgets to day layout
+                day_layout.addWidget(day_label)
+                day_layout.addWidget(icon_label)
+                day_layout.addWidget(temp_label)
+                
+                # Add day widget to forecast layout
+                self.forecast_layout.addWidget(day_widget)
+                
+        except Exception as e:
+            logger.error(f"Error updating forecast: {e}")
     
-    def on_units_changed(self, units: str):
-        """Handle units change."""
-        self.units = units
-        self.config_manager.set('units', units)
-        self.weather_provider.units = units
-        self.refresh_weather()
-    
-    def on_toggle_favorite(self, city: str):
-        """Toggle a city as favorite."""
-        if not city:
-            return
+    def update_history_list(self):
+        """Update the history list with recent searches."""
+        try:
+            self.history_list.clear()
+            history = self.history_manager.get_history()
             
-        if self.favorites_manager.is_favorite(city):
-            self.favorites_manager.remove_favorite(city)
-            self.ui.update_favorite_button(False)
-        else:
-            self.favorites_manager.add_favorite(city)
-            self.ui.update_favorite_button(True)
-            
-        self.update_favorites_menu()
+            for item in history:
+                location = item.get("location", "Unknown Location")
+                temp = item.get("temperature", "--")
+                unit = "°C" if self.units == "metric" else "°F"
+                
+                # Handle both string and datetime timestamps
+                timestamp = item.get("timestamp")
+                if isinstance(timestamp, str):
+                    try:
+                        # Try to parse the timestamp string
+                        timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        timestamp = datetime.now()
+                elif not isinstance(timestamp, datetime):
+                    timestamp = datetime.now()
+                
+                date_str = timestamp.strftime("%Y-%m-%d %H:%M")
+                
+                list_item = QListWidgetItem(f"{location}: {temp}{unit} on {date_str}")
+                list_item.setData(Qt.ItemDataRole.UserRole, item)
+                self.history_list.addItem(list_item)
+                
+        except Exception as e:
+            logger.error(f"Error updating history list: {e}")
+            logger.exception("Full exception:")
     
-    def on_favorite_selected(self, city: str):
-        """Handle selection of a favorite city."""
+    def on_search(self):
+        """Handle search button click or Enter key press."""
+        city = self.search_input.text().strip()
         if city:
+            # Add to history before setting location
+            # We'll update the temperature after we get the weather data
+            self.history_manager.add_entry(
+                location=city,
+                temperature=0,  # Will be updated after we get the weather data
+                timestamp=datetime.now()
+            )
+            self.update_history_list()
             self.city = city
-            self.ui.set_city(city)
+            self.update_status(f"Searching for {city}...")
             self.refresh_weather()
     
-    def update_favorites_menu(self):
-        """Update the favorites dropdown in the UI."""
-        favorites = self.favorites_manager.get_favorites()
-        self.ui.update_favorites_list(favorites)
-        
-        # Update the favorite button state
-        city = self.ui.search_input.text().strip()
-        if city and city.lower() != 'enter city name...':
-            is_favorite = self.favorites_manager.is_favorite(city)
-            self.ui.update_favorite_button(is_favorite)
-    
-    def check_for_updates(self):
-        """Check for application updates."""
-        def check():
-            try:
-                checker = UpdateChecker(get_version())
-                update_available, update_info = checker.check_for_updates(force=True)
-                return update_available, update_info, None
-            except Exception as e:
-                logging.error(f"Error checking for updates: {e}")
-                return False, None, ("Error", str(e))
-    
-        def update_ui(result):
-            update_available, update_info, error_info = result
+    def on_history_item_clicked(self, item):
+        """Handle history item click to load that weather data."""
+        weather_data = item.data(Qt.ItemDataRole.UserRole)
+        if weather_data:
+            self.city = weather_data.get("location", self.city)
+            self.update_current_weather(weather_data)
             
-            if update_available and update_info:
-                # Show update dialog
-                checker = UpdateChecker(get_version())
-                checker.show_update_dialog(self, update_info)
-            elif error_info and error_info[0] and error_info[1]:
-                QMessageBox.information(
-                    self,
-                    error_info[0],
-                    error_info[1],
-                    QMessageBox.StandardButton.Ok
-                )
+            # Get forecast for this location
+            forecast = self.weather_provider.get_forecast(self.city, days=5)
+            if "error" not in forecast:
+                self.update_forecast(forecast)
+    
+    def clear_history(self):
+        """Clear the search history."""
+        reply = QMessageBox.question(
+            self, 
+            'Clear History',
+            'Are you sure you want to clear your search history?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.history_manager.clear_history():
+                self.update_history_list()
+                self.update_status("History cleared", 3000)
             else:
-                QMessageBox.information(
-                    self,
-                    'No Updates',
-                    'You are using the latest version.',
-                    QMessageBox.StandardButton.Ok
-                )
-        
-        # Start the background task
-        self._run_in_background(check, update_ui)
+                self.update_status("Failed to clear history", 3000)
     
-    def show_about_dialog(self):
-        """Show the about dialog."""
-        from script.about import About
-        About.show_about()
+    def toggle_history(self, checked: bool):
+        """Toggle the visibility of the history panel."""
+        self.history_widget.setVisible(checked)
+        
+        # Update the menu bar's toggle action text
+        if hasattr(self, 'menu_bar') and hasattr(self.menu_bar, 'toggle_history_action'):
+            self.menu_bar.toggle_history_action.setText("Hide History" if checked else "Show History")
+        
+        # Update window size if showing history
+        if checked:
+            self.update_history_list()
+            self.resize(self.width() + 300, self.height())
+            self.update_status("History panel shown", 3000)
     
-    def show_help_dialog(self):
-        """Show the help dialog."""
-        from script.help import Help
-        Help.show_help(self, self.translations_manager, self.language)
-    
-    def _run_in_background(self, func, callback):
-        """Run a function in the background and call callback with the result."""
-        def run():
-            result = func()
-            QApplication.instance().postEvent(
-                self,
-                _CallbackEvent(callback, result)
-            )
+    def set_units(self, units: str):
+        """Set the units system and refresh weather data."""
+        if units not in ["metric", "imperial"]:
+            logger.warning(f"Invalid units: {units}")
+            return
+            
+        self.units = units
+        self.config_manager.set('units', units)
+        self.weather_provider.set_units(units)
+        self.update_status(f"Units changed to {units}", 3000)
+        self.refresh_weather()
         
-        import threading
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-    
-    def event(self, event):
-        """Handle custom events."""
-        if isinstance(event, _CallbackEvent):
-            event.callback(event.result)
-            return True
-        return super().event(event)
-
-    def on_theme_changed(self, theme: str):
-        """Handle theme change.
-        
-        Args:
-            theme (str): The selected theme ('system', 'light', or 'dark')
-        """
-        # Save the theme preference
-        self.config_manager.set('theme', theme)
-        
-        # Apply the theme
-        if theme == 'dark':
-            self.setStyleSheet('')
-            app = QApplication.instance()
-            app.setStyle('Fusion')
-            dark_palette = QPalette()
-            dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-            dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
-            dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-            dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-            dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-            dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-            app.setPalette(dark_palette)
-        elif theme == 'light':
-            self.setStyleSheet('')
-            app = QApplication.instance()
-            app.setStyle('Fusion')
-            light_palette = QPalette()
-            light_palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
-            light_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-            light_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(233, 231, 227))
-            light_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-            light_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-            light_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-            light_palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
-            light_palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 120, 215))
-            light_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-            app.setPalette(light_palette)
-        else:  # system
-            self.setStyleSheet('')
-            app = QApplication.instance()
-            app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
-            app.setPalette(app.style().standardPalette())
-
-    def _create_detail_widget(self, icon: str, text: str) -> QWidget:
-        """Create a widget for displaying a weather detail."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
-        icon_label = QLabel(icon)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        text_label = QLabel(text)
-        text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        layout.addWidget(icon_label)
-        layout.addWidget(text_label)
-        
-        return widget
-        
-    def on_language_changed(self, language: str):
-        """Handle language change."""
+    def set_language(self, language: str):
+        """Set the application language."""
+        if language not in self.translations_manager.available_languages():
+            logger.warning(f"Unsupported language: {language}")
+            return
+            
         self.language = language
         self.config_manager.set('language', language)
-        self.translations_manager.set_default_lang(language)
-        if hasattr(self, 'weather_provider') and hasattr(self.weather_provider, 'language'):
-            self.weather_provider.language = language
+        self.translations_manager.set_language(language)
+        self.update_status(f"Language changed to {language.upper()}", 3000)
+        # Update UI translations
+        self.retranslate_ui()
         self.refresh_weather()
-
-    def on_units_changed(self, units: str):
-        """Handle units change."""
-        self.units = units
-        self.config_manager.set('units', units)
-        if hasattr(self, 'weather_provider') and hasattr(self.weather_provider, 'units'):
-            self.weather_provider.units = units
-        self.refresh_weather()
-
-    def on_toggle_favorite(self, city: str):
-        """Toggle a city as favorite."""
-        if not city:
+    
+    def update_favorites_menu(self):
+        """Update the favorites menu with current favorites."""
+        if not hasattr(self, 'menu_bar'):
             return
             
-        if self.favorites_manager.is_favorite(city):
-            self.favorites_manager.remove_favorite(city)
-            self.ui.update_favorite_button(False)
-        else:
-            self.favorites_manager.add_favorite(city)
-            self.ui.update_favorite_button(True)
+        # Update the favorites menu in the menu bar if it exists
+        if hasattr(self.menu_bar, 'update_favorites_menu'):
+            favorites = self.favorites_manager.get_favorites()
+            self.menu_bar.update_favorites_menu(has_favorites=bool(favorites))
+    
+    def add_current_to_favorites(self):
+        """Add the current location to favorites."""
+        if not self.city:
+            return
             
-        self.update_favorites_menu()
-
-    def on_favorite_selected(self, city: str):
-        """Handle selection of a favorite city."""
-        if city:
-            self.city = city
-            self.ui.set_city(city)
-            self.refresh_weather()
-
-    def update_favorites_menu(self):
-        """Update the favorites dropdown in the UI."""
-        favorites = self.favorites_manager.get_favorites()
-        self.ui.update_favorites_list(favorites)
+        name, ok = QInputDialog.getText(
+            self,
+            'Add to Favorites',
+            'Enter a name for this location:',
+            QLineEdit.EchoMode.Normal,
+            self.city
+        )
         
-        # Update the favorite button state
-        city = self.ui.search_input.text().strip()
-        if city and city.lower() != 'enter city name...':
-            is_favorite = self.favorites_manager.is_favorite(city)
-            self.ui.update_favorite_button(is_favorite)
-
+        if ok and name:
+            self.favorites_manager.add_favorite(name, self.city)
+            self.update_favorites_menu()
+            self.update_status(f"Added {name} to favorites")
+    
+    def manage_favorites(self):
+        """Open the favorites management dialog."""
+        from script.favorites_dialog import FavoritesDialog
+        from PyQt6.QtWidgets import QDialog
+        
+        # Create and show the favorites dialog
+        dialog = FavoritesDialog(self.favorites_manager, self)
+        result = dialog.exec()
+        
+        # Update the favorites menu if the dialog was accepted
+        if result == QDialog.DialogCode.Accepted:
+            self.update_favorites_menu()
+            
+            # If the current city is in favorites, update the UI
+            if self.favorites_manager.is_favorite(self.city):
+                self.update_favorites_menu()
+    
+    def set_location(self, location: str):
+        """Set the current location and refresh weather data."""
+        if location:
+            self.city = location
+            self.search_input.setText(location)
+            self.refresh_weather()
+    
+    def show_about(self):
+        """Show the About dialog."""
+        about = About(self)
+        about.exec()
+    
+    def show_help(self):
+        """Show the Help dialog."""
+        help_dialog = Help(self, self.translations_manager, self.language)
+        help_dialog.exec()
+    
     def check_for_updates(self):
         """Check for application updates."""
-        def check():
-            try:
-                checker = UpdateChecker(get_version())
-                update_available, update_info = checker.check_for_updates(force=True)
-                return update_available, update_info, None
-            except Exception as e:
-                logging.error(f"Error checking for updates: {e}")
-                return False, None, ("Error", str(e))
+        self.status_bar.showMessage("Checking for updates...")
         
-        def update_ui(result):
-            update_available, update_info, error_info = result
+        try:
+            update_checker = UpdateChecker()
+            update_available, version, url = update_checker.check_for_updates()
             
-            if update_available and update_info:
-                # Show update dialog
-                checker = UpdateChecker(get_version())
-                checker.show_update_dialog(self, update_info)
-            elif error_info and error_info[0] and error_info[1]:
-                QMessageBox.information(
+            if update_available:
+                reply = QMessageBox.information(
                     self,
-                    error_info[0],
-                    error_info[1],
-                    QMessageBox.StandardButton.Ok
+                    'Update Available',
+                    f'Version {version} is available. Would you like to download it now?',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
                 )
+                
+                if reply == QMessageBox.StandardButton.Yes and url:
+                    QDesktopServices.openUrl(QUrl(url))
             else:
                 QMessageBox.information(
                     self,
                     'No Updates',
-                    'You are using the latest version.',
-                    QMessageBox.StandardButton.Ok
+                    'You are using the latest version of Weather App.'
                 )
-        
-        # Start the background task
-        self._run_in_background(check, update_ui)
-
-    def show_about_dialog(self):
-        """Show the about dialog."""
-        from script.about import About
-        About.show_about()
-
-    def show_help_dialog(self):
-        """Show the help dialog."""
-        from script.help import Help
-        Help.show_help(self, self.translations_manager, self.language)
-
-    def _run_in_background(self, func, callback):
-        """Run a function in the background and call callback with the result."""
-        def run():
-            result = func()
-            QApplication.instance().postEvent(
-                self,
-                _CallbackEvent(callback, result)
-            )
-        
-        import threading
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def event(self, event):
-        """Handle custom events."""
-        if isinstance(event, _CallbackEvent):
-            event.callback(event.result)
-            return True
-        return super().event(event)
-
-    def on_theme_changed(self, theme: str):
-        """Handle theme change.
-        
-        Args:
-            theme (str): The selected theme ('system', 'light', or 'dark')
-        """
-        # Save the theme preference
-        self.config_manager.set('theme', theme)
-        
-        # Get the application instance
-        app = QApplication.instance()
-        
-        # Apply the theme
-        if theme == 'dark':
-            self.setStyleSheet('')
-            app.setStyle('Fusion')
-            dark_palette = QPalette()
-            dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-            dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
-            dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-            dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-            dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-            dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-            dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-            dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-            app.setPalette(dark_palette)
-        elif theme == 'light':
-            self.setStyleSheet('')
-            app.setStyle('Fusion')
-            light_palette = QPalette()
-            light_palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
-            light_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-            light_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(233, 231, 227))
-            light_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-            light_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-            light_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
-            light_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-            light_palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
-            light_palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 120, 215))
-            light_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-            app.setPalette(light_palette)
-        else:  # system
-            self.setStyleSheet('')
-            app.setStyle('Windows' if sys.platform.startswith('win') else 'Fusion')
-            app.setPalette(app.style().standardPalette())
-
-    def update_weather_provider(self, provider_name: str):
-        """Update the weather provider dynamically.
-        
-        Args:
-            provider_name: Name of the weather provider to switch to
-        """
-        logger.info(f"Switching to weather provider: {provider_name}")
-        
-        # Show a status message
-        status_message = self.statusBar().showMessage(f"Switching to {provider_name} provider...")
-        
-        try:
-            # Save the new provider to config
-            self.config_manager.set('weather_provider', provider_name)
-            
-            # Store the current city to restore it after provider switch
-            current_city = self.city
-            
-            # Re-initialize the weather provider
-            self.weather_provider_name = provider_name
-            self.initialize_weather_provider()
-            
-            # Update the UI with the new provider
-            if hasattr(self.ui, 'weather_provider'):
-                self.ui.weather_provider = self.weather_provider
-            
-            # Update the provider in the menu bar if it exists
-            if hasattr(self, 'menuBar') and hasattr(self.menuBar(), 'set_current_provider'):
-                self.menuBar().set_current_provider(provider_name)
-            
-            # Restore the city and refresh weather data
-            self.city = current_city
-            self.refresh_weather()
-            
-            # Show success message
-            self.statusBar().showMessage(f"Successfully switched to {provider_name}", 3000)
-            logger.info(f"Successfully switched to {provider_name} provider")
-            
+                
         except Exception as e:
-            error_msg = f"Failed to switch to {provider_name} provider: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            
-            # Show error in status bar and message box
-            self.statusBar().showMessage("Failed to switch weather provider", 3000)
+            logger.error(f"Error checking for updates: {e}")
             QMessageBox.critical(
                 self,
-                self.tr('Provider Error'),
-                self.tr(error_msg)
+                'Update Error',
+                f'An error occurred while checking for updates: {str(e)}'
             )
-
-class _CallbackEvent(QEvent):
-    """Custom event for callbacks from background threads."""
-    def __init__(self, callback, result):
-        super().__init__(QEvent.Type.User)
-        self.callback = callback
-        self.result = result
+        finally:
+            self.status_bar.clearMessage()
+    
+    def show_sponsor(self):
+        """Show the Sponsor dialog."""
+        sponsor = Sponsor(self)
+        sponsor.exec()
+    
+    def closeEvent(self, event):
+        """Handle window close event."""
+        # Save window size and position
+        self.config_manager.set('window/geometry', self.saveGeometry().data().hex())
+        self.config_manager.set('window/state', self.saveState().data().hex())
+        
+        # Save history visibility
+        self.config_manager.set('ui/show_history', self.history_widget.isVisible())
+        
+        event.accept()
 
 
 def main():
-    # Create the application
+    """Main function to run the application."""
+    # Create application instance
     app = QApplication(sys.argv)
     
     # Set application style
     app.setStyle('Fusion')
     
-    # Create and show the main window
+    # Set application info
+    app.setApplicationName("Weather App")
+    app.setApplicationVersion(get_version())
+    app.setOrganizationName("Nsfr750")
+    
+    # Create and show main window
     window = WeatherApp()
+    window.show()
     
     # Run the application
     sys.exit(app.exec())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

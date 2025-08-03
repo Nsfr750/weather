@@ -44,9 +44,54 @@
 
 - **Menu Bar**: Access additional features and settings
   - File: New window, settings, quit
-  - View: Toggle UI elements, refresh data
+  - View: Toggle UI elements, refresh data, weather maps & radar
   - Favorites: Manage saved locations
   - Help: Documentation viewer, log viewer, about, check for updates
+
+## Weather Maps & Radar
+
+The Weather Maps & Radar feature provides interactive visualizations of weather patterns and conditions.
+
+### Accessing Weather Maps
+
+1. Click on **View** in the menu bar
+2. Select **Weather Maps & Radar**
+3. The Weather Maps dialog will open with multiple tabs
+
+### Features
+
+#### Radar Tab
+- **Map Type**: Switch between different base maps (OpenStreetMap, OpenTopoMap, Stamen Terrain)
+- **Layer**: Toggle between radar and satellite overlays
+- **Search**: Find locations by name or coordinates
+
+#### Temperature Tab
+- View temperature variations across regions
+- Toggle between Celsius and Fahrenheit
+- Adjust the opacity of the temperature overlay
+
+#### Precipitation Tab
+- See current and forecasted precipitation
+- Toggle between different precipitation layers
+- View rain, snow, and other precipitation types
+
+#### Wind Tab
+- Visualize wind speed and direction
+- Toggle wind barbs or streamlines
+- Adjust the wind speed units (km/h, m/s, mph, knots)
+
+### Using the Map
+- **Zoom**: Use the mouse wheel or +/- buttons
+- **Pan**: Click and drag the map
+- **Search**: Enter a location in the search box and press Enter
+- **Layers**: Toggle different weather layers using the controls
+- **Fullscreen**: Click the fullscreen button for a larger view
+
+### Tips
+- The map will automatically center on your current location if location services are enabled
+- Click on the map to get detailed weather information for that location
+- Use the timeline controls to view forecast data for different times
+- Right-click on the map to set a marker or get coordinates
 
 ## Features
 

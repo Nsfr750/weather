@@ -17,6 +17,7 @@ pip install pytest
   python -m pytest tests/test_api_key_manager.py -v
   python -m pytest tests/test_enhanced_notifications.py -v
   python -m pytest tests/test_log.py -v
+  python -m pytest tests/test_maps_dialog.py -v
   ```
 
 - **Run tests with coverage**:
@@ -39,3 +40,9 @@ pip install pytest
 - `test_api_key_manager.py`: Tests for the API key management system
 - `test_enhanced_notifications.py`: Tests for the enhanced notification system
 - `test_log.py`: Tests for the logging system
+- `test_maps_dialog.py`: Tests for the maps dialog
+- `test_menu.py`: Tests for the menu system
+- `test_ui.py`: Tests for the UI system
+- `test_updates.py`: Tests for the updates system
+- `test_version.py`: Tests for the version system
+

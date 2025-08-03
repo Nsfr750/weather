@@ -1,6 +1,6 @@
 # 🌦️ Weather App
 
-A modern, feature-rich Python weather application (v1.6.0) with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, and alerts for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
+A modern, feature-rich Python weather application (v1.6.0) with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, alerts, and interactive weather maps for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -12,6 +12,13 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 ## 🚀 What's New in v1.6.0
 
 - **New Features**
+- Interactive Weather Maps & Radar
+  - Real-time radar data visualization
+  - Multiple map layers (radar, satellite, terrain)
+  - Weather overlays for temperature, precipitation, and wind
+  - Location search with geocoding
+  - Caching of map data for better performance
+  - Support for multiple map providers (OpenStreetMap, OpenTopoMap, Stamen)
 - Enhanced notification system with system tray integration
   - Support for different alert types (info, warning, error, critical)
   - Persistent notification history
@@ -22,15 +29,6 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
   - High wind alerts
   - Extreme temperature warnings
   - Nighttime travel advisories
-- 7-day forecast support with detailed weather information
-- Markdown documentation viewer for help and documentation
-- Log viewer for application diagnostics
-- Enhanced history entries with additional weather metrics
-  - Feels like temperature
-  - Humidity percentage
-  - Wind speed
-  - Atmospheric pressure
-  - Visibility data
 
 ## 🚀 What's New in v1.5.0
 
@@ -47,6 +45,9 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 ## ✨ Features
 
+- **Interactive Maps**: View real-time weather maps with radar, satellite, temperature, precipitation, and wind data
+- **Location Search**: Find any location with the built-in geocoding powered by Nominatim
+- **Multiple Map Types**: Switch between different map styles including OpenStreetMap, OpenTopoMap, and Stamen Terrain
 - **Weather Data**: Powered by Open-Meteo
   - Reliable and free weather data
   - No API key required
@@ -82,7 +83,8 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 ### Installation
 
-1. **Clone the repository**:
+1. **Clone the repository**
+   
    ```bash
    git clone https://github.com/Nsfr750/weather.git
    cd weather
@@ -90,21 +92,35 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 2. **Set up a virtual environment (recommended)**
 
+   Windows:
    ```bash
-   # Windows
    python -m venv venv
    .\venv\Scripts\activate
+   ```
    
-   # Unix/macOS
+   Linux/macOS:
+   ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
 
-3. **Install dependencies**
-
+3. **Install the required dependencies**
+   
    ```bash
    pip install -r requirements.txt
    ```
+
+4. **Install additional dependencies for weather maps (optional)**
+   
+   The weather maps feature requires these additional packages:
+   
+   ```bash
+   pip install folium PyQtWebEngine geopy
+   ```
+   
+   - `folium`: For creating interactive maps
+   - `PyQtWebEngine`: For displaying web content in the PyQt6 application
+   - `geopy`: For geocoding location names to coordinates
 
 4. **Run the application**
 

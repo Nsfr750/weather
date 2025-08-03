@@ -8,19 +8,33 @@ using various weather map services and OpenStreetMap.
 import os
 import folium
 import logging
+import json
+import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Any
 
-from PyQt6.QtCore import Qt, QUrl, QSize
+# For geocoding
+import geopy
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
+
+from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
     QComboBox, QLabel, QPushButton, QSizePolicy, QCompleter, QLineEdit
 )
+from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtGui import QIcon, QPixmap, QFont
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Set Qt.AA_ShareOpenGLContexts attribute if not already set
+app = QCoreApplication.instance()
+if app is not None and not hasattr(Qt.ApplicationAttribute, '_shareopenglcontexts_set'):
+    app.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
+    Qt.ApplicationAttribute._shareopenglcontexts_set = True
 
 # Default coordinates (centered on Europe)
 DEFAULT_LATITUDE = 46.0
@@ -49,6 +63,20 @@ class MapsDialog(QDialog):
         self.current_lat = DEFAULT_LATITUDE
         self.current_lon = DEFAULT_LONGITUDE
         self.current_zoom = DEFAULT_ZOOM
+        
+        # Initialize geocoder with rate limiting (max 1 request per second)
+        self.geolocator = Nominatim(user_agent="weather_app_maps")
+        self.geocode = RateLimiter(
+            self.geolocator.geocode,
+            min_delay_seconds=1.0,  # Respect Nominatim's rate limit
+            max_retries=2,
+            error_wait_seconds=5.0
+        )
+        self.last_geocode_time = 0
+        
+        # Cache for geocoding results
+        self.geocode_cache_file = Path("geocode_cache.json")
+        self.geocode_cache = self._load_geocode_cache()
         
         # Initialize UI
         self._init_ui()
@@ -441,12 +469,62 @@ class MapsDialog(QDialog):
             self.status_label.setText(self._tr("Please enter a location to search"))
             return
         
-        # TODO: Implement geocoding to get coordinates from location name
-        # For now, just show a message
-        self.status_label.setText(f"{self._tr('Searching for')}: {query}")
+        # Show searching message
+        self.status_label.setText(f"{self._tr('Searching for')}: {query}...")
         
-        # Simulate search (replace with actual geocoding)
-        # self._geocode_location(query)
+        # Use a thread to prevent UI freezing during geocoding
+        import threading
+        threading.Thread(
+            target=self._geocode_location,
+            args=(query,),
+            daemon=True
+        ).start()
+    
+    def _update_status(self, message: str, is_error: bool = False):
+        """Thread-safe method to update the status label."""
+        QMetaObject.invokeMethod(
+            self.status_label, 'setText',
+            Qt.ConnectionType.QueuedConnection,
+            QMetaObject.Argument(str, message)
+        )
+        
+        # Set text color based on error status
+        color = 'red' if is_error else 'black'
+        QMetaObject.invokeMethod(
+            self.status_label, 'setStyleSheet',
+            Qt.ConnectionType.QueuedConnection,
+            QMetaObject.Argument(str, f'color: {color};')
+        )
+    
+    def _handle_geocode_result(self, result: Optional[Dict[str, Any]], original_query: str):
+        """Handle the result of a geocoding operation."""
+        if not result or 'error' in result:
+            error_msg = result.get('error', 'Unknown error') if result else 'No results found'
+            self._update_status(f"{self._tr('Error')}: {error_msg}", is_error=True)
+            logger.error(f"Geocoding error: {error_msg}")
+            return
+
+        try:
+            # Update current location
+            self.current_lat = result['latitude']
+            self.current_lon = result['longitude']
+            display_name = result.get('display_name', original_query)
+            
+            # Update status
+            self._update_status(
+                f"{self._tr('Showing')}: {display_name} ({result['latitude']:.4f}, {result['longitude']:.4f})"
+            )
+            
+            # Update all maps
+            self._update_radar_map()
+            self._update_temperature_map()
+            self._update_precipitation_map()
+            self._update_wind_map()
+            
+        except Exception as e:
+            error_msg = f"{self._tr('Error processing location')}: {str(e)}"
+            self._update_status(error_msg, is_error=True)
+            logger.error(f"Error handling geocode result: {e}")
     
     def _geocode_location(self, location: str):
         """
@@ -455,9 +533,77 @@ class MapsDialog(QDialog):
         Args:
             location: The location name to geocode
         """
-        # TODO: Implement geocoding using a geocoding service
-        # For now, just show a message
-        self.status_label.setText(f"{self._tr('Geocoding not implemented yet')}: {location}")
+        try:
+            # Update status
+            self._update_status(f"{self._tr('Searching for')}: {location}...")
+            
+            # Check cache first
+            cached = self.geocode_cache.get(location.lower())
+            if cached:
+                # Simulate async behavior with a small delay
+                import threading
+                threading.Timer(0.5, lambda: self._handle_geocode_result(cached, location)).start()
+                return
+            
+            # Rate limiting
+            current_time = time.time()
+            time_since_last = current_time - self.last_geocode_time
+            if time_since_last < 1.0:  # Respect rate limit of 1 request per second
+                time.sleep(1.0 - time_since_last)
+            
+            # Perform geocoding
+            self.last_geocode_time = time.time()
+            result = self.geocode(location, exactly_one=True)
+            
+            if result:
+                # Cache the result
+                result_data = {
+                    'latitude': result.latitude,
+                    'longitude': result.longitude,
+                    'display_name': result.raw.get('display_name', location),
+                    'timestamp': time.time()
+                }
+                self.geocode_cache[location.lower()] = result_data
+                self._save_geocode_cache()
+                
+                # Update UI with the result
+                self._handle_geocode_result(result_data, location)
+            else:
+                self._update_status(
+                    f"{self._tr('Location not found')}: {location}",
+                    is_error=True
+                )
+                
+        except Exception as e:
+            error_msg = f"{self._tr('Error geocoding location')}: {str(e)}"
+            self._update_status(error_msg, is_error=True)
+            logger.error(f"Geocoding error: {e}")
+    
+    def _load_geocode_cache(self) -> Dict[str, Dict[str, Any]]:
+        """Load geocoding results from cache file."""
+        if not self.geocode_cache_file.exists():
+            return {}
+            
+        try:
+            with open(self.geocode_cache_file, 'r', encoding='utf-8') as f:
+                cache = json.load(f)
+                # Filter out entries older than 30 days
+                current_time = time.time()
+                return {
+                    k: v for k, v in cache.items() 
+                    if current_time - v.get('timestamp', 0) < 30 * 24 * 60 * 60
+                }
+        except Exception as e:
+            logger.error(f"Error loading geocode cache: {e}")
+            return {}
+    
+    def _save_geocode_cache(self):
+        """Save geocoding results to cache file."""
+        try:
+            with open(self.geocode_cache_file, 'w', encoding='utf-8') as f:
+                json.dump(self.geocode_cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving geocode cache: {e}")
     
     def _set_window_icon(self):
         """Set the window icon."""
@@ -491,6 +637,9 @@ class MapsDialog(QDialog):
                 temp_file.unlink()
             except Exception as e:
                 logger.warning(f"Could not delete temporary file: {e}")
+        
+        # Save the geocode cache
+        self._save_geocode_cache()
         
         super().closeEvent(event)
 

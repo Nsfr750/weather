@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Callable
 
 # Import Qt
+from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent, QThread, QMetaObject, QCoreApplication
+from PyQt6.QtGui import QAction, QActionGroup, QIcon, QPixmap, QFont, QPalette, QColor, QDesktopServices
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QListWidget, QListWidgetItem, QSplitter, QStatusBar,
@@ -23,9 +25,13 @@ from PyQt6.QtWidgets import (
     QStyle, QGridLayout, QTabWidget, QFrame, QSizePolicy, QSpacerItem,
     QScrollArea, QStackedWidget, QInputDialog, QFileDialog, QDialogButtonBox
 )
-from PyQt6.QtGui import QAction, QActionGroup
-from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent, QThread, QMetaObject
-from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont, QPalette, QColor, QDesktopServices
+
+# Import QtWebEngineWidgets early to ensure proper initialization
+from PyQt6.QtWebEngineCore import QWebEngineSettings
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+
+# Set Qt.AA_ShareOpenGLContexts before creating QApplication
+QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
 
 # Import translations
 from script.translations import TRANSLATIONS

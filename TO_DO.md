@@ -1,5 +1,14 @@
 # Project To-Do List
 
+## ✅ Completed (v1.6.0)
+
+- [x] 7-day forecast implementation
+- [x] Markdown documentation viewer
+- [x] Log viewer for application diagnostics
+- [x] Enhanced history entries with additional weather metrics
+- [x] Improved error handling for weather data parsing
+- [x] Updated documentation and help system
+
 ## ✅ Completed (v1.5.0)
 
 - [x] Comprehensive test suite with pytest
@@ -47,7 +56,8 @@
 
 ## 🔄 In Progress
 
-- [ ] Implement unit tests for all weather providers
+- [ ] Add more comprehensive weather visualization
+- [ ] Improve accessibility features
 - [ ] Add CI/CD pipeline for automated testing and deployment
 - [ ] Improve test coverage to 90%+
 - [ ] Set up automated documentation deployment
@@ -60,7 +70,6 @@
   - [ ] Radar animations
   - [ ] Weather condition timelines
 - [ ] Support for additional weather metrics
-  - [ ] Feels-like temperature
   - [ ] Wind chill
   - [ ] Heat index
   - [ ] UV index

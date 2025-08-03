@@ -801,10 +801,41 @@ class WeatherApp(QMainWindow):
         finally:
             self.status_bar.clearMessage()
     
+    def show_md_viewer(self):
+        """Show the Markdown documentation viewer."""
+        try:
+            from script.md_viewer import MarkdownViewer
+            self.md_viewer = MarkdownViewer(language=self.language.upper())
+            self.md_viewer.show()
+        except Exception as e:
+            logger.error(f"Error showing markdown viewer: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open documentation: {str(e)}",
+                QMessageBox.StandardButton.Ok
+            )
+    
+    def show_log_viewer(self):
+        """Show the application log viewer."""
+        try:
+            from script.log_viewer import LogViewer  # Assuming this exists
+            self.log_viewer = LogViewer()
+            self.log_viewer.show()
+        except Exception as e:
+            logger.error(f"Error showing log viewer: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open log viewer: {str(e)}",
+                QMessageBox.StandardButton.Ok
+            )
+    
     def show_sponsor(self):
         """Show the Sponsor dialog."""
-        sponsor = Sponsor(self)
-        sponsor.exec()
+        from script.sponsor import Sponsor
+        sponsor_dialog = Sponsor(self)
+        sponsor_dialog.exec()
     
     def closeEvent(self, event):
         """Handle window close event."""

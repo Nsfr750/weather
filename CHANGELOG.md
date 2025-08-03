@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0] - 2025-08-03
+
+### Added
+
+- 7-day forecast support with detailed weather information
+- Markdown documentation viewer for help and documentation
+- Log viewer for application diagnostics
+- Enhanced history entries with additional weather metrics
+  - Feels like temperature
+  - Humidity percentage
+  - Wind speed
+  - Atmospheric pressure
+  - Visibility data
+
 ## [1.5.0] - 2025-08-02
 
 ### Added

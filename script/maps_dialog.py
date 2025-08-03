@@ -18,7 +18,7 @@ import geopy
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
-from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject
+from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject, Q_ARG, QThread
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
     QComboBox, QLabel, QPushButton, QSizePolicy, QCompleter, QLineEdit
@@ -72,7 +72,9 @@ class MapsDialog(QDialog):
         self.last_geocode_time = 0
         
         # Cache for geocoding results
-        self.geocode_cache_file = Path("geocode_cache.json")
+        config_dir = Path("config")
+        config_dir.mkdir(exist_ok=True)  # Ensure config directory exists
+        self.geocode_cache_file = config_dir / "geocode_cache.json"
         self.geocode_cache = self._load_geocode_cache()
         
         # Initialize UI
@@ -272,149 +274,184 @@ class MapsDialog(QDialog):
     
     def _update_radar_map(self):
         """Update the radar map based on selected type and layer."""
-        map_type = self.radar_type.currentData()
-        layer = self.radar_layer.currentData()
-        
-        # Create a map centered on current location
-        m = folium.Map(
-            location=[self.current_lat, self.current_lon],
-            zoom_start=self.current_zoom,
-            tiles=self._get_tile_url(map_type),
-            attr='Map data © OpenStreetMap contributors',
-            control_scale=True
-        )
-        
-        # Add layer based on selection
-        if layer == "radar":
-            # Add radar overlay (example using OpenWeatherMap)
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Precipitation',
-                overlay=True
-            ).add_to(m)
-        elif layer == "satellite":
-            # Add satellite layer
-            folium.TileLayer(
-                tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                attr='Esri',
-                name='Satellite',
-                overlay=True
-            ).add_to(m)
-        
-        # Save map to HTML and load in web view
-        self._load_map_in_webview(m, self.radar_web_view)
+        def _update_map():
+            map_type = self.radar_type.currentData()
+            layer = self.radar_layer.currentData()
+                
+            # Create a map centered on current location
+            m = folium.Map(
+                location=[self.current_lat, self.current_lon],
+                zoom_start=self.current_zoom,
+                tiles=self._get_tile_url(map_type),
+                attr='Map data © OpenStreetMap contributors',
+                control_scale=True
+            )
+                
+            # Add layer based on selection
+            if layer == "radar":
+                # Add radar overlay (example using OpenWeatherMap)
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Precipitation',
+                    overlay=True
+                ).add_to(m)
+            elif layer == "satellite":
+                # Add satellite layer
+                folium.TileLayer(
+                    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    attr='Esri',
+                    name='Satellite',
+                    overlay=True
+                ).add_to(m)
+                
+            # Add layer control
+            folium.LayerControl().add_to(m)
+                
+            # Save map to HTML and load in web view
+            self._load_map_in_webview(m, self.radar_web_view)
+            
+        # Ensure we're on the main thread when updating the UI
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_update_radar_map", 
+                                   Qt.ConnectionType.QueuedConnection)
+        else:
+            _update_map()
     
     def _update_temperature_map(self):
         """Update the temperature map."""
-        unit = self.temp_unit.currentData()
+        def _update_map():
+            unit = self.temp_unit.currentData()
+            
+            # Create a map centered on current location
+            m = folium.Map(
+                location=[self.current_lat, self.current_lon],
+                zoom_start=self.current_zoom,
+                tiles='OpenStreetMap',
+                attr='Map data © OpenStreetMap contributors',
+                control_scale=True
+            )
+            
+            # Add temperature overlay (example using OpenWeatherMap)
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid=YOUR_API_KEY&units={"imperial" if unit == "fahrenheit" else "metric"}',
+                attr='OpenWeatherMap',
+                name='Temperature',
+                overlay=True
+            ).add_to(m)
+            
+            # Add layer control
+            folium.LayerControl().add_to(m)
+            
+            # Save map to HTML and load in web view
+            self._load_map_in_webview(m, self.temp_web_view)
         
-        # Create a map centered on current location
-        m = folium.Map(
-            location=[self.current_lat, self.current_lon],
-            zoom_start=self.current_zoom,
-            tiles='OpenStreetMap',
-            attr='Map data © OpenStreetMap contributors',
-            control_scale=True
-        )
-        
-        # Add temperature overlay (example using OpenWeatherMap)
-        folium.TileLayer(
-            tiles=f'https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid=YOUR_API_KEY&units={"imperial" if unit == "fahrenheit" else "metric"}',
-            attr='OpenWeatherMap',
-            name='Temperature',
-            overlay=True
-        ).add_to(m)
-        
-        # Add layer control
-        folium.LayerControl().add_to(m)
-        
-        # Save map to HTML and load in web view
-        self._load_map_in_webview(m, self.temp_web_view)
+        # Ensure we're on the main thread when updating the UI
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_update_temperature_map", 
+                                   Qt.ConnectionType.QueuedConnection)
+        else:
+            _update_map()
     
     def _update_precipitation_map(self):
         """Update the precipitation map."""
-        prec_type = self.prec_type.currentData()
+        def _update_map():
+            prec_type = self.prec_type.currentData()
+            
+            # Create a map centered on current location
+            m = folium.Map(
+                location=[self.current_lat, self.current_lon],
+                zoom_start=self.current_zoom,
+                tiles='OpenStreetMap',
+                attr='Map data © OpenStreetMap contributors',
+                control_scale=True
+            )
+            
+            # Add precipitation overlay based on type
+            if prec_type == "rain":
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Precipitation',
+                    overlay=True
+                ).add_to(m)
+            elif prec_type == "snow":
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Snow',
+                    overlay=True
+                ).add_to(m)
+            else:  # clouds
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Clouds',
+                    overlay=True
+                ).add_to(m)
+                
+            # Add layer control
+            folium.LayerControl().add_to(m)
+                
+            # Save map to HTML and load in web view
+            self._load_map_in_webview(m, self.prec_web_view)
         
-        # Create a map centered on current location
-        m = folium.Map(
-            location=[self.current_lat, self.current_lon],
-            zoom_start=self.current_zoom,
-            tiles='OpenStreetMap',
-            attr='Map data © OpenStreetMap contributors',
-            control_scale=True
-        )
-        
-        # Add precipitation overlay based on type
-        if prec_type == "rain":
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Precipitation',
-                overlay=True
-            ).add_to(m)
-        elif prec_type == "snow":
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Snow',
-                overlay=True
-            ).add_to(m)
-        else:  # clouds
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Clouds',
-                overlay=True
-            ).add_to(m)
-        
-        # Add layer control
-        folium.LayerControl().add_to(m)
-        
-        # Save map to HTML and load in web view
-        self._load_map_in_webview(m, self.prec_web_view)
+        # Ensure we're on the main thread when updating the UI
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_update_precipitation_map",
+                                  Qt.ConnectionType.QueuedConnection)
+        else:
+            _update_map()
     
     def _update_wind_map(self):
         """Update the wind map."""
-        layer = self.wind_layer.currentData()
+        def _update_map():
+            layer = self.wind_layer.currentData()
+                
+            # Create a map centered on current location
+            m = folium.Map(
+                location=[self.current_lat, self.current_lon],
+                zoom_start=self.current_zoom,
+                tiles='OpenStreetMap',
+                attr='Map data © OpenStreetMap contributors',
+                control_scale=True
+            )
+                
+            # Add wind layer based on selection
+            if layer == "wind":
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Wind Speed',
+                    overlay=True
+                ).add_to(m)
+            elif layer == "gust":
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Wind Gusts',
+                    overlay=True
+                ).add_to(m)
+            else:  # direction
+                folium.TileLayer(
+                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
+                    attr='OpenWeatherMap',
+                    name='Wind Direction',
+                    overlay=True
+                ).add_to(m)
+                
+            # Add layer control
+            folium.LayerControl().add_to(m)
+                
+            # Save map to HTML and load in web view
+            self._load_map_in_webview(m, self.wind_web_view)
         
-        # Create a map centered on current location
-        m = folium.Map(
-            location=[self.current_lat, self.current_lon],
-            zoom_start=self.current_zoom,
-            tiles='OpenStreetMap',
-            attr='Map data © OpenStreetMap contributors',
-            control_scale=True
-        )
-        
-        # Add wind overlay based on layer
-        if layer == "wind":
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Wind Speed',
-                overlay=True
-            ).add_to(m)
-        elif layer == "gust":
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Wind Gusts',
-                overlay=True
-            ).add_to(m)
-        else:  # direction
-            folium.TileLayer(
-                tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                attr='OpenWeatherMap',
-                name='Wind Direction',
-                overlay=True
-            ).add_to(m)
-        
-        # Add layer control
-        folium.LayerControl().add_to(m)
-        
-        # Save map to HTML and load in web view
-        self._load_map_in_webview(m, self.wind_web_view)
+        # Ensure we're on the main thread when updating the UI
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_update_wind_map", 
+                                   Qt.ConnectionType.QueuedConnection)
+        else:
+            _update_map()
     
     def _load_map_in_webview(self, folium_map, web_view):
         """
@@ -424,63 +461,74 @@ class MapsDialog(QDialog):
             folium_map: The Folium map object
             web_view: The QWebEngineView to load the map into
         """
-        try:
-            # Generate HTML content with proper Leaflet includes
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                      crossorigin=""/>
-                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        def _update_webview():
+            try:
+                # Generate the HTML content with Leaflet.js and CSS
+                html_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Weather Map</title>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                        crossorigin=""/>
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
                         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
                         crossorigin=""></script>
-                <style>
-                    body {{ margin: 0; padding: 0; }}
-                    #map {{ width: 100%; height: 100vh; }}
-                </style>
-            </head>
-            <body>
-                <div id="map"></div>
-                <script>
-                    // Initialize the map
-                    var map = L.map('map').setView([{self.current_lat}, {self.current_lon}], {self.current_zoom});
-                    
-                    // Add OpenStreetMap tiles
-                    L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19
-                    }}).addTo(map);
-                    
-                    // Add a marker at the center
-                    L.marker([{self.current_lat}, {self.current_lon}]).addTo(map)
-                        .bindPopup('Current Location');
-                </script>
-            </body>
-            </html>
-            """
-            
-            # Load the HTML content directly
-            web_view.setHtml(html_content, QUrl("about:blank"))
-            
-            # Configure web view settings
-            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
-            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
-            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
-            
-        except Exception as e:
-            error_msg = f"Error loading map: {str(e)}"
-            logger.error(error_msg)
-            web_view.setHtml(f"<h3 style='color: red;'>{error_msg}</h3><p>Please check your internet connection and try again.</p>")
-            
-            # Try a fallback to OpenStreetMap if the main map fails
-            try:
-                web_view.setUrl(QUrl("https://www.openstreetmap.org/"))
-            except Exception as fallback_error:
-                logger.error(f"Fallback map also failed: {fallback_error}")
+                    <style>
+                        body {{ margin: 0; padding: 0; }}
+                        #map {{ width: 100%; height: 100vh; }}
+                    </style>
+                </head>
+                <body>
+                    <div id="map"></div>
+                    <script>
+                        // Initialize the map
+                        var map = L.map('map').setView([{self.current_lat}, {self.current_lon}], {self.current_zoom});
+                        
+                        // Add OpenStreetMap tiles
+                        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                            maxZoom: 19
+                        }}).addTo(map);
+                        
+                        // Add a marker at the center
+                        L.marker([{self.current_lat}, {self.current_lon}]).addTo(map)
+                            .bindPopup('Current Location');
+                    </script>
+                </body>
+                </html>
+                """
+                
+                # Load the HTML content directly
+                web_view.setHtml(html_content, QUrl("about:blank"))
+                
+                # Configure web view settings
+                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
+                
+            except Exception as e:
+                error_msg = f"Error loading map: {str(e)}"
+                logger.error(error_msg)
+                web_view.setHtml(f"<h3 style='color: red;'>{error_msg}</h3><p>Please check your internet connection and try again.</p>")
+                
+                # Try a fallback to OpenStreetMap if the main map fails
+                try:
+                    web_view.setUrl(QUrl("https://www.openstreetmap.org/"))
+                except Exception as fallback_error:
+                    logger.error(f"Fallback map also failed: {fallback_error}")
+        
+        # Ensure we're on the main thread when updating the web view
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_load_map_in_webview", 
+                                   Qt.ConnectionType.QueuedConnection,
+                                   Q_ARG(object, folium_map),
+                                   Q_ARG(object, web_view))
+        else:
+            _update_webview()
     
     def _get_tile_url(self, map_type: str) -> str:
         """Get the tile URL for the specified map type."""
@@ -511,49 +559,61 @@ class MapsDialog(QDialog):
     
     def _update_status(self, message: str, is_error: bool = False):
         """Thread-safe method to update the status label."""
+        # Schedule the update on the main thread
         QMetaObject.invokeMethod(
-            self.status_label, 'setText',
+            self.status_label, 
+            'setText', 
             Qt.ConnectionType.QueuedConnection,
-            QMetaObject.Argument(str, message)
+            Q_ARG(str, message)
         )
         
-        # Set text color based on error status
         color = 'red' if is_error else 'black'
         QMetaObject.invokeMethod(
-            self.status_label, 'setStyleSheet',
+            self.status_label, 
+            'setStyleSheet', 
             Qt.ConnectionType.QueuedConnection,
-            QMetaObject.Argument(str, f'color: {color};')
+            Q_ARG(str, f'color: {color};')
         )
     
     def _handle_geocode_result(self, result: Optional[Dict[str, Any]], original_query: str):
         """Handle the result of a geocoding operation."""
-        if not result or 'error' in result:
-            error_msg = result.get('error', 'Unknown error') if result else 'No results found'
-            self._update_status(f"{self._tr('Error')}: {error_msg}", is_error=True)
-            logger.error(f"Geocoding error: {error_msg}")
-            return
+        def _update_ui():
+            if not result or 'error' in result:
+                error_msg = result.get('error', 'Unknown error') if result else 'No results found'
+                self._update_status(f"{self._tr('Error')}: {error_msg}", is_error=True)
+                logger.error(f"Geocoding error: {error_msg}")
+                return
 
-        try:
-            # Update current location
-            self.current_lat = result['latitude']
-            self.current_lon = result['longitude']
-            display_name = result.get('display_name', original_query)
-            
-            # Update status
-            self._update_status(
-                f"{self._tr('Showing')}: {display_name} ({result['latitude']:.4f}, {result['longitude']:.4f})"
-            )
-            
-            # Update all maps
-            self._update_radar_map()
-            self._update_temperature_map()
-            self._update_precipitation_map()
-            self._update_wind_map()
-            
-        except Exception as e:
-            error_msg = f"{self._tr('Error processing location')}: {str(e)}"
-            self._update_status(error_msg, is_error=True)
-            logger.error(f"Error handling geocode result: {e}")
+            try:
+                # Update current location
+                self.current_lat = result['latitude']
+                self.current_lon = result['longitude']
+                display_name = result.get('display_name', original_query)
+                
+                # Update status
+                self._update_status(
+                    f"{self._tr('Showing')}: {display_name} ({result['latitude']:.4f}, {result['longitude']:.4f})"
+                )
+                
+                # Update all maps on the main thread
+                self._update_radar_map()
+                self._update_temperature_map()
+                self._update_precipitation_map()
+                self._update_wind_map()
+                
+            except Exception as e:
+                error_msg = f"{self._tr('Error processing location')}: {str(e)}"
+                self._update_status(error_msg, is_error=True)
+                logger.error(f"Error handling geocode result: {e}")
+        
+        # Ensure we're on the main thread when updating the UI
+        if QThread.currentThread() != self.thread():
+            QMetaObject.invokeMethod(self, "_handle_geocode_result", 
+                                   Qt.ConnectionType.QueuedConnection,
+                                   Q_ARG(object, result),
+                                   Q_ARG(str, original_query))
+        else:
+            _update_ui()
     
     def _geocode_location(self, location: str):
         """
@@ -610,10 +670,10 @@ class MapsDialog(QDialog):
     
     def _load_geocode_cache(self) -> Dict[str, Dict[str, Any]]:
         """Load geocoding results from cache file."""
-        if not self.geocode_cache_file.exists():
-            return {}
-            
         try:
+            if not self.geocode_cache_file.exists():
+                return {}
+                
             with open(self.geocode_cache_file, 'r', encoding='utf-8') as f:
                 cache = json.load(f)
                 # Filter out entries older than 30 days
@@ -629,8 +689,21 @@ class MapsDialog(QDialog):
     def _save_geocode_cache(self):
         """Save geocoding results to cache file."""
         try:
-            with open(self.geocode_cache_file, 'w', encoding='utf-8') as f:
+            # Ensure parent directory exists
+            self.geocode_cache_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save with atomic write to prevent corruption
+            temp_file = self.geocode_cache_file.with_suffix('.tmp')
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.geocode_cache, f, ensure_ascii=False, indent=2)
+            
+            # On Windows, we need to remove the destination file first if it exists
+            if self.geocode_cache_file.exists():
+                self.geocode_cache_file.unlink()
+            
+            # Rename temp file to final name
+            temp_file.rename(self.geocode_cache_file)
+            
         except Exception as e:
             logger.error(f"Error saving geocode cache: {e}")
 

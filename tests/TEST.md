@@ -18,6 +18,10 @@ pip install pytest
   python -m pytest tests/test_enhanced_notifications.py -v
   python -m pytest tests/test_log.py -v
   python -m pytest tests/test_maps_dialog.py -v
+  python -m pytest tests/test_menu.py -v
+  python -m pytest tests/test_ui.py -v
+  python -m pytest tests/test_updates.py -v
+  python -m pytest tests/test_version.py -v
   ```
 
 - **Run tests with coverage**:

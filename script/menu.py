@@ -30,7 +30,7 @@ from script.log_viewer import LogViewer
 from script.api_key_manager import ApiKeyManagerDialog
 
 # Constants
-DEFAULT_LANGUAGE = 'it'
+DEFAULT_LANGUAGE = 'en'
 DEFAULT_THEME = 'dark'
 DEFAULT_UNITS = 'metric'
 
@@ -55,6 +55,9 @@ class MenuBar(QMenuBar):
     favorite_selected = pyqtSignal(str)  # Signal emitted when a favorite is selected
     show_about = pyqtSignal()
     show_help = pyqtSignal()
+    show_documentation = pyqtSignal()
+    show_md_viewer = pyqtSignal()
+    show_log_viewer = pyqtSignal()
     check_updates = pyqtSignal()
     show_sponsor = pyqtSignal()
     exit_triggered = pyqtSignal()
@@ -516,16 +519,75 @@ class MenuBar(QMenuBar):
         Returns:
             The translated text or the original if no translation is found
         """
+        # First try to get translation from the translations manager if available
+        if self.translations_manager:
+            return self.translations_manager.t(text)
+            
+        # Fall back to the translations dictionary
         return self._translations.get(text, text)
-    
+        
     def update_translations(self, translations: Dict[str, str]) -> None:
         """Update the translations for the menu bar.
         
         Args:
             translations: Dictionary of translations
         """
-        self._translations = translations or {}
-        self.set_languages({}, self.current_language)  # Refresh language menu
+        try:
+            logger.info("Updating menu translations...")
+            self._translations.update(translations)
+            
+            # Update File menu
+            if hasattr(self, 'file_menu'):
+                self.file_menu.setTitle(self._tr('file'))
+                
+            # Update Favorites menu
+            if hasattr(self, 'favorites_menu'):
+                self.favorites_menu.setTitle(self._tr('favorites'))
+                
+            # Update View menu
+            if hasattr(self, 'view_menu'):
+                self.view_menu.setTitle(self._tr('view'))
+                
+            # Update Settings menu
+            if hasattr(self, 'settings_menu'):
+                self.settings_menu.setTitle(self._tr('settings'))
+                
+            # Update Help menu
+            if hasattr(self, 'help_menu'):
+                self.help_menu.setTitle(self._tr('help'))
+                
+            # Update action texts
+            if hasattr(self, 'refresh_action'):
+                self.refresh_action.setText(self._tr('refresh'))
+                
+            if hasattr(self, 'exit_action'):
+                self.exit_action.setText(self._tr('exit'))
+                
+            if hasattr(self, 'add_to_favorites_action'):
+                self.add_to_favorites_action.setText(self._tr('add_to_favorites'))
+                
+            if hasattr(self, 'manage_favorites_action'):
+                self.manage_favorites_action.setText(self._tr('manage_favorites'))
+                
+            if hasattr(self, 'toggle_history_action'):
+                self.toggle_history_action.setText(self._tr('show_history'))
+                
+            if hasattr(self, 'about_action'):
+                self.about_action.setText(self._tr('about'))
+                
+            if hasattr(self, 'help_action'):
+                self.help_action.setText(self._tr('help'))
+                
+            if hasattr(self, 'check_updates_action'):
+                self.check_updates_action.setText(self._tr('check_updates'))
+                
+            if hasattr(self, 'sponsor_action'):
+                self.sponsor_action.setText(self._tr('sponsor'))
+                
+            logger.info("Menu translations updated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error updating menu translations: {str(e)}", exc_info=True)
         
         # Update menu titles
         for menu in self.findChildren(QMenu):

@@ -2,7 +2,7 @@
 """
 Weather Application
 
-A modern weather application that displays current weather, 5-day forecast,
+A modern weather application that displays current weather, 7-day forecast,
 and historical weather data using the Open-Meteo.com API.
 """
 
@@ -26,6 +26,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt, QSize, QTimer, QUrl, QObject, pyqtSignal, pyqtSlot, QEvent, QThread, QMetaObject
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont, QPalette, QColor, QDesktopServices
+
+# Import translations
+from script.translations import TRANSLATIONS
 
 # Import logger
 from script.logger import setup_logging, logger
@@ -57,7 +60,6 @@ REFRESH_INTERVAL = 30 * 60 * 1000  # 30 minutes in milliseconds
 # Configure logging
 logger = setup_logging()
 logger = logger.getChild('main')
-
 
 class WeatherApp(QMainWindow):
     """Main application window for the Weather application."""
@@ -161,8 +163,10 @@ class WeatherApp(QMainWindow):
         self.menu_bar.favorite_selected.connect(self.set_location)
         self.menu_bar.show_about.connect(self.show_about)
         self.menu_bar.show_help.connect(self.show_help)
-        self.menu_bar.check_updates.connect(self.check_for_updates)
+        self.menu_bar.show_md_viewer.connect(self.show_md_viewer)
+        self.menu_bar.show_log_viewer.connect(self.show_log_viewer)
         self.menu_bar.show_sponsor.connect(self.show_sponsor)
+        self.menu_bar.check_updates.connect(self.check_for_updates)
         self.menu_bar.exit_triggered.connect(self.close)
         
         # Set the menu bar
@@ -245,7 +249,7 @@ class WeatherApp(QMainWindow):
         # Add widgets to left layout
         self.left_layout.addLayout(self.search_layout)
         self.left_layout.addWidget(self.current_weather_widget)
-        self.left_layout.addWidget(QLabel("5-Day Forecast:"))
+        self.left_layout.addWidget(QLabel("7-Day Forecast:"))
         self.left_layout.addWidget(self.forecast_widget)
         
         # Right panel - History (initially hidden)
@@ -316,8 +320,8 @@ class WeatherApp(QMainWindow):
             # Update UI with current weather
             self.update_current_weather(current_weather)
             
-            # Get 5-day forecast
-            forecast = self.weather_provider.get_forecast(self.city, days=5)
+            # Get 7-day forecast
+            forecast = self.weather_provider.get_forecast(self.city, days=7)
             
             if "error" not in forecast:
                 self.update_forecast(forecast)
@@ -349,14 +353,26 @@ class WeatherApp(QMainWindow):
             unit = "°C" if self.units == "metric" else "°F"
             self.temperature_label.setText(f"{temp}{unit}" if temp != "--" else "--")
             
-            # Update the history entry with the actual temperature if this was a new search
-            if location != "--" and temp != "--":
-                # Get the most recent history entry for this location
+            # Update history entry with actual weather data if this was a new search
+            if hasattr(self, 'city') and temp != "--":
                 history = self.history_manager.get_history()
                 for entry in history:
-                    if entry.get("location") == location and entry.get("temperature") == 0:
-                        # Update the temperature in the history
-                        entry["temperature"] = temp
+                    if entry.get("location") == self.city and (entry.get("temperature") == 0 or entry.get("temperature") == "--"):
+                        feels_like = weather_data.get("feels_like", "--")
+                        humidity = weather_data.get("humidity", "--")
+                        wind_speed = weather_data.get("wind_speed", "--")
+                        pressure = weather_data.get("pressure", "--")
+                        visibility = weather_data.get("visibility", "--")
+                        
+                        entry.update({
+                            "temperature": temp,
+                            "feels_like": feels_like if feels_like != "--" else 0,
+                            "humidity": humidity if humidity != "--" else 0,
+                            "wind_speed": wind_speed if wind_speed != "--" else 0,
+                            "pressure": pressure if pressure != "--" else 0,
+                            "visibility": visibility if visibility != "--" else 0,
+                            "timestamp": datetime.now()
+                        })
                         self.history_manager.save_history()
                         self.update_history_list()
                         break
@@ -372,16 +388,18 @@ class WeatherApp(QMainWindow):
                                                        Qt.TransformationMode.SmoothTransformation)
                 self.weather_icon.setPixmap(pixmap)
             
-            # Update details
+            # Get weather details
             feels_like = weather_data.get("feels_like", "--")
             humidity = weather_data.get("humidity", "--")
             wind_speed = weather_data.get("wind_speed", "--")
             pressure = weather_data.get("pressure", "--")
             visibility = weather_data.get("visibility", "--")
             
+            # Set units based on current unit system
             wind_unit = "km/h" if self.units == "metric" else "mph"
             visibility_unit = "km" if self.units == "metric" else "miles"
             
+            # Update UI with weather details
             self.feels_like_label.setText(f"Feels like: {feels_like}{unit}" if feels_like != "--" else "Feels like: --")
             self.humidity_label.setText(f"Humidity: {humidity}%" if humidity != "--" else "Humidity: --")
             self.wind_label.setText(f"Wind: {wind_speed} {wind_unit}" if wind_speed != "--" else "Wind: --")
@@ -398,55 +416,65 @@ class WeatherApp(QMainWindow):
             forecast_data: Dictionary containing forecast data
         """
         try:
-            # Clear previous forecast
-            for i in reversed(range(self.forecast_layout.count())):
-                widget = self.forecast_layout.itemAt(i).widget()
-                if widget is not None:
-                    widget.deleteLater()
-            
+            # Clear existing forecast widgets
+            while self.forecast_layout.count():
+                item = self.forecast_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
             # Add forecast days
-            for day in forecast_data.get("days", [])[:5]:  # Limit to 5 days
+            days = forecast_data.get("days", [])
+            unit = "°C" if self.units == "metric" else "°F"
+            
+            for day in days[:7]:  # Show next 7 days
                 day_widget = QWidget()
                 day_layout = QVBoxLayout(day_widget)
-                day_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                day_layout.setContentsMargins(5, 5, 5, 5)
                 
-                # Day of week
-                date = datetime.strptime(day["date"], "%Y-%m-%d")
-                day_label = QLabel(date.strftime("%a"))
+                # Day name and date
+                date = datetime.strptime(day.get("date", ""), "%Y-%m-%d")
+                day_name = date.strftime("%A")
+                date_str = date.strftime("%b %d")
+                day_label = QLabel(f"{day_name}\n{date_str}")
                 day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 # Weather icon
                 icon_label = QLabel()
-                icon_path = Path(f"assets/weather_icons/{day['icon']}.png")
+                icon_path = Path(f"assets/weather_icons/{day.get('icon', '01d')}.png")
                 if icon_path.exists():
-                    pixmap = QPixmap(str(icon_path)).scaled(50, 50, 
-                                                           Qt.AspectRatioMode.KeepAspectRatio,
-                                                           Qt.TransformationMode.SmoothTransformation)
+                    pixmap = QPixmap(str(icon_path)).scaled(64, 64, 
+                                                          Qt.AspectRatioMode.KeepAspectRatio,
+                                                          Qt.TransformationMode.SmoothTransformation)
                     icon_label.setPixmap(pixmap)
                 icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 
                 # Temperature range
                 temp_max = day.get("temp_max", "--")
                 temp_min = day.get("temp_min", "--")
-                unit = "°C" if self.units == "metric" else "°F"
-                
-                if temp_max != "--" and temp_min != "--":
-                    temp_label = QLabel(f"{temp_max}{unit} / {temp_min}{unit}")
-                else:
-                    temp_label = QLabel("--")
-                
+                temp_text = f"{temp_max}{unit} / {temp_min}{unit}" if temp_max != "--" and temp_min != "--" else "--"
+                temp_label = QLabel(temp_text)
                 temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                
+                # Description
+                desc_label = QLabel(day.get("description", "--"))
+                desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                desc_label.setWordWrap(True)
                 
                 # Add widgets to day layout
                 day_layout.addWidget(day_label)
                 day_layout.addWidget(icon_label)
                 day_layout.addWidget(temp_label)
+                day_layout.addWidget(desc_label)
                 
                 # Add day widget to forecast layout
                 self.forecast_layout.addWidget(day_widget)
-                
+            
+            # Add stretch to push content to the top
+            self.forecast_layout.addStretch()
+            
         except Exception as e:
             logger.error(f"Error updating forecast: {e}")
+            logger.exception("Forecast update error:")
     
     def update_history_list(self):
         """Update the history list with recent searches."""
@@ -485,11 +513,16 @@ class WeatherApp(QMainWindow):
         city = self.search_input.text().strip()
         if city:
             # Add to history before setting location
-            # We'll update the temperature after we get the weather data
+            # We'll update the weather details after we get the weather data
             self.history_manager.add_entry(
                 location=city,
                 temperature=0,  # Will be updated after we get the weather data
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
+                feels_like=0,
+                humidity=0,
+                wind_speed=0,
+                pressure=0,
+                visibility=0
             )
             self.update_history_list()
             self.city = city
@@ -504,7 +537,7 @@ class WeatherApp(QMainWindow):
             self.update_current_weather(weather_data)
             
             # Get forecast for this location
-            forecast = self.weather_provider.get_forecast(self.city, days=5)
+            forecast = self.weather_provider.get_forecast(self.city, days=7)
             if "error" not in forecast:
                 self.update_forecast(forecast)
     
@@ -553,67 +586,122 @@ class WeatherApp(QMainWindow):
         
     def set_language(self, language: str):
         """Set the application language."""
-        # Convert to uppercase for consistency
-        language = language.upper()
-        
-        # Get available languages in uppercase for comparison
-        available_languages = [lang.upper() for lang in self.translations_manager.available_languages()]
-        
-        if language not in available_languages:
-            logger.warning(f"Unsupported language: {language}")
-            return
+        try:
+            logger.info(f"Attempting to change language to: {language}")
             
-        self.language = language
-        self.config_manager.set('language', language)
-        self.translations_manager.set_language(language)
-        self.update_status(f"Language changed to {language}", 3000)
-        # Update UI translations
-        self.retranslate_ui()
-        self.refresh_weather()
+            # Convert to uppercase for consistency
+            language = language.upper()
+            
+            # Get available languages in uppercase for comparison
+            available_languages = [lang.upper() for lang in self.translations_manager.available_languages()]
+            logger.debug(f"Available languages: {available_languages}")
+            
+            if language not in available_languages:
+                logger.warning(f"Unsupported language: {language}")
+                return
+                
+            logger.info(f"Setting language to: {language}")
+            self.language = language
+            self.config_manager.set('language', language)
+            
+            # Update the translations manager with the new language
+            self.translations_manager.set_language(language)
+            
+            # Update status bar with translated message
+            self.update_status(f"Language changed to {language}", 3000)
+            
+            # Update all UI elements with new translations
+            self.retranslate_ui()
+            
+            # Refresh weather data to get updates in the new language
+            logger.info("Refreshing weather data with new language...")
+            self.refresh_weather()
+            
+            logger.info(f"Successfully changed language to {language}")
+        except Exception as e:
+            logger.error(f"Error changing language: {str(e)}", exc_info=True)
+            self.update_status(f"Error changing language: {str(e)}", 5000)
         
     def retranslate_ui(self):
         """Update all UI text elements with the current language."""
-        # Update window title
-        self.setWindowTitle(f'{self.translations_manager.t("Weather")} v{get_version()}')
-        
-        # Update search box
-        self.search_input.setPlaceholderText(self.translations_manager.t("Search location..."))
-        if hasattr(self, 'search_button'):
-            self.search_button.setText(self.translations_manager.t("Search"))
+        try:
+            logger.info("Updating UI translations...")
             
-        # Update status bar
-        self.update_status(self.translations_manager.t("Ready"))
-        
-        # Update menu bar translations
-        if hasattr(self, 'menu_bar') and hasattr(self.menu_bar, 'update_translations'):
-            self.menu_bar.update_translations({
-                'Search': self.translations_manager.t('Search'),
-                'Refresh': self.translations_manager.t('Refresh'),
-                'View': self.translations_manager.t('View'),
-                'History': self.translations_manager.t('History'),
-                'Favorites': self.translations_manager.t('Favorites'),
-                'Add to Favorites': self.translations_manager.t('Add to Favorites'),
-                'Manage Favorites': self.translations_manager.t('Manage Favorites'),
-                'Settings': self.translations_manager.t('Settings'),
-                'Units': self.translations_manager.t('Units'),
-                'Language': self.translations_manager.t('Language'),
-                'Help': self.translations_manager.t('Help'),
-                'About': self.translations_manager.t('About'),
-                'Check for Updates': self.translations_manager.t('Check for Updates'),
-                'Exit': self.translations_manager.t('Exit'),
-                'Metric': self.translations_manager.t('Metric'),
-                'Imperial': self.translations_manager.t('Imperial')
-            })
+            # Get translations manager
+            t = self.translations_manager.t
             
-        # Update any other UI elements that need translation
-        if hasattr(self, 'current_weather_label'):
-            self.current_weather_label.setText(self.translations_manager.t('Current Weather'))
+            # Update window title
+            self.setWindowTitle(f'{t("Weather")} v{get_version()}')
             
-        if hasattr(self, 'forecast_label'):
-            self.forecast_label.setText(self.translations_manager.t('5-Day Forecast'))
+            # Update search box
+            if hasattr(self, 'search_input'):
+                self.search_input.setPlaceholderText(t("search"))
             
-        if hasattr(self, 'history_label'):
-            self.history_label.setText(self.translations_manager.t('Recent Searches'))
+            if hasattr(self, 'search_button'):
+                self.search_button.setText(t("search"))
+            
+            # Update status bar
+            self.update_status(t("Ready"))
+            
+            # Update menu bar translations
+            if hasattr(self, 'menu_bar') and hasattr(self.menu_bar, 'update_translations'):
+                translations = {
+                    'Search': t('search'),
+                    'Refresh': t('refresh'),
+                    'View': t('view'),
+                    'History': t('history'),
+                    'Favorites': t('favorites'),
+                    'Add to Favorites': t('add_favorite'),
+                    'Manage Favorites': t('manage_favorites'),
+                    'Settings': t('settings'),
+                    'Units': t('units'),
+                    'Language': t('language'),
+                    'Help': t('help'),
+                    'About': t('about'),
+                    'Check for Updates': t('check_updates'),
+                    'Exit': t('exit'),
+                    'Metric': t('units_metric'),
+                    'Imperial': t('units_imperial'),
+                    'File': t('file'),
+                    'Open': t('open'),
+                    'Close': t('close'),
+                    'Zoom In': t('zoom_in'),
+                    'Zoom Out': t('zoom_out'),
+                    'Reset Zoom': t('reset_zoom'),
+                    'Documentation': t('documentation'),
+                    'Open Documentation': t('open_documentation'),
+                    'Sponsor': t('sponsor')
+                }
+                logger.debug(f"Updating menu translations: {translations}")
+                self.menu_bar.update_translations(translations)
+            
+            # Update section headers
+            if hasattr(self, 'current_weather_label'):
+                self.current_weather_label.setText(t('current_weather'))
+                
+            if hasattr(self, 'forecast_label'):
+                self.forecast_label.setText(t('forecast'))
+                
+            if hasattr(self, 'history_label'):
+                self.history_label.setText(t('recent_searches'))
+                
+            # Update other UI elements
+            if hasattr(self, 'clear_history_btn'):
+                self.clear_history_btn.setText(t('clear_history'))
+                
+            if hasattr(self, 'temperature_label'):
+                self.temperature_label.setText(f"{t('temperature')}:")
+                
+            if hasattr(self, 'humidity_label'):
+                self.humidity_label.setText(f"{t('humidity')}:")
+                
+            if hasattr(self, 'wind_label'):
+                self.wind_label.setText(f"{t('wind')}:")
+                
+            logger.info("UI translations updated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error updating UI translations: {str(e)}", exc_info=True)
     
     def update_favorites_menu(self):
         """Update the favorites menu with current favorites."""

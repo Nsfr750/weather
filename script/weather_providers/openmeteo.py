@@ -45,7 +45,7 @@ class OpenMeteoProvider:
             if not coords:
                 return {"error": f"Could not find location: {location}"}
                 
-            # Get current weather
+            # Get current weather with additional parameters
             params = {
                 "latitude": coords["latitude"],
                 "longitude": coords["longitude"],
@@ -54,7 +54,14 @@ class OpenMeteoProvider:
                 "windspeed_unit": "kmh" if self.units == "metric" else "mph",
                 "precipitation_unit": "mm",
                 "timezone": "auto",
-                "forecast_days": 1
+                "forecast_days": 1,
+                # Add parameters for additional weather data
+                "current": [
+                    "apparent_temperature",  # For feels_like
+                    "relative_humidity_2m",  # For humidity
+                    "surface_pressure",      # For pressure
+                    "visibility"             # For visibility
+                ]
             }
             
             response = requests.get(f"{self.BASE_URL}forecast", params=params)
@@ -63,20 +70,40 @@ class OpenMeteoProvider:
             
             # Format the data to match our standard format
             current = data.get("current_weather", {})
+            current_units = data.get("current_units", {})
+            current_data = data.get("current", {})
+            
             location_name = self._reverse_geocode(coords["latitude"], coords["longitude"])
+            
+            # Extract additional weather data
+            feels_like = current_data.get("apparent_temperature")
+            humidity = current_data.get("relative_humidity_2m")
+            pressure = current_data.get("surface_pressure")
+            visibility = current_data.get("visibility")
+            
+            # Convert units if needed
+            if pressure is not None and current_units.get("surface_pressure") == "hPa":
+                pressure = round(float(pressure), 1)  # Round to 1 decimal place
+                
+            if visibility is not None and current_units.get("visibility") == "m":
+                # Convert meters to kilometers for metric, or miles for imperial
+                if self.units == "metric":
+                    visibility = round(float(visibility) / 1000, 1)  # Convert to km
+                else:
+                    visibility = round(float(visibility) * 0.000621371, 1)  # Convert to miles
             
             weather_data = {
                 "location": location_name or location,
                 "temperature": current.get("temperature"),
-                "feels_like": current.get("apparent_temperature"),
+                "feels_like": feels_like,
                 "description": self._get_weather_description(current.get("weathercode")),
                 "icon": self._get_weather_icon(current.get("weathercode")),
-                "humidity": None,  # Not available in basic API
+                "humidity": humidity,
                 "wind_speed": current.get("windspeed"),
                 "wind_direction": current.get("winddirection"),
-                "pressure": None,  # Not available in basic API
-                "visibility": None,  # Not available in basic API
-                "clouds": None,  # Not available in basic API
+                "pressure": pressure,
+                "visibility": visibility,
+                "clouds": None,  # Not available in the free API
                 "sunrise": None,  # Available in daily forecast
                 "sunset": None,  # Available in daily forecast
                 "timestamp": datetime.fromisoformat(current.get("time")),

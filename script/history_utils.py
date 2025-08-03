@@ -78,18 +78,38 @@ class HistoryManager:
             logger.error(f"Error saving history: {e}")
             return False
     
-    def add_entry(self, location: str, temperature: float, timestamp: Optional[datetime] = None) -> None:
+    def add_entry(
+        self, 
+        location: str, 
+        temperature: float, 
+        timestamp: Optional[datetime] = None,
+        feels_like: Optional[float] = None,
+        humidity: Optional[float] = None,
+        wind_speed: Optional[float] = None,
+        pressure: Optional[float] = None,
+        visibility: Optional[float] = None
+    ) -> None:
         """Add a new entry to the history.
         
         Args:
             location: The location that was searched for.
             temperature: The temperature at that location.
             timestamp: Optional timestamp. If not provided, uses current time.
+            feels_like: Optional. The 'feels like' temperature.
+            humidity: Optional. The humidity percentage.
+            wind_speed: Optional. The wind speed.
+            pressure: Optional. The atmospheric pressure.
+            visibility: Optional. The visibility distance.
         """
         entry = {
             'location': location,
             'temperature': temperature,
-            'timestamp': timestamp or datetime.now()
+            'timestamp': timestamp or datetime.now(),
+            'feels_like': feels_like,
+            'humidity': humidity,
+            'wind_speed': wind_speed,
+            'pressure': pressure,
+            'visibility': visibility
         }
         
         # Add to beginning of history (most recent first)

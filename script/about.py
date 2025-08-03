@@ -142,7 +142,7 @@ class AboutDialog(QDialog):
         # Description
         desc_label = QLabel(
             'A feature-rich weather application providing current conditions, '
-            'forecasts, and weather alerts. Built with Python and PyQt6.'
+            'forecasts, and weather alerts.'
         )
         desc_label.setWordWrap(True)
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

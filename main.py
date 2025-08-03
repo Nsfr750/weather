@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Weather Application
+Weather Application - 1.6.0
 
 A modern weather application that displays current weather, 7-day forecast,
 and historical weather data using the Open-Meteo.com API.

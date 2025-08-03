@@ -30,11 +30,8 @@ from PyQt6.QtGui import QIcon, QPixmap, QFont
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Set Qt.AA_ShareOpenGLContexts attribute if not already set
-app = QCoreApplication.instance()
-if app is not None and not hasattr(Qt.ApplicationAttribute, '_shareopenglcontexts_set'):
-    app.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
-    Qt.ApplicationAttribute._shareopenglcontexts_set = True
+# Skip Qt.AA_ShareOpenGLContexts as it needs to be set before QApplication is created
+# This will be handled in main.py
 
 # Default coordinates (centered on Europe)
 DEFAULT_LATITUDE = 46.0
@@ -427,34 +424,66 @@ class MapsDialog(QDialog):
             folium_map: The Folium map object
             web_view: The QWebEngineView to load the map into
         """
-        # Create a temporary HTML file
-        temp_file = Path("temp_map.html")
-        
         try:
-            # Save the map to the temporary file
-            folium_map.save(str(temp_file))
+            # Generate HTML content with proper Leaflet includes
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                      crossorigin=""/>
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                        crossorigin=""></script>
+                <style>
+                    body {{ margin: 0; padding: 0; }}
+                    #map {{ width: 100%; height: 100vh; }}
+                </style>
+            </head>
+            <body>
+                <div id="map"></div>
+                <script>
+                    // Initialize the map
+                    var map = L.map('map').setView([{self.current_lat}, {self.current_lon}], {self.current_zoom});
+                    
+                    // Add OpenStreetMap tiles
+                    L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }}).addTo(map);
+                    
+                    // Add a marker at the center
+                    L.marker([{self.current_lat}, {self.current_lon}]).addTo(map)
+                        .bindPopup('Current Location');
+                </script>
+            </body>
+            </html>
+            """
             
-            # Load the file into the web view
-            web_view.setUrl(QUrl.fromLocalFile(str(temp_file.absolute())))
+            # Load the HTML content directly
+            web_view.setHtml(html_content, QUrl("about:blank"))
             
-            # Clean up the temporary file
-            # Note: We can't delete it immediately as the web view needs to load it
-            # The file will be deleted when the application exits
+            # Configure web view settings
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
             
         except Exception as e:
-            logger.error(f"Error loading map: {e}")
-            web_view.setHtml(f"<h2>Error</h2><p>Could not load map: {str(e)}</p>")
+            error_msg = f"Error loading map: {str(e)}"
+            logger.error(error_msg)
+            web_view.setHtml(f"<h3 style='color: red;'>{error_msg}</h3><p>Please check your internet connection and try again.</p>")
+            
+            # Try a fallback to OpenStreetMap if the main map fails
+            try:
+                web_view.setUrl(QUrl("https://www.openstreetmap.org/"))
+            except Exception as fallback_error:
+                logger.error(f"Fallback map also failed: {fallback_error}")
     
     def _get_tile_url(self, map_type: str) -> str:
-        """
-        Get the tile URL for the specified map type.
-        
-        Args:
-            map_type: Type of map (e.g., 'osm', 'topo', 'stamen_terrain')
-            
-        Returns:
-            str: The tile URL
-        """
+        """Get the tile URL for the specified map type."""
         tile_urls = {
             'osm': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             'topo': 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
@@ -604,7 +633,7 @@ class MapsDialog(QDialog):
                 json.dump(self.geocode_cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"Error saving geocode cache: {e}")
-    
+
     def _set_window_icon(self):
         """Set the window icon."""
         try:
@@ -615,7 +644,7 @@ class MapsDialog(QDialog):
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:
             logger.warning(f'Could not set window icon: {e}')
-    
+
     def _tr(self, text: str) -> str:
         """
         Translate text if translations are available.
@@ -627,7 +656,7 @@ class MapsDialog(QDialog):
             str: The translated text or the original if no translation is available
         """
         return self.translations.get(text, text)
-    
+
     def closeEvent(self, event):
         """Handle dialog close event."""
         # Clean up any temporary files
@@ -642,7 +671,6 @@ class MapsDialog(QDialog):
         self._save_geocode_cache()
         
         super().closeEvent(event)
-
 
 def show_maps_dialog(parent=None, translations: Optional[Dict[str, str]] = None):
     """

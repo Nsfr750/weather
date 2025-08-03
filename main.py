@@ -553,17 +553,67 @@ class WeatherApp(QMainWindow):
         
     def set_language(self, language: str):
         """Set the application language."""
-        if language not in self.translations_manager.available_languages():
+        # Convert to uppercase for consistency
+        language = language.upper()
+        
+        # Get available languages in uppercase for comparison
+        available_languages = [lang.upper() for lang in self.translations_manager.available_languages()]
+        
+        if language not in available_languages:
             logger.warning(f"Unsupported language: {language}")
             return
             
         self.language = language
         self.config_manager.set('language', language)
         self.translations_manager.set_language(language)
-        self.update_status(f"Language changed to {language.upper()}", 3000)
+        self.update_status(f"Language changed to {language}", 3000)
         # Update UI translations
         self.retranslate_ui()
         self.refresh_weather()
+        
+    def retranslate_ui(self):
+        """Update all UI text elements with the current language."""
+        # Update window title
+        self.setWindowTitle(f'{self.translations_manager.t("Weather")} v{get_version()}')
+        
+        # Update search box
+        self.search_input.setPlaceholderText(self.translations_manager.t("Search location..."))
+        if hasattr(self, 'search_button'):
+            self.search_button.setText(self.translations_manager.t("Search"))
+            
+        # Update status bar
+        self.update_status(self.translations_manager.t("Ready"))
+        
+        # Update menu bar translations
+        if hasattr(self, 'menu_bar') and hasattr(self.menu_bar, 'update_translations'):
+            self.menu_bar.update_translations({
+                'Search': self.translations_manager.t('Search'),
+                'Refresh': self.translations_manager.t('Refresh'),
+                'View': self.translations_manager.t('View'),
+                'History': self.translations_manager.t('History'),
+                'Favorites': self.translations_manager.t('Favorites'),
+                'Add to Favorites': self.translations_manager.t('Add to Favorites'),
+                'Manage Favorites': self.translations_manager.t('Manage Favorites'),
+                'Settings': self.translations_manager.t('Settings'),
+                'Units': self.translations_manager.t('Units'),
+                'Language': self.translations_manager.t('Language'),
+                'Help': self.translations_manager.t('Help'),
+                'About': self.translations_manager.t('About'),
+                'Check for Updates': self.translations_manager.t('Check for Updates'),
+                'Exit': self.translations_manager.t('Exit'),
+                'Metric': self.translations_manager.t('Metric'),
+                'Imperial': self.translations_manager.t('Imperial')
+            })
+            
+        # Update any other UI elements that need translation
+        if hasattr(self, 'current_weather_label'):
+            self.current_weather_label.setText(self.translations_manager.t('Current Weather'))
+            
+        if hasattr(self, 'forecast_label'):
+            self.forecast_label.setText(self.translations_manager.t('5-Day Forecast'))
+            
+        if hasattr(self, 'history_label'):
+            self.history_label.setText(self.translations_manager.t('Recent Searches'))
     
     def update_favorites_menu(self):
         """Update the favorites menu with current favorites."""

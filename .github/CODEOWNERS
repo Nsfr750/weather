@@ -29,7 +29,6 @@ main.py @Nsfr750
 /tests/ @Nsfr750
 
 # Build and release
-/MANIFEST.in @Nsfr750
 CONTRIBUTING.md @Nsfr750
 CODE_OF_CONDUCT.md @Nsfr750
 CHANGELOG.md @Nsfr750
@@ -37,10 +36,7 @@ TO_DO.md @Nsfr750
 
 # Core application code
 /script/ @Nsfr750
-/plugins/ @Nsfr750
-/plugins/weather_providers/ @Nsfr750
-/plugins/features/ @Nsfr750
-/confi
+/config/ @Nsfr750
 main.py @Nsfr750
 
 # Configuration files

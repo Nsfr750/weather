@@ -184,4 +184,4 @@ Then open `http://127.0.0.1:8000` in your browser.
 
 ## 🙏 Thank You!
 
-Your contributions to open source, large or small, make great projects like this possible. Thank you for being part of our community!
+Your contributions to open source, large or small, make great projects like this possible. Thank you for being part of our community.

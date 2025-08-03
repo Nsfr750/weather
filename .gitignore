@@ -44,10 +44,6 @@ coverage.xml
 .pytest_cache/
 coverage/
 
-# Translations
-*.mo
-*.pot
-
 # Project specific
 *.spec
 Setup.txt

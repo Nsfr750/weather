@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Weather Icons Downloader
+Weather Icons Downloader v1.6.0
 
 This script downloads weather icons from OpenWeatherMap to be used in the application.
 """

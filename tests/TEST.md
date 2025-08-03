@@ -15,6 +15,7 @@ pip install pytest
 - **Run specific test files**:
   ```bash
   python -m pytest tests/test_api_key_manager.py -v
+  python -m pytest tests/test_enhanced_notifications.py -v
   python -m pytest tests/test_log.py -v
   ```
 
@@ -36,4 +37,5 @@ pip install pytest
 ### Test Organization
 
 - `test_api_key_manager.py`: Tests for the API key management system
+- `test_enhanced_notifications.py`: Tests for the enhanced notification system
 - `test_log.py`: Tests for the logging system

@@ -105,7 +105,7 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 ## 📚 Documentation
 
-For detailed documentation, please visit our [documentation website](https://nsfr750.github.io/weather/) or check the `/docs` directory in the repository.
+For detailed documentation, please check the `/docs` directory in the repository.
 
 - [User Guide](docs/usage.md)
 - [Configuration](docs/configuration.md)

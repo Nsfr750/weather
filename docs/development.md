@@ -11,6 +11,7 @@ Welcome to the Weather App development guide. This document provides information
 - [Version Control](#version-control)
 - [Debugging](#debugging)
 - [Performance](#performance)
+- [New in v1.6.0](#new-in-v160)
 - [Contributing](#contributing)
 - [Troubleshooting](#troubleshooting)
 
@@ -169,6 +170,7 @@ pytest --cov=script tests/
 pytest -n auto
 ```
 
+
 ### Writing Tests
 
 - Place test files in the `tests/` directory
@@ -183,6 +185,7 @@ Example test:
 import pytest
 from script.weather import get_weather
 
+
 class TestWeather:
     @pytest.fixture
     def sample_weather_data(self):
@@ -190,8 +193,10 @@ class TestWeather:
 
     def test_get_weather_success(self, mocker, sample_weather_data):
         # Mock the API call
-        mocker.patch("script.weather._call_weather_api", 
-                    return_value=sample_weather_data)
+        mocker.patch(
+            "script.weather._call_weather_api",
+            return_value=sample_weather_data
+        )
         
         result = get_weather("London")
         assert result["temperature"] == 25
@@ -202,6 +207,7 @@ class TestWeather:
             get_weather("")
 ```
 
+
 ### Test Coverage
 
 We aim for at least 80% test coverage. Generate a coverage report:
@@ -211,6 +217,7 @@ pytest --cov=script --cov-report=html
 ```
 
 Then open `htmlcov/index.html` in your browser.
+
 
 ## Documentation
 
@@ -241,7 +248,7 @@ We use Swagger/OpenAPI for API documentation. After starting the development ser
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>[optional scope]: <description>
 
 [optional body]
@@ -250,6 +257,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 Types:
+
 - `feat`: A new feature
 - `fix`: A bug fix
 - `docs`: Documentation changes
@@ -260,13 +268,14 @@ Types:
 - `chore`: Changes to the build process or auxiliary tools
 
 Example:
-```
+```text
 feat(weather): add 10-day forecast support
 
 Add support for fetching 10-day weather forecast from OpenWeatherMap API.
 
 Closes #123
 ```
+
 
 ## Debugging
 
@@ -306,26 +315,56 @@ def some_function():
 
 ## Performance
 
-### Profiling
+### Optimization Tips
 
-```bash
-# Run with cProfile
-python -m cProfile -o profile.cprof -m script.main
+- Use `@lru_cache` for expensive function calls
+- Minimize API calls with proper caching
+- Use `asyncio` for I/O-bound operations
+- Profile before optimizing: `python -m cProfile -o profile.prof main.py`
+- Use `snakeviz` to visualize profiling results
 
-# Analyze with snakeviz
-snakeviz profile.cprof
-```
+### Memory Management
 
-### Memory Profiling
+- Use generators for large datasets
+- Close file handles with `with` statements
+- Use `__slots__` for classes with many instances
+- Monitor memory usage with `memory_profiler`
 
-```bash
-# Install memory profiler
-pip install memory_profiler
+## New in v1.6.0
 
-# Profile memory usage
-mprof run python script.py
-mprof plot
-```
+### Markdown Documentation Viewer
+
+The application now includes a built-in Markdown documentation viewer. Key components:
+
+- `MarkdownViewer` class in `script/md_viewer.py`
+- Supports syntax highlighting and table of contents
+- Handles internal and external links
+- Includes zoom functionality
+
+### Log Viewer
+
+A new log viewer has been added for better debugging:
+
+- Accessible from the Help menu
+- Supports log level filtering
+- Search functionality for finding specific entries
+- Copy to clipboard for sharing logs
+
+### Enhanced History System
+
+The history system has been improved to include additional weather metrics:
+
+- New fields: feels_like, humidity, wind_speed, pressure, visibility
+- Backward compatible with existing history entries
+- Updated UI to display additional weather details
+
+### 7-Day Forecast
+
+The forecast system has been extended to support 7 days:
+
+- Updated UI components to handle the additional days
+- Enhanced data processing for the extended forecast
+- Maintains backward compatibility with the previous 5-day format
 
 ## Contributing
 

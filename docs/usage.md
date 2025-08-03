@@ -16,12 +16,16 @@
 ## Main Interface
 
 ### Weather Display
+
 - **Current Weather**: Shows temperature, conditions, and additional details
   - Tap on any metric to toggle between units (e.g., °C/°F, km/h/mph)
   - Hover over icons for more information
-- **5-Day Forecast**: Displays the weather forecast for the next 5 days
+
+- **7-Day Forecast**: Displays the weather forecast for the next 7 days
   - Click on a day to see hourly forecasts
   - Color-coded precipitation probability
+  - Includes temperature ranges and weather conditions for each day
+
 - **Weather Details**: Includes:
   - Feels like temperature
   - Humidity and dew point
@@ -31,27 +35,35 @@
   - Sunrise and sunset times
 
 ### Navigation
+
 - **Search Bar**: Find weather for any location
   - Recent searches are saved automatically
   - Search by city name, ZIP code, or coordinates
+
 - **Theme Toggle**: Switch between light, dark, or system theme
+
 - **Menu Bar**: Access additional features and settings
   - File: New window, settings, quit
   - View: Toggle UI elements, refresh data
   - Favorites: Manage saved locations
-  - Help: Documentation, about, check for updates
+  - Help: Documentation viewer, log viewer, about, check for updates
 
 ## Features
 
 ### Favorites
+
 - **Add to Favorites**: Click the star (☆) to save a location
+
 - **View Favorites**: Access saved locations from the Favorites menu
   - Reorder favorites by drag and drop
   - Right-click for quick actions
+
 - **Sync Favorites**: Enable cloud sync in settings
+
 - **Remove from Favorites**: Click the filled star (★) to remove
 
 ### Settings
+
 1. Click the gear icon (⚙️) or go to Menu > Settings
 2. Configure options like:
    - **General**: Language, theme, units
@@ -89,6 +101,7 @@ weather-app --config ~/.config/weather/config.ini
 ## Keyboard Shortcuts
 
 ### Global Shortcuts
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl + F` | Focus search bar |
@@ -101,7 +114,8 @@ weather-app --config ~/.config/weather/config.ini
 | `Ctrl + W` | Close current window |
 | `Ctrl + N` | New window |
 
-### Navigation
+### Navigation Shortcuts
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl + Tab` | Switch between locations |
@@ -118,6 +132,31 @@ weather-app --config ~/.config/weather/config.ini
 - **Drag and drop** to reorder favorite locations
 - **Pin** the window to stay on top of other applications
 - Use **system tray** icon for quick access
+
+### Documentation Viewer
+
+- Access the built-in Markdown documentation from the Help menu
+- Browse through comprehensive documentation
+- Search functionality to find specific topics
+- Zoom in/out for better readability
+- Table of contents for easy navigation
+
+### Log Viewer
+
+- View application logs from the Help menu
+- Filter logs by level (Debug, Info, Warning, Error)
+- Search through log messages
+- Copy logs to clipboard for troubleshooting
+
+### Weather Maps
+- Access weather maps from the View menu
+- Interactive map with multiple layers:
+  - Temperature
+  - Precipitation
+  - Wind speed
+  - Cloud cover
+- Pan and zoom to explore different regions
+- Click on the map to get weather for that location
 
 ## Troubleshooting
 

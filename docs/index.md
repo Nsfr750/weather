@@ -1,15 +1,17 @@
-# Weather App Documentation
+# Weather App Documentation (v1.6.0)
 
 Welcome to the Weather App documentation! This application provides real-time weather information and forecasts from multiple weather data providers.
 
 ## Features
 
-- 🌦️ Current weather conditions
-- 📅 5-day weather forecast
+- 🌦️ Current weather conditions with detailed metrics
+- 📅 7-day weather forecast with hourly breakdowns
+- 📖 Built-in Markdown documentation viewer
+- 📊 Application log viewer for diagnostics
 - 🌍 Multiple weather data providers
 - 🌐 Multi-language support
-- ⭐ Favorite locations
-- ⚙️ Customizable settings
+- ⭐ Favorite locations with enhanced history
+- ⚙️ Customizable settings and themes
 
 ## Recent Updates
 

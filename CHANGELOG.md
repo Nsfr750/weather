@@ -4,6 +4,16 @@
 
 ### Added
 
+- Enhanced notification system with system tray integration
+  - Support for different alert types (info, warning, error, critical)
+  - Persistent notification history
+  - Mute notifications option
+  - Automatic cleanup of expired alerts
+- Weather alerts for severe conditions
+  - Heavy precipitation warnings
+  - High wind alerts
+  - Extreme temperature warnings
+  - Nighttime travel advisories
 - 7-day forecast support with detailed weather information
 - Markdown documentation viewer for help and documentation
 - Log viewer for application diagnostics

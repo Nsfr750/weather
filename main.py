@@ -303,7 +303,7 @@ class WeatherApp(QMainWindow):
             )
     
     def refresh_weather(self):
-        """Refresh weather data for the current location."""
+        """Refresh weather data for the current location and show notifications for important updates."""
         if not self.city:
             return
             
@@ -314,7 +314,13 @@ class WeatherApp(QMainWindow):
             current_weather = self.weather_provider.get_weather(self.city)
             
             if "error" in current_weather:
-                self.status_bar.showMessage(f"Error: {current_weather['error']}")
+                error_msg = f"Error: {current_weather['error']}"
+                self.status_bar.showMessage(error_msg)
+                self.notification_manager.show_notification(
+                    "Weather Update Failed",
+                    f"Failed to fetch weather for {self.city}: {current_weather['error']}",
+                    alert_type='error'
+                )
                 return
             
             # Update UI with current weather
@@ -325,6 +331,20 @@ class WeatherApp(QMainWindow):
             
             if "error" not in forecast:
                 self.update_forecast(forecast)
+                
+                # Check for severe weather conditions in the forecast
+                self._check_for_severe_weather(forecast)
+            
+            # Show success notification
+            temp = current_weather.get("temperature", "--")
+            unit = "°C" if self.units == "metric" else "°F"
+            description = current_weather.get("description", "Unknown")
+            
+            self.notification_manager.show_notification(
+                f"{self.city} Weather Updated",
+                f"{temp}{unit} - {description.capitalize()}",
+                alert_type='info'
+            )
             
             # Update status bar
             self.update_status(f"Weather data for {self.city} updated at {datetime.now().strftime('%H:%M:%S')}", 5000)
@@ -333,8 +353,72 @@ class WeatherApp(QMainWindow):
             self.config_manager.set('last_city', self.city)
             
         except Exception as e:
-            logger.error(f"Error refreshing weather: {e}")
+            error_msg = f"Error refreshing weather: {e}"
+            logger.error(error_msg)
             self.update_status(f"Error: {str(e)}", 0)
+            self.notification_manager.show_notification(
+                "Weather Update Error",
+                str(e),
+                alert_type='error'
+            )
+    
+    def _check_for_severe_weather(self, forecast_data: Dict[str, Any]):
+        """Check for severe weather conditions in the forecast and show notifications."""
+        if not forecast_data or not isinstance(forecast_data, dict):
+            return
+            
+        try:
+            # Check current conditions
+            current = forecast_data.get("current", {})
+            if current:
+                # Check for severe conditions
+                if current.get("is_day") is not None and not current.get("is_day"):
+                    self.notification_manager.show_notification(
+                        "It's getting dark",
+                        "Sunset has occurred. Be cautious if traveling.",
+                        alert_type='info'
+                    )
+                
+                # Check for precipitation
+                if current.get("precipitation") and current["precipitation"] > 5:  # mm
+                    self.notification_manager.show_notification(
+                        "Heavy Precipitation",
+                        f"Heavy precipitation ({current['precipitation']}mm) detected in your area.",
+                        alert_type='warning'
+                    )
+                
+                # Check for high winds
+                wind_speed = current.get("wind_speed", 0)
+                if wind_speed > 30:  # km/h or mph depending on units
+                    unit = "km/h" if self.units == "metric" else "mph"
+                    self.notification_manager.show_notification(
+                        "High Winds",
+                        f"High wind speeds detected: {wind_speed}{unit}. Secure loose objects.",
+                        alert_type='warning'
+                    )
+            
+            # Check forecast for severe conditions
+            if "daily" in forecast_data:
+                for day in forecast_data["daily"][:3]:  # Next 3 days
+                    if day.get("precipitation_sum", 0) > 20:  # Heavy rain expected
+                        date = datetime.strptime(day["time"], "%Y-%m-%d").strftime("%A, %b %d")
+                        self.notification_manager.show_notification(
+                            "Heavy Rain Forecast",
+                            f"Heavy rain expected on {date}: {day['precipitation_sum']}mm",
+                            alert_type='warning'
+                        )
+                    
+                    if day.get("temperature_max") and day["temperature_max"] > 35:  # Hot day
+                        date = datetime.strptime(day["time"], "%Y-%m-%d").strftime("%A, %b %d")
+                        unit = "°C" if self.units == "metric" else "°F"
+                        self.notification_manager.show_notification(
+                            "Hot Weather Alert",
+                            f"High temperature expected on {date}: {day['temperature_max']}{unit}",
+                            alert_type='warning'
+                        )
+        
+        except Exception as e:
+            logger.error(f"Error checking for severe weather: {e}")
     
     def update_current_weather(self, weather_data: Dict[str, Any]):
         """Update the UI with current weather data.

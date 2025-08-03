@@ -1,7 +1,15 @@
 # Project To-Do List
 
+## 🚧 In Progress (v1.7.0)
+
+- [ ] Add notification preferences dialog
+- [ ] Implement notification sounds for critical alerts
+- [ ] Add notification history viewer
+- [ ] Test notification system on different platforms
+
 ## ✅ Completed (v1.6.0)
 
+- [x] Enhanced notification system with system tray integration
 - [x] 7-day forecast implementation
 - [x] Markdown documentation viewer
 - [x] Log viewer for application diagnostics

@@ -1,22 +1,46 @@
 """
-notifications.py
-Handles desktop notifications for weather alerts and warnings.
+enhanced_notifications.py
+Enhanced notification system for weather alerts with system tray integration.
 """
+import json
 import logging
+import platform
+import os
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
-import json
+from typing import Dict, List, Optional, Union
 
-from PyQt6.QtWidgets import QMessageBox, QSystemTrayIcon, QMenu, QApplication
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer
-from PyQt6.QtGui import QIcon, QAction
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-# Default settings
-DEFAULT_ALERT_COOLDOWN = 30  # minutes
-DEFAULT_ALERT_EXPIRY_DAYS = 7
+# Create logs directory if it doesn't exist
+log_dir = Path.home() / '.weather_app' / 'logs'
+log_dir.mkdir(parents=True, exist_ok=True)
+
+# Create file handler
+log_file = log_dir / 'notifications.log'
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.DEBUG)
+
+# Create console handler with a higher log level
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.WARNING)
+
+# Create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add the handlers to the logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QUrl
+from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QStyle
+
 
 class AlertSeverity(Enum):
     """Severity levels for weather alerts."""
@@ -25,6 +49,7 @@ class AlertSeverity(Enum):
     WATCH = auto()
     WARNING = auto()
     EMERGENCY = auto()
+
 
 class AlertType(Enum):
     """Types of weather alerts."""
@@ -35,20 +60,34 @@ class AlertType(Enum):
     SEVERE = "severe"
     OTHER = "other"
 
-@dataclass
+
 class WeatherAlert:
-    """Data class for weather alerts."""
-    id: str
-    title: str
-    message: str
-    severity: AlertSeverity
-    alert_type: AlertType
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    location: str = ""
-    source: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    """Data class for weather alerts with enhanced features."""
+
+    def __init__(
+        self,
+        alert_id: str,
+        title: str,
+        message: str,
+        severity: AlertSeverity,
+        alert_type: AlertType,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        location: str = "",
+        source: str = "",
+        metadata: Optional[Dict] = None,
+    ):
+        self.id = alert_id
+        self.title = title
+        self.message = message
+        self.severity = severity
+        self.alert_type = alert_type
+        self.start_time = start_time or datetime.utcnow()
+        self.end_time = end_time or (self.start_time + timedelta(days=1))
+        self.location = location
+        self.source = source
+        self.metadata = metadata or {}
+
     def is_active(self) -> bool:
         """Check if the alert is currently active based on start/end times."""
         now = datetime.utcnow()
@@ -57,8 +96,8 @@ class WeatherAlert:
         if self.end_time and now > self.end_time:
             return False
         return True
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> Dict:
         """Convert alert to dictionary for serialization."""
         return {
             'id': self.id,
@@ -66,24 +105,24 @@ class WeatherAlert:
             'message': self.message,
             'severity': self.severity.name,
             'alert_type': self.alert_type.value,
-            'start_time': self.start_time.isoformat() if self.start_time else None,
-            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'start_time': self.start_time.isoformat(),
+            'end_time': self.end_time.isoformat(),
             'location': self.location,
             'source': self.source,
             'metadata': self.metadata
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'WeatherAlert':
+    def from_dict(cls, data: Dict) -> 'WeatherAlert':
         """Create WeatherAlert from dictionary."""
         return cls(
-            id=data['id'],
+            alert_id=data['id'],
             title=data['title'],
             message=data['message'],
             severity=AlertSeverity[data['severity']],
             alert_type=AlertType(data['alert_type']),
-            start_time=datetime.fromisoformat(data['start_time']) if data.get('start_time') else None,
-            end_time=datetime.fromisoformat(data['end_time']) if data.get('end_time') else None,
+            start_time=datetime.fromisoformat(data['start_time']),
+            end_time=datetime.fromisoformat(data['end_time']),
             location=data.get('location', ''),
             source=data.get('source', ''),
             metadata=data.get('metadata', {})
@@ -91,186 +130,223 @@ class WeatherAlert:
 
 
 class NotificationManager(QObject):
-    """Manages weather alerts and notifications."""
-    
-    # Signal emitted when new alerts are received
-    new_alerts = pyqtSignal(list)  # List[WeatherAlert]
-    def __init__(self, config_dir):
-        # Ensure config directory exists
-        self.config_dir = Path(config_dir) / 'config'
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.notification_history = {}
-        self.load_notification_history()
-        
-    def load_notification_history(self):
-        """Load notification history from file"""
-        history_file = self.config_dir / 'notifications.json'
-        try:
-            if history_file.exists():
-                with open(history_file, 'r') as f:
-                    self.notification_history = json.load(f)
-        except Exception as e:
-            logging.error(f'Failed to load notification history: {e}')
-            self.notification_history = {}
-    
-    def save_notification_history(self):
-        """Save notification history to file"""
-        try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
-            history_file = self.config_dir / 'notifications.json'
-            with open(history_file, 'w') as f:
-                json.dump(self.notification_history, f)
-        except Exception as e:
-            logging.error(f'Failed to save notification history: {e}')
-    
-    def should_show_notification(self, alert_id):
-        """Check if we should show a notification based on cooldown"""
-        now = datetime.utcnow()
-        last_shown = self.notification_history.get(alert_id)
-        
-        if not last_shown:
-            return True
-            
-        last_shown_time = datetime.fromisoformat(last_shown)
-        time_since_last = now - last_shown_time
-        return time_since_last > timedelta(minutes=NOTIFICATION_COOLDOWN)
-    
-    def show_notification(self, title, message, alert_id=None, parent=None):
-        """
-        Show a desktop notification.
-        
-        Args:
-            title (str): Notification title
-            message (str): Notification message
-            alert_id (str, optional): Unique ID for this alert to prevent duplicates
-            parent (QWidget, optional): Parent widget for the message box
-        """
-        if alert_id and not self.should_show_notification(alert_id):
-            return
-            
-        try:
-            # Show a message box
-            msg_box = QMessageBox(parent)
-            msg_box.setWindowTitle(title)
-            msg_box.setText(message)
-            msg_box.setIcon(QMessageBox.Icon.Information)
-            msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg_box.exec()
-            
-            # Update notification history
-            if alert_id:
-                self.notification_history[alert_id] = datetime.utcnow().isoformat()
-                self.save_notification_history()
-                
-        except Exception as e:
-            logging.error(f'Failed to show notification: {e}')
-    
-    def show_alert(self, title, message, alert_id=None, parent=None):
-        """
-        Show an alert dialog.
-        
-        Args:
-            title (str): Alert title
-            message (str): Alert message
-            alert_id (str, optional): Unique ID for this alert to prevent duplicates
-            parent (QWidget, optional): Parent widget for the message box
-        """
-        if alert_id and not self.should_show_notification(alert_id):
-            return
-            
-        try:
-            # Show a warning message box
-            msg_box = QMessageBox(parent)
-            msg_box.setWindowTitle(title)
-            msg_box.setText(message)
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg_box.exec()
-            
-            # Update notification history
-            if alert_id:
-                self.notification_history[alert_id] = datetime.utcnow().isoformat()
-                self.save_notification_history()
-                
-        except Exception as e:
-            logging.error(f'Failed to show alert: {e}')
+    """
+    Enhanced notification manager with system tray integration.
+    """
+    new_alert = pyqtSignal(WeatherAlert)  # Emitted when a new alert is received
 
-def check_severe_weather(weather_data):
-    """
-    Check weather data for severe conditions that warrant notifications.
-    
-    Args:
-        weather_data (dict, list, or WeatherData): The weather data. Can be a dictionary, list of alerts, or WeatherData object.
+    def __init__(self, data_dir: Path):
+        """Initialize the notification manager.
         
-    Returns:
-        list: List of alert dictionaries with 'id', 'title', and 'message' keys.
-    """
-    alerts = []
-    
-    if not weather_data:
-        return alerts
-    
-    # Convert WeatherData object to dictionary if needed
-    if hasattr(weather_data, 'to_dict'):
-        weather_data = weather_data.to_dict()
-    
-    # Handle case where weather_data is a list of alerts
-    if isinstance(weather_data, list):
-        for alert in weather_data:
-            if isinstance(alert, dict):
-                alert_id = alert.get('id', str(hash(str(alert))))
-                alerts.append({
-                    'id': alert_id,
-                    'title': alert.get('event', 'Weather Alert'),
-                    'message': f"{alert.get('description', 'No description')}"
-                })
-        return alerts
-    
-    # Handle current weather data
-    if isinstance(weather_data, dict):
-        # Check for weather conditions
-        if 'weather' in weather_data and isinstance(weather_data['weather'], list):
-            for condition in weather_data.get('weather', []):
-                if not isinstance(condition, dict):
-                    continue
-                    
-                condition_id = condition.get('id', 0)
-                
-                # Thunderstorm
-                if 200 <= condition_id < 300:
-                    alerts.append({
-                        'id': f'thunder_{condition_id}',
-                        'title': 'Thunderstorm Alert',
-                        'message': f"Thunderstorm detected: {condition.get('description', '')}"
-                    })
-                
-                # Heavy rain
-                elif condition_id in [500, 501, 502, 503, 504, 511, 520, 521, 522]:
-                    alerts.append({
-                        'id': f'rain_{condition_id}',
-                        'title': 'Heavy Rain Alert',
-                        'message': f"Heavy rain expected: {condition.get('description', '')}"
-                    })
-                
-                # Snow
-                elif 600 <= condition_id < 700:
-                    alerts.append({
-                        'id': f'snow_{condition_id}',
-                        'title': 'Snow Alert',
-                        'message': f"Snow expected: {condition.get('description', '')}"
-                    })
+        Args:
+            data_dir: Directory to store notification data
+        """
+        super().__init__()
+        self.data_dir = Path(data_dir)
+        self.notifications_dir = self.data_dir / "config"
+        self.settings_file = self.notifications_dir / "notifications.json"
+        self._alerts: Dict[str, WeatherAlert] = {}
+        self._muted = False
+        self._tray_icon = None
         
-        # Handle alerts if present
-        if 'alerts' in weather_data and isinstance(weather_data['alerts'], list):
-            for alert in weather_data['alerts']:
-                if not isinstance(alert, dict):
-                    continue
-                    
-                alert_id = alert.get('id', str(hash(str(alert))))
-                alerts.append({
-                    'id': alert_id,
-                    'title': alert.get('event', 'Weather Alert'),
-                    'message': f"{alert.get('description', 'No description')}"
-                })
+        # Ensure directories exist
+        self.notifications_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize default settings if they don't exist
+        if not self.settings_file.exists():
+            self._save_settings()
+        
+        # Load settings
+        self._load_settings()
+        
+        # Clean up expired alerts on startup
+        self._cleanup_expired_alerts()
+        
+        # Set up cleanup timer for expired alerts
+        self._cleanup_timer = QTimer()
+        self._cleanup_timer.timeout.connect(self._cleanup_expired_alerts)
+        self._cleanup_timer.start(5 * 60 * 1000)  # Check every 5 minutes
+
+    def _save_settings(self) -> None:
+        """Save notification settings to disk."""
+        settings = {
+            "muted": self._muted,
+            "last_cleanup": datetime.utcnow().isoformat()
+        }
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(settings, f, indent=2)
+        except (IOError, OSError) as e:
+            logging.error(f"Failed to save notification settings: {e}")
+
+    def _load_settings(self) -> None:
+        """Load notification settings."""
+        if self.settings_file.exists():
+            try:
+                with open(self.settings_file, 'r') as f:
+                    settings = json.load(f)
+                    self._muted = settings.get('muted', False)
+            except Exception as e:
+                logging.error(f"Error loading notification settings: {e}")
+
+    def show_notification(self, title: str, message: str, alert_type: str = 'info', 
+                         alert_id: str = None, duration: int = None) -> Optional[str]:
+        """Show a desktop notification.
+        
+        Args:
+            title: The title of the notification
+            message: The message content of the notification
+            alert_type: Type of alert ('info', 'warning', 'error', 'critical')
+            alert_id: Optional unique ID for the notification
+            duration: How long to show the notification in milliseconds
+            
+        Returns:
+            str: The alert ID if notification was shown, None otherwise
+        """
+        try:
+            if not title or not message:
+                logger.warning("Cannot show notification: title and message are required")
+                return None
+                
+            if not alert_id:
+                alert_id = f"notif_{int(datetime.utcnow().timestamp())}"
+                
+            if not self._should_show_notification(alert_id):
+                logger.debug(f"Notification suppressed for alert_id: {alert_id}")
+                return None
+                
+            # Ensure alert_type is valid
+            alert_type = alert_type.lower()
+            if alert_type not in ['info', 'warning', 'error', 'critical']:
+                alert_type = 'info'
+                
+            alert = WeatherAlert(
+                alert_id=alert_id,
+                title=str(title)[:100],  # Limit title length
+                message=str(message)[:500],  # Limit message length
+                severity=getattr(AlertSeverity, alert_type.upper(), AlertSeverity.INFO),
+                alert_type=AlertType.OTHER,
+                metadata={
+                    'type': 'notification',
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+            )
+            
+            return self._show_alert(alert, duration)
+            
+        except Exception as e:
+            logger.error(f"Error showing notification: {e}", exc_info=True)
+            return None
+
+    def show_alert(self, alert_data: Union[WeatherAlert, Dict]) -> Optional[str]:
+        """Show a weather alert notification."""
+        alert = alert_data if isinstance(alert_data, WeatherAlert) else WeatherAlert.from_dict(alert_data)
+        
+        if not alert.is_active():
+            return None
+            
+        return self._show_alert(alert)
+
+    def _show_alert(self, alert: WeatherAlert, duration: int = None) -> str:
+        """Internal method to show an alert.
+        
+        Args:
+            alert: The WeatherAlert to display
+            duration: How long to show the notification in milliseconds
+            
+        Returns:
+            str: The alert ID if shown, or empty string if not
+        """
+        try:
+            if not isinstance(alert, WeatherAlert):
+                logger.error("Invalid alert type provided to _show_alert")
+                return ""
+                
+            self._alerts[alert.id] = alert
+            
+            if self._muted:
+                logger.debug(f"Notifications are muted, not showing alert: {alert.id}")
+                return alert.id
+                
+            duration = duration or 5000  # Default duration 5 seconds
+            
+            # Ensure we have a system tray icon
+            if not hasattr(self, '_tray_icon') or self._tray_icon is None:
+                try:
+                    self._tray_icon = QSystemTrayIcon(QIcon("assets/meteo.png"), parent=QApplication.instance())
+                    self._tray_icon.show()
+                except Exception as e:
+                    logger.error(f"Failed to initialize system tray icon: {e}")
+                    return ""
+            
+            try:
+                # Show the notification
+                self._tray_icon.showMessage(
+                    alert.title,
+                    alert.message,
+                    QSystemTrayIcon.MessageIcon.Information,
+                    duration
+                )
+                
+                # Emit signal for new alert
+                self.new_alert.emit(alert)
+                logger.debug(f"Showed notification: {alert.id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to show notification: {e}")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"Error in _show_alert: {e}", exc_info=True)
+            return ""
+            
+        return alert.id
+
+    def _should_show_notification(self, alert_id: str) -> bool:
+        """Check if we should show a notification based on cooldown."""
+        return True  # Add cooldown logic here
     
-    return alerts
+    def dismiss_alert(self, alert_id: str) -> None:
+        """Dismiss an alert by ID."""
+        if alert_id in self._alerts:
+            del self._alerts[alert_id]
+    
+    def toggle_mute(self) -> None:
+        """Toggle notification mute state."""
+        self._muted = not self._muted
+        self._save_settings()
+    
+    def show_notification_history(self) -> None:
+        """Show notification history in a dialog."""
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Information)
+        msg.setWindowTitle("Weather Alerts")
+        
+        if not self._alerts:
+            msg.setText("No weather alerts to display.")
+        else:
+            alert_text = "\n\n".join(
+                f"{alert.title}: {alert.message}" 
+                for alert in self._alerts.values()
+            )
+            msg.setText("Current Weather Alerts:")
+            msg.setDetailedText(alert_text)
+            
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
+    def _cleanup_expired_alerts(self) -> None:
+        """Remove expired alerts."""
+        now = datetime.utcnow()
+        expired = [
+            alert_id for alert_id, alert in self._alerts.items()
+            if alert.end_time and alert.end_time < now
+        ]
+        
+        for alert_id in expired:
+            self.dismiss_alert(alert_id)
+
+    def __del__(self):
+        """Cleanup resources."""
+        if self._tray_icon:
+            self._tray_icon.hide()

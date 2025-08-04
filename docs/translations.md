@@ -16,17 +16,18 @@ The Weather App currently supports the following languages:
 | Portuguese | pt   | Português | No  | Complete |
 | Russian | ru   | Русский     | No  | Complete |
 | Japanese | ja   | 日本語      | No  | Complete |
-| Chinese (Simplified) | zh-CN | 简体中文 | No  | In Progress  |
 | Arabic  | ar   | اَلْعَرَبِيَّةُ | Yes | Complete |
+| Chinese (Simplified) | zh-CN | 简体中文 | No  | In Progress  |
 | Hindi   | hi   | हिन्दी      | No  | In Progress |
 | Korean  | ko   | 한국어      | No  | In Progress |
 | Turkish | tr   | Türkçe      | No  | In Progress |
 | Dutch   | nl   | Nederlands  | No  | In Progress |
 | Polish  | pl   | Polski      | No  | In Progress |
 
-## Translation System (v1.7.0+)
+## Translation System
 
 The translation system is now based on JSON files and includes these features:
+
 - String interpolation with variables
 - Right-to-left (RTL) language support
 - Fallback to English for missing translations
@@ -35,7 +36,7 @@ The translation system is now based on JSON files and includes these features:
 
 ### File Structure (New)
 
-```
+```text
 lang/
 ├── __init__.py
 ├── language_manager.py    # Core translation management
@@ -53,109 +54,13 @@ lang/
 
 ## Adding a New Language
 
-1. **Add Language Code**
-   - Add a new language code to the `LANGUAGES` dictionary in `script/lang/__init__.py`
-   - Specify if the language is RTL
+### Adding a New Language
 
-2. **Create Translations**
-   - Add a new language dictionary in `script/lang/translations.py`
-   - Copy all keys from the English dictionary
-   - Translate all values to the target language
+To add a new language:
 
-3. **Register the Language**
-   - Add the language to the `available_languages` list in the `LanguageManager` class
-
-### Example: Adding German
-
-```python
-# In script/lang/translations.py
-
-translations = {
-    # ... other languages
-    
-    'de': {  # German
-        'app_name': 'Wetter App',
-        'search': 'Suchen',
-        'current_weather': 'Aktuelles Wetter',
-        'forecast': 'Vorhersage',
-        'temperature': 'Temperatur',
-        'humidity': 'Luftfeuchtigkeit',
-        'wind_speed': 'Windgeschwindigkeit',
-        'pressure': 'Luftdruck',
-        # ... more translations
-    },
-}
-```
-
-## Translation Keys
-
-### UI Elements
-
-```python
-{
-    'search_placeholder': 'Search for a city...',
-    'current_location': 'Current Location',
-    'settings': 'Settings',
-    'favorites': 'Favorites',
-    'add_to_favorites': 'Add to Favorites',
-    'remove_from_favorites': 'Remove from Favorites',
-    'refresh': 'Refresh',
-    'close': 'Close',
-    'save': 'Save',
-    'cancel': 'Cancel',
-}
-```
-
-### Weather Data
-
-```python
-{
-    'feels_like': 'Feels like',
-    'wind': 'Wind',
-    'precipitation': 'Precipitation',
-    'visibility': 'Visibility',
-    'uv_index': 'UV Index',
-    'sunrise': 'Sunrise',
-    'sunset': 'Sunset',
-    'moon_phase': 'Moon Phase',
-    'air_quality': 'Air Quality',
-    'humidity': 'Humidity',
-}
-```
-
-### Weather Conditions
-
-```python
-{
-    'weather_clear': 'Clear',
-    'weather_clouds': 'Clouds',
-    'weather_rain': 'Rain',
-    'weather_snow': 'Snow',
-    'weather_thunderstorm': 'Thunderstorm',
-    'weather_drizzle': 'Drizzle',
-    'weather_mist': 'Mist',
-    'weather_fog': 'Fog',
-    'weather_tornado': 'Tornado',
-}
-```
-
-### Days and Months
-
-```python
-{
-    'monday': 'Monday',
-    'tuesday': 'Tuesday',
-    'wednesday': 'Wednesday',
-    'thursday': 'Thursday',
-    'friday': 'Friday',
-    'saturday': 'Saturday',
-    'sunday': 'Sunday',
-    
-    'january': 'January',
-    'february': 'February',
-    # ... other months
-}
-```
+- Add a new JSON file in `lang/translations/` with the language code (e.g., `fr.json` for French)
+- Copy all keys from `en.json`
+- Translate all values to the target language
 
 ## Best Practices
 
@@ -226,24 +131,16 @@ For RTL languages like Arabic and Hebrew:
 3. Add or update the translation files
 4. Submit a pull request with a clear description
 
-## Translation Tools
-
-- [Poedit](https://poedit.net/): Popular translation editor
-- [Transifex](https://www.transifex.com/): Collaborative translation platform
-- [Crowdin](https://crowdin.com/): Localization management platform
-
 ## Troubleshooting
 
 ### Common Issues
 
 - **Missing Translations**: Fall back to English
 - **Text Overflow**: Adjust UI elements or shorten translations
-- **RTL Issues**: Check the `rtl.py` module and CSS styles
 - **Special Characters**: Ensure proper encoding and font support
 
 ## Getting Help
 
-For translation-related questions or issues:
-1. Check the [GitHub Issues](https://github.com/Nsfr750/weather/issues)
-2. Join our [Discord](https://discord.gg/ryqNeuRYjD)
-3. Contact the maintainers
+For translation issues, please open an issue on our [GitHub repository](https://github.com/yourusername/weather-app/issues).
+1. Join our [Discord](https://discord.gg/ryqNeuRYjD)
+2. Contact the maintainers

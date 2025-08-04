@@ -41,6 +41,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QUrl
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QStyle
 
+# Import language manager
+from lang.language_manager import LanguageManager
 
 class AlertSeverity(Enum):
     """Severity levels for weather alerts."""

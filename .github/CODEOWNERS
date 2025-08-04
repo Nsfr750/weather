@@ -37,12 +37,17 @@ TO_DO.md @Nsfr750
 # Core application code
 /script/ @Nsfr750
 /config/ @Nsfr750
+/lang/ @Nsfr750
 main.py @Nsfr750
 
 # Configuration files
 pyproject.toml @Nsfr750
 requirements.txt @Nsfr750
 setup.py @Nsfr750
+
+# Language files
+/lang/translations/ @Nsfr750
+/lang/language_manager.py @Nsfr750
 
 # GitHub workflows and actions
 .github/ @Nsfr750

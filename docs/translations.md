@@ -24,24 +24,31 @@ The Weather App currently supports the following languages:
 | Dutch   | nl   | Nederlands  | No  | In Progress |
 | Polish  | pl   | Polski      | No  | In Progress |
 
-## Translation System
+## Translation System (v1.7.0+)
 
-The translation system is based on Python dictionaries and supports:
+The translation system is now based on JSON files and includes these features:
 - String interpolation with variables
-- Pluralization
-- Gender agreement
-- Right-to-left (RTL) languages
+- Right-to-left (RTL) language support
 - Fallback to English for missing translations
+- Dynamic language switching without app restart
+- Optimized loading with translation memory
 
-### File Structure
+### File Structure (New)
 
 ```
-script/
-  ├── lang/
-  │   ├── __init__.py      # Language manager
-  │   ├── translations.py  # All translation strings
-  │   └── rtl.py           # RTL language support
-  └── ...
+lang/
+├── __init__.py
+├── language_manager.py    # Core translation management
+└── translations/
+    ├── en.json           # English (base language)
+    ├── it.json           # Italian
+    ├── es.json           # Spanish
+    ├── fr.json           # French
+    ├── de.json           # German
+    ├── pt.json           # Portuguese
+    ├── ru.json           # Russian
+    ├── ja.json           # Japanese
+    └── ar.json           # Arabic (RTL)
 ```
 
 ## Adding a New Language

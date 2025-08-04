@@ -15,6 +15,9 @@ import logging
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 # Default history file path
 HISTORY_FILE = Path("config/history.json")
 

@@ -13,6 +13,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 class HelpDialog(QDialog):
     """
     A dialog to display help information for the Weather application.

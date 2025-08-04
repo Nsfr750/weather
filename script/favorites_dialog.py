@@ -6,6 +6,9 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget,
                            QPushButton, QLineEdit, QInputDialog, QMessageBox)
 from PyQt6.QtCore import Qt
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 class FavoritesDialog(QDialog):
     """Dialog for managing favorite cities."""
     

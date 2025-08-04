@@ -7,9 +7,12 @@ from PyQt6.QtGui import QIcon, QPixmap, QFont, QPalette, QColor, QAction, QClose
 from pathlib import Path
 import logging
 import sys
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Union
 from script.version import get_version
 from script.menu import create_menu_bar
+
+# Import language manager
+from lang.language_manager import LanguageManager
 
 class WeatherAppUI(QMainWindow):
     # Signals for UI events
@@ -19,10 +22,10 @@ class WeatherAppUI(QMainWindow):
     favorite_toggled = pyqtSignal(str)  # Emitted when favorite is toggled
     favorite_selected = pyqtSignal(str)  # Emitted when a favorite is selected
 
-    def __init__(self, config_manager, translations_manager, weather_provider, notification_manager):
+    def __init__(self, config_manager, language_manager: LanguageManager, weather_provider, notification_manager):
         super().__init__()
         self.config_manager = config_manager
-        self.translations_manager = translations_manager
+        self.language_manager = language_manager
         self.weather_provider = weather_provider
         self.notification_manager = notification_manager
         

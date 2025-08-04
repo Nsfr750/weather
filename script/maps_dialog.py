@@ -11,14 +11,14 @@ import logging
 import json
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple, List, Any
+from typing import Dict, Optional, Tuple, List, Any, Union
 
 # For geocoding
 import geopy
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
-from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject, Q_ARG, QThread
+from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject, Q_ARG, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
     QComboBox, QLabel, QPushButton, QSizePolicy, QCompleter, QLineEdit
@@ -26,6 +26,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtGui import QIcon, QPixmap, QFont
+
+# Import language manager
+from lang.language_manager import LanguageManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -43,18 +46,32 @@ class MapsDialog(QDialog):
     A dialog for displaying weather maps and radar data using various services.
     """
     
-    def __init__(self, parent=None, translations: Optional[Dict[str, str]] = None):
+    # Signal for language changes
+    language_changed = pyqtSignal(str)
+    
+    def __init__(self, parent=None, language_manager: Optional[LanguageManager] = None):
         """
         Initialize the Maps Dialog.
         
         Args:
             parent: The parent widget
-            translations: Dictionary containing translations for UI elements
+            language_manager: The language manager instance for translations
         """
-        super().__init__(parent, Qt.WindowType.Window)
-        self.translations = translations or {}
-        self.setWindowTitle(self._tr("Weather Maps & Radar"))
-        self.setMinimumSize(1024, 768)
+        super().__init__(parent)
+        
+        # Initialize language manager
+        self.language_manager = language_manager or LanguageManager()
+        
+        # Set window title using translation
+        self.setWindowTitle(self._tr('Weather Maps & Radar'))
+        self.setMinimumSize(800, 600)
+        
+        # Connect to language changed signal
+        self.language_manager.language_changed.connect(self.retranslate_ui)
+        
+        # Initialize UI
+        self._init_ui()
+        self._set_window_icon()
         
         # Initialize map data
         self.current_lat = DEFAULT_LATITUDE
@@ -76,10 +93,6 @@ class MapsDialog(QDialog):
         config_dir.mkdir(exist_ok=True)  # Ensure config directory exists
         self.geocode_cache_file = config_dir / "geocode_cache.json"
         self.geocode_cache = self._load_geocode_cache()
-        
-        # Initialize UI
-        self._init_ui()
-        self._set_window_icon()
         
         # Load initial maps
         self._update_radar_map()
@@ -283,7 +296,7 @@ class MapsDialog(QDialog):
                 location=[self.current_lat, self.current_lon],
                 zoom_start=self.current_zoom,
                 tiles=self._get_tile_url(map_type),
-                attr='Map data © OpenStreetMap contributors',
+                attr='Map data &copy; OpenStreetMap contributors',
                 control_scale=True
             )
                 
@@ -328,7 +341,7 @@ class MapsDialog(QDialog):
                 location=[self.current_lat, self.current_lon],
                 zoom_start=self.current_zoom,
                 tiles='OpenStreetMap',
-                attr='Map data © OpenStreetMap contributors',
+                attr='Map data &copy; OpenStreetMap contributors',
                 control_scale=True
             )
             
@@ -363,7 +376,7 @@ class MapsDialog(QDialog):
                 location=[self.current_lat, self.current_lon],
                 zoom_start=self.current_zoom,
                 tiles='OpenStreetMap',
-                attr='Map data © OpenStreetMap contributors',
+                attr='Map data &copy; OpenStreetMap contributors',
                 control_scale=True
             )
             
@@ -413,7 +426,7 @@ class MapsDialog(QDialog):
                 location=[self.current_lat, self.current_lon],
                 zoom_start=self.current_zoom,
                 tiles='OpenStreetMap',
-                attr='Map data © OpenStreetMap contributors',
+                attr='Map data &copy; OpenStreetMap contributors',
                 control_scale=True
             )
                 
@@ -718,17 +731,87 @@ class MapsDialog(QDialog):
         except Exception as e:
             logger.warning(f'Could not set window icon: {e}')
 
-    def _tr(self, text: str) -> str:
+    def retranslate_ui(self, language_code: Optional[str] = None):
         """
-        Translate text if translations are available.
+        Update all UI text with current translations.
         
         Args:
-            text: The text to translate
+            language_code: The language code to use for translations (optional)
+        """
+        # Update window title
+        self.setWindowTitle(self._tr('Weather Maps & Radar'))
+        
+        # Update map type labels
+        if hasattr(self, 'map_type_combo'):
+            for i in range(self.map_type_combo.count()):
+                map_type = self.map_type_combo.itemData(i)
+                if map_type == 'openstreetmap':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_street'))
+                elif map_type == 'opentopomap':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_topographic'))
+                elif map_type == 'stamen_terrain':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_terrain'))
+                elif map_type == 'stamen_toner':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_bw'))
+                elif map_type == 'cartodbpositron':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_light'))
+                elif map_type == 'cartodbdark_matter':
+                    self.map_type_combo.setItemText(i, self._tr('map_type_dark'))
+        
+        # Update button text
+        if hasattr(self, 'search_button'):
+            self.search_button.setText(self._tr('search_button'))
+        
+        if hasattr(self, 'current_location_btn'):
+            self.current_location_btn.setToolTip(self._tr('show_current_location'))
+        
+        # Update layer control text if it exists
+        if hasattr(self, 'layer_control'):
+            try:
+                self.layer_control.options['collapsed'] = False
+                self.layer_control.options['position'] = 'topleft'
+                self.layer_control.options['autoZIndex'] = True
+                self.layer_control.options['hideSingleBase'] = True
+                self.layer_control.options['sortLayers'] = True
+                self.layer_control.options['sortFunction'] = "function(layerA, layerB, nameA, nameB) { return nameA.localeCompare(nameB); }"
+                
+                # Update base map names
+                for layer in self.layer_control.base_layers:
+                    if layer.name == 'OpenStreetMap':
+                        layer.name = self._tr('map_type_street')
+                    elif layer.name == 'OpenTopoMap':
+                        layer.name = self._tr('map_type_topographic')
+                    elif layer.name == 'Stamen Terrain':
+                        layer.name = self._tr('map_type_terrain')
+                    elif layer.name == 'Stamen Toner':
+                        layer.name = self._tr('map_type_bw')
+                    elif layer.name == 'CartoDB Positron':
+                        layer.name = self._tr('map_type_light')
+                    elif layer.name == 'CartoDB Dark Matter':
+                        layer.name = self._tr('map_type_dark')
+            except Exception as e:
+                logger.warning(f"Error updating layer control text: {e}")
+
+    def _tr(self, text: str, default: Optional[str] = None, **kwargs) -> str:
+        """
+        Translate text using the language manager.
+        
+        Args:
+            text: The text to translate (key in translations)
+            default: Default text to return if translation is not found
+            **kwargs: Format arguments for the translated string
             
         Returns:
-            str: The translated text or the original if no translation is available
+            The translated text or the default/input text if not found
         """
-        return self.translations.get(text, text)
+        if default is None:
+            default = text
+            
+        try:
+            return self.language_manager.get(text, default, **kwargs)
+        except Exception as e:
+            logger.warning(f"Translation error for '{text}': {e}")
+            return default
 
     def closeEvent(self, event):
         """Handle dialog close event."""
@@ -745,13 +828,13 @@ class MapsDialog(QDialog):
         
         super().closeEvent(event)
 
-def show_maps_dialog(parent=None, translations: Optional[Dict[str, str]] = None):
+def show_maps_dialog(parent=None, language_manager: Optional[LanguageManager] = None):
     """
     Show the Maps dialog.
     
     Args:
         parent: The parent widget
-        translations: Dictionary containing translations for UI elements
+        language_manager: The language manager instance for translations
     """
-    dialog = MapsDialog(parent, translations)
+    dialog = MapsDialog(parent, language_manager)
     dialog.exec()

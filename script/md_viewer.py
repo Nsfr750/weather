@@ -17,6 +17,9 @@ from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QAction, QFont, QTextCursor
 from PyQt6.QtGui import QDesktopServices
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 # Import translations
 from translations import TRANSLATIONS
 

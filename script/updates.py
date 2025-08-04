@@ -16,6 +16,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 # Get the application directory
 APP_DIR = Path(__file__).parent.parent
 

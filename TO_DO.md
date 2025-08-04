@@ -6,9 +6,21 @@
 - [ ] Implement notification sounds for critical alerts
 - [ ] Add notification history viewer
 - [ ] Test notification system on different platforms
+- [ ] Add more language translations
+- [ ] Implement translation memory for faster loading
+- [ ] Add user-contributed translations system
 
 ## ✅ Completed (v1.6.0)
 
+- [x] Implemented new language management system with JSON-based translations
+- [x] Added support for 10+ languages
+- [x] Implemented dynamic language switching
+- [x] Improved RTL language support
+- [x] Refactored menu system for better translation support
+- [x] Updated all UI components to use new translation system
+- [x] Added comprehensive translation documentation
+- [x] Fixed issues with special characters in translations
+- [x] Optimized translation loading performance
 - [x] Enhanced notification system with system tray integration
 - [x] 7-day forecast implementation
 - [x] Markdown documentation viewer

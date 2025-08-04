@@ -48,7 +48,6 @@ coverage/
 *.spec
 Setup.txt
 installer.nsi
-*.json
 
 # IDEs and editors
 .idea/

@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
 from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QFont, QTextOption
 
+# Import language manager
+from lang.language_manager import LanguageManager
 
 class LogViewer(QMainWindow):
     """

@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Import language manager
+from lang.language_manager import LanguageManager
 
 class ProviderConfigWidget(QWidget):
     """Widget for configuring a single provider's API key."""

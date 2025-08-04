@@ -6,6 +6,9 @@ import json
 import os
 from pathlib import Path
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 # Ensure config directory exists
 CONFIG_DIR = Path('config')
 CONFIG_DIR.mkdir(exist_ok=True)

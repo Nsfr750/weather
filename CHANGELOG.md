@@ -4,6 +4,13 @@
 
 ### Added
 
+- New language management system with JSON-based translations
+  - Support for 10+ languages including English, Italian, Spanish, French, German, Russian, Arabic, Japanese, and Portuguese
+  - Dynamic language switching without app restart
+  - Improved RTL language support
+  - Fallback to English for missing translations
+- Enhanced menu system with language and theme options
+- Added comprehensive translation documentation
 - Enhanced notification system with system tray integration
   - Support for different alert types (info, warning, error, critical)
   - Persistent notification history
@@ -23,6 +30,19 @@
   - Wind speed
   - Atmospheric pressure
   - Visibility data
+
+### Changed
+
+- Refactored translation system from Python dictionaries to JSON files
+- Improved error handling for missing translations
+- Updated all UI components to use the new translation system
+- Optimized translation loading performance
+
+### Fixed
+
+- Fixed issues with special characters in translations
+- Resolved RTL text alignment in weather cards
+- Fixed translation caching issues
 
 ## [1.5.0] - 2025-08-02
 

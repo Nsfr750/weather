@@ -21,6 +21,8 @@ from PyQt6.QtGui import QFont, QDesktopServices, QIcon, QPixmap
 
 from script.version import get_version
 
+# Import language manager
+from lang.language_manager import LanguageManager
 
 class AboutDialog(QDialog):
     """

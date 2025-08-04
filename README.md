@@ -12,23 +12,37 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 ## 🚀 What's New in v1.6.0
 
 - **New Features**
-- Interactive Weather Maps & Radar
+  - Interactive Weather Maps & Radar
   - Real-time radar data visualization
   - Multiple map layers (radar, satellite, terrain)
   - Weather overlays for temperature, precipitation, and wind
   - Location search with geocoding
   - Caching of map data for better performance
   - Support for multiple map providers (OpenStreetMap, OpenTopoMap, Stamen)
-- Enhanced notification system with system tray integration
+  - Enhanced notification system with system tray integration
   - Support for different alert types (info, warning, error, critical)
   - Persistent notification history
   - Mute notifications option
   - Automatic cleanup of expired alerts
-- Weather alerts for severe conditions
+  - Weather alerts for severe conditions
   - Heavy precipitation warnings
   - High wind alerts
   - Extreme temperature warnings
   - Nighttime travel advisories
+
+- **New Language System**
+  - Completely redesigned translation system with JSON-based files
+  - Support for 10+ languages including English, Italian, Spanish, French, German, Russian, Arabic, Japanese, and Portuguese
+  - Dynamic language switching without app restart
+  - Improved RTL language support for Arabic and Hebrew
+  - Fallback to English for missing translations
+  - Optimized translation loading with memory caching
+
+- **Enhanced User Interface**
+  - Redesigned language selector in settings
+  - Improved text rendering for all supported languages
+  - Better handling of special characters and RTL text
+  - Consistent terminology across all translations
 
 ## 🚀 What's New in v1.5.0
 

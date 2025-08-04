@@ -17,6 +17,9 @@ from pathlib import Path
 import logging
 from typing import Optional, Dict, List
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 class Sponsor(QDialog):
     """
     A class to display the Sponsor dialog for the Weather application.

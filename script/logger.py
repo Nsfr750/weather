@@ -9,6 +9,9 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
+# Import language manager
+from lang.language_manager import LanguageManager
+
 def _close_handlers(logger):
     """Close and remove all handlers from the logger."""
     for handler in logger.handlers[:]:

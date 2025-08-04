@@ -33,11 +33,11 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 # Set Qt.AA_ShareOpenGLContexts before creating QApplication
 QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
 
-# Import translations
-from script.translations import TRANSLATIONS
-
 # Import logger
 from script.logger import setup_logging, logger
+
+# Import language manager
+from lang.language_manager import LanguageManager
 
 # Add script directory to path for module imports
 script_dir = Path(__file__).parent.absolute()
@@ -54,8 +54,6 @@ from script.menu import create_menu_bar
 from script.favorites_utils import FavoritesManager
 from script.history_utils import HistoryManager
 from script.config_utils import ConfigManager
-from script.translations import TRANSLATIONS
-from script.translations_utils import TranslationsManager
 from script.notifications import NotificationManager
 from script.weather_providers.openmeteo import OpenMeteoProvider
 
@@ -92,8 +90,10 @@ class WeatherApp(QMainWindow):
         self.check_connection()
         
         # Initialize translations
-        self.translations_manager = TranslationsManager(TRANSLATIONS, default_lang=self.language)
-        self.translations_manager.language_changed.connect(self.on_language_changed)
+        self.language_manager = LanguageManager()
+        self.language_manager.set_language(self.language)
+        # Connect language change signal
+        self.language_manager.language_changed.connect(self.on_language_changed)
         
         # Initialize weather provider
         self.weather_provider = OpenMeteoProvider(units=self.units)
@@ -155,9 +155,9 @@ class WeatherApp(QMainWindow):
         # Create the menu bar
         self.menu_bar = MenuBar(
             parent=self,
-            translations_manager=self.translations_manager,
-            current_language=self.language,
-            current_units=self.units
+            language_manager=self.language_manager,
+            language=self.language,
+            units=self.units
         )
         
         # Connect signals
@@ -934,7 +934,8 @@ class WeatherApp(QMainWindow):
         Args:
             language_code: Two-letter language code (e.g., 'en', 'it')
         """
-        if self.translations_manager.set_language(language_code):
+        if hasattr(self, 'language_manager'):
+            self.language_manager.set_language(language_code)
             self.language = language_code
             self.config_manager.set('language', language_code)
             
@@ -945,10 +946,9 @@ class WeatherApp(QMainWindow):
         # Update the UI with new translations
         self.retranslate_ui()
         if hasattr(self, 'menu_bar') and self.menu_bar:
-            # Get all translations for the current language from the translations manager
-            translations = self.translations_manager.translations.get(language_code.upper(), {})
-            if translations:
-                self.menu_bar.update_translations(translations)
+            # Update menu bar translations
+            self.menu_bar.update_translations()
+            # Update language selection in menu
             if hasattr(self.menu_bar, 'language_group'):
                 for action in self.menu_bar.language_group.actions():
                     action.setChecked(action.data() == language_code.lower())
@@ -959,19 +959,15 @@ class WeatherApp(QMainWindow):
         try:
             logger.info("Updating UI translations...")
             
-            # Get translations manager
-            t = self.translations_manager.t
-            
-            # Get the current language translations
-            current_lang = self.translations_manager.get_current_language()
-            translations = self.translations_manager.translations.get(current_lang, {})
+            # Get translation function from language manager
+            t = self.language_manager.t
             
             # Update window title
             self.setWindowTitle(f'{t("app_name", "Weather")} v{get_version()}')
             
             # Update menu bar if it exists
             if hasattr(self, 'menu_bar') and self.menu_bar:
-                self.menu_bar.update_translations(translations)
+                self.menu_bar.update_translations()
             
             # Update search box
             if hasattr(self, 'search_input'):

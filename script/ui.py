@@ -36,7 +36,7 @@ class WeatherAppUI(QMainWindow):
     
     def _setup_window(self):
         """Set up the main window properties."""
-        self.setWindowTitle('Weather v. ' + get_version())
+        self.setWindowTitle(f"{self.language_manager.get_translation('app_name')} v{get_version()}")
         self.setMinimumSize(800, 800)
         
         # Set application icon
@@ -86,7 +86,7 @@ class WeatherAppUI(QMainWindow):
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage('Ready')
+        self.status_bar.showMessage(self.language_manager.get_translation('ready'))
         
         # Initialize weather display area
         self._init_weather_display()
@@ -115,7 +115,7 @@ class WeatherAppUI(QMainWindow):
         
         # Search input
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText('Enter city name...')
+        self.search_input.setPlaceholderText(self.language_manager.get_translation('enter_city'))
         self.search_input.setStyleSheet('''
             QLineEdit {
                 border: none;
@@ -133,7 +133,7 @@ class WeatherAppUI(QMainWindow):
         search_layout.addWidget(self.search_input)
         
         # Search button
-        self.search_btn = QPushButton('Search')
+        self.search_btn = QPushButton(self.language_manager.get_translation('search'))
         self.search_btn.clicked.connect(self._on_search_clicked)
         self.search_btn.setStyleSheet('''
             QPushButton {
@@ -155,7 +155,7 @@ class WeatherAppUI(QMainWindow):
         
         # Refresh button
         self.refresh_btn = QPushButton('🔄')
-        self.refresh_btn.setToolTip('Aggiorna')
+        self.refresh_btn.setToolTip(self.language_manager.get_translation('refresh'))
         self.refresh_btn.clicked.connect(self._on_refresh_clicked)
         self.refresh_btn.setStyleSheet('''
             QPushButton {
@@ -193,8 +193,8 @@ class WeatherAppUI(QMainWindow):
         units_layout.addWidget(units_icon)
         
         self.units_combo = QComboBox()
-        self.units_combo.addItem('°C, m/s', 'metric')
-        self.units_combo.addItem('°F, mph', 'imperial')
+        self.units_combo.addItem(self.language_manager.get_translation('units_metric'), 'metric')
+        self.units_combo.addItem(self.language_manager.get_translation('units_imperial'), 'imperial')
         self.units_combo.currentIndexChanged.connect(self._on_units_changed)
         self.units_combo.setStyleSheet('''
             QComboBox {
@@ -230,7 +230,7 @@ class WeatherAppUI(QMainWindow):
         
         self.favorites_combo = QComboBox()
         self.favorites_combo.setObjectName('favoritesCombo')
-        self.favorites_combo.setPlaceholderText('Favorites')
+        self.favorites_combo.setPlaceholderText(self.language_manager.get_translation('favorites'))
         self.favorites_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.favorites_combo.setEditable(False)
         self.favorites_combo.setMaxVisibleItems(10)
@@ -325,7 +325,7 @@ class WeatherAppUI(QMainWindow):
         self.weather_layout.setSpacing(10)
         
         # Add a placeholder for weather content
-        placeholder = QLabel('Search for a city to see weather information')
+        placeholder = QLabel(self.language_manager.get_translation('search_city_prompt'))
         placeholder.setStyleSheet('color: #95a5a6; font-style: italic;')
         placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.weather_layout.addWidget(placeholder)
@@ -338,9 +338,9 @@ class WeatherAppUI(QMainWindow):
         current_city = self.search_input.text().strip()
         if current_city:
             self.search_clicked.emit(current_city)
-            self.set_status(f"Aggiornamento meteo per {current_city}...")
+            self.set_status(self.language_manager.get_translation('updating_weather').format(city=current_city))
         else:
-            self.set_status("Inserisci una città per aggiornare il meteo")
+            self.set_status(self.language_manager.get_translation('enter_city_to_update'))
     
     def _on_search_clicked(self):
         """Handle search button click."""
@@ -369,12 +369,12 @@ class WeatherAppUI(QMainWindow):
             current_icon = self.fav_btn.text()
             if current_icon == '☆':
                 self.fav_btn.setText('★')
-                self.fav_btn.setToolTip('Remove from favorites')
-                self.status_bar.showMessage(f'Added {city} to favorites', 3000)
+                self.fav_btn.setToolTip(self.language_manager.get_translation('remove_from_favorites'))
+                self.status_bar.showMessage(self.language_manager.get_translation('added_to_favorites').format(city=city), 3000)
             else:
                 self.fav_btn.setText('☆')
-                self.fav_btn.setToolTip('Add to favorites')
-                self.status_bar.showMessage(f'Removed {city} from favorites', 3000)
+                self.fav_btn.setToolTip(self.language_manager.get_translation('add_to_favorites'))
+                self.status_bar.showMessage(self.language_manager.get_translation('removed_from_favorites').format(city=city), 3000)
             
             # Emit the signal
             self.favorite_toggled.emit(city)
@@ -449,7 +449,7 @@ class WeatherAppUI(QMainWindow):
             
             # Add a placeholder if no favorites
             if not favorites:
-                self.favorites_combo.addItem('No favorites yet')
+                self.favorites_combo.addItem(self.language_manager.get_translation('no_favorites'))
                 self.favorites_combo.setEnabled(False)
                 return
                 
@@ -464,7 +464,7 @@ class WeatherAppUI(QMainWindow):
                 self.favorites_combo.setCurrentIndex(0)
                 
             # Update tooltip with count
-            self.favorites_combo.setToolTip(f"{len(favorites)} favorite{'s' if len(favorites) != 1 else ''} saved")
+            self.favorites_combo.setToolTip(self.language_manager.get_translation('favorites_count').format(count=len(favorites)))
             
         finally:
             # Always unblock signals when done
@@ -499,7 +499,7 @@ class WeatherAppUI(QMainWindow):
         self.setWindowTitle(f"{self.translations_manager.t('app_title', language)} v{get_version()}")
         
         # Update status bar
-        self.set_status(self.translations_manager.t('ready', language) or 'Ready')
+        self.set_status(self.language_manager.get_translation('ready'))
     
     def set_status(self, message):
         """Set the status bar message."""
@@ -507,7 +507,7 @@ class WeatherAppUI(QMainWindow):
     
     def show_error(self, message):
         """Show an error message to the user."""
-        self.status_bar.showMessage(f"Error: {message}", 5000)  # Show for 5 seconds
+        self.status_bar.showMessage(f"{self.language_manager.get_translation('error')}: {message}", 5000)  # Show for 5 seconds
     
     def apply_theme(self):
         """Apply the dark theme to the application."""

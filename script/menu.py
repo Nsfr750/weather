@@ -11,10 +11,10 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Union
 
 # Third-party imports
-from PyQt6.QtCore import Qt, pyqtSignal, QUrl
+from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QTimer
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QIcon
 from PyQt6.QtWidgets import (
     QMenuBar, QMenu, QMessageBox, QFileDialog, QVBoxLayout, 
@@ -58,6 +58,29 @@ class MenuBar(QMenuBar):
     settings_updated = pyqtSignal()
     provider_changed = pyqtSignal(str)
     
+    def _tr(self, text: str, default: str = None) -> str:
+        """
+        Translate text using the language manager.
+        
+        Args:
+            text: The text to translate
+            default: Default text if translation is not found
+            
+        Returns:
+            str: The translated text or the original text if not found
+        """
+        if not text:
+            return text
+            
+        if not hasattr(self, 'language_manager') or not self.language_manager:
+            logger.warning(f"No language manager available for translation of: {text}")
+            return text if default is None else default
+            
+        # Try to get translation, fall back to default or original text
+        result = self.language_manager.get(text, default if default is not None else text)
+        logger.debug(f"Translated '{text}' to '{result}' in language {self.language_manager.current_language}")
+        return result
+        
     def __init__(self, 
                  parent: Optional[QWidget] = None, 
                  language_manager: Optional[LanguageManager] = None,
@@ -77,35 +100,32 @@ class MenuBar(QMenuBar):
                  on_show_api_key_manager: Optional[Callable] = None,
                  on_import_settings: Optional[Callable] = None,
                  on_export_settings: Optional[Callable] = None,
-                 on_quit: Optional[Callable] = None):
+                 on_quit: Optional[Callable] = None) -> None:
         """
         Initialize the menu bar.
         
         Args:
-            parent: The parent widget
-            language_manager: The language manager instance for translations
-            config_manager: The configuration manager instance
-            theme: Current theme ('light' or 'dark')
-            language: Current language code (e.g., 'en')
-            units: Current units system ('metric' or 'imperial')
-            on_refresh: Callback for refresh action
-            on_units_changed: Callback when units are changed
-            on_theme_changed: Callback when theme is changed
-            on_show_about: Callback for showing about dialog
-            on_show_help: Callback for showing help
-            on_show_sponsor: Callback for showing sponsor dialog
-            on_check_updates: Callback for checking updates
-            on_show_maps: Callback for showing maps dialog
-            on_show_log_viewer: Callback for showing log viewer
-            on_show_api_key_manager: Callback for showing API key manager
-            on_import_settings: Callback for importing settings
-            on_export_settings: Callback for exporting settings
-            on_quit: Callback for quit action
+            parent: The parent widget.
+            language_manager: The language manager instance.
+            config_manager: The configuration manager instance.
+            theme: The current theme.
+            language: The current language code.
+            units: The current units system (metric/imperial).
+            on_refresh: Callback for refresh action.
+            on_units_changed: Callback when units are changed.
+            on_theme_changed: Callback when theme is changed.
+            on_show_about: Callback for showing about dialog.
+            on_check_updates: Callback for checking updates.
+            on_show_maps: Callback for showing weather maps.
+            on_show_log_viewer: Callback for showing log viewer.
+            on_show_api_key_manager: Callback for showing API key manager.
+            on_import_settings: Callback for importing settings.
+            on_export_settings: Callback for exporting settings.
+            on_quit: Callback for quit action.
         """
         super().__init__(parent)
         
-        # Store parent and language manager
-        self.parent = parent
+        # Store references
         self.language_manager = language_manager or LanguageManager()
         self.config_manager = config_manager
         self.theme = theme
@@ -149,18 +169,18 @@ class MenuBar(QMenuBar):
     
     def _create_file_menu(self) -> None:
         """Create the File menu with common application actions."""
-        file_menu = self.addMenu(self._tr('🗃️ &File'))
+        file_menu = self.addMenu(self._tr('file_menu'))
         
         # Online/Offline mode
-        mode_menu = file_menu.addMenu(self._tr('&Mode'))
+        mode_menu = file_menu.addMenu(self._tr('mode_menu'))
         
         # Online mode action
         online_action = QAction(
-            self._tr('&Online Mode'),
+            self._tr('online_mode'),
             self,
             checkable=True,
             checked=not self.offline_mode,
-            statusTip=self._tr('Connect to the internet for weather data')
+            statusTip=self._tr('online_mode_tip')
         )
         online_action.triggered.connect(lambda: self._on_mode_changed(False))
         self.mode_group.addAction(online_action)
@@ -168,11 +188,11 @@ class MenuBar(QMenuBar):
         
         # Offline mode action
         offline_action = QAction(
-            self._tr('O&ffline Mode'),
+            self._tr('offline_mode'),
             self,
             checkable=True,
             checked=self.offline_mode,
-            statusTip=self._tr('Work with cached data only')
+            statusTip=self._tr('offline_mode_tip')
         )
         offline_action.triggered.connect(lambda: self._on_mode_changed(True))
         self.mode_group.addAction(offline_action)
@@ -200,7 +220,7 @@ class MenuBar(QMenuBar):
             self,
             shortcut=QKeySequence.StandardKey.Quit,
             statusTip=self._tr('Exit the application'),
-            triggered=self.parent.close
+            triggered=self.on_quit if self.on_quit else self.parent().close
         )
         file_menu.addAction(exit_action)
         
@@ -210,33 +230,31 @@ class MenuBar(QMenuBar):
     
     def _create_favorites_menu(self) -> None:
         """Create the Favorites menu with options to manage favorite cities."""
-        favorites_menu = self.addMenu(self._tr('⭐ &Favorites'))
+        favorites_menu = self.addMenu(self._tr('favorites_menu'))
         
         # Add to Favorites action
         self.add_to_favorites_action = QAction(
-            self._tr('&Add Current Location'),
+            self._tr('add_to_favorites'),
             self,
-            statusTip=self._tr('Add current location to favorites'),
+            statusTip=self._tr('add_favorite_tip'),
             triggered=self.add_to_favorites.emit
         )
         favorites_menu.addAction(self.add_to_favorites_action)
         
         # Manage Favorites action
         manage_favorites_action = QAction(
-            self._tr('&Manage Favorites...'),
+            self._tr('manage_favorites') + '...',
             self,
-            statusTip=self._tr('Add, edit, or remove favorite locations'),
+            statusTip=self._tr('manage_favorites_tip'),
             triggered=self.manage_favorites.emit
         )
         favorites_menu.addAction(manage_favorites_action)
         
-        # Separator
+        # Add a separator
         favorites_menu.addSeparator()
         
-        # Favorites list submenu
-        self.favorites_submenu = QMenu(self._tr('Select Favorite'), self)
-        self.favorites_submenu.setStatusTip(self._tr('Select a favorite location to display'))
-        favorites_menu.addMenu(self.favorites_submenu)
+        # Favorites submenu
+        self.favorites_submenu = favorites_menu.addMenu(self._tr('select_favorite'))
         
         # Store the menu for dynamic updates
         self.favorites_menu = favorites_menu
@@ -247,12 +265,13 @@ class MenuBar(QMenuBar):
         self.favorites_submenu.aboutToShow.connect(self._update_favorites_submenu)
         
         # Add a placeholder action (will be updated when favorites are loaded)
-        no_favs = QAction(self._tr('No favorites yet'), self)
+        no_favs = QAction(self._tr('no_favorites'), self)
         no_favs.setEnabled(False)
         self.favorites_submenu.addAction(no_favs)
         
         # Load initial favorites
         self._load_favorites()
+    
         
     def _load_favorites(self) -> None:
         """Load favorites from the config/favorites.json file."""
@@ -299,76 +318,102 @@ class MenuBar(QMenuBar):
     
     def _create_settings_menu(self) -> None:
         """Create the Settings menu with configuration options."""
-        settings_menu = self.addMenu(self._tr('⚙️ &Settings'))
-        settings_menu.setObjectName("settingsMenu")  # Add this line
+        settings_menu = self.addMenu(self._tr('settings_menu'))
+        settings_menu.setObjectName("settingsMenu")
         
         # Units submenu
-        units_menu = settings_menu.addMenu(self._tr('&Units'))
+        units_menu = settings_menu.addMenu(self._tr('units_menu'))
         self.unit_group = QActionGroup(self)
         
         # Metric units
-        metric_action = QAction(self._tr('&Metric (C, m/s)'), self, checkable=True)
+        metric_action = QAction(self._tr('metric_units'), self, checkable=True)
+        metric_action.setStatusTip(self._tr('metric_units_tip'))
         metric_action.setData('metric')
         metric_action.triggered.connect(lambda: self._on_units_changed('metric'))
         self.unit_group.addAction(metric_action)
         units_menu.addAction(metric_action)
         
         # Imperial units
-        imperial_action = QAction(self._tr('&Imperial (F, mph)'), self, checkable=True)
+        imperial_action = QAction(self._tr('imperial_units'), self, checkable=True)
+        imperial_action.setStatusTip(self._tr('imperial_units_tip'))
         imperial_action.setData('imperial')
         imperial_action.triggered.connect(lambda: self._on_units_changed('imperial'))
         self.unit_group.addAction(imperial_action)
         units_menu.addAction(imperial_action)
         
-        # Set default unit
-        current_unit = "metric"  # Default value
-        if hasattr(self, 'config_manager') and self.config_manager is not None and hasattr(self.config_manager, 'get'):
-            current_unit = self.config_manager.get('units', 'metric')
+        # Set the current units
+        if self.units == 'metric':
+            metric_action.setChecked(True)
+        else:
+            imperial_action.setChecked(True)
+            
+        # Theme submenu
+        theme_menu = settings_menu.addMenu(self._tr('theme'))
+        self.theme_group = QActionGroup(self)
         
-        for action in self.unit_group.actions():
-            if action.data() == current_unit:
-                action.setChecked(True)
-                break
-                
+        # Light theme
+        light_theme = QAction(self._tr('light_theme'), self, checkable=True)
+        light_theme.setData('light')
+        light_theme.triggered.connect(lambda: self._on_theme_changed('light'))
+        self.theme_group.addAction(light_theme)
+        theme_menu.addAction(light_theme)
+        
+        # Dark theme
+        dark_theme = QAction(self._tr('dark_theme'), self, checkable=True)
+        dark_theme.setData('dark')
+        dark_theme.triggered.connect(lambda: self._on_theme_changed('dark'))
+        self.theme_group.addAction(dark_theme)
+        theme_menu.addAction(dark_theme)
+        
+        # Set the current theme
+        if self.theme == 'light':
+            light_theme.setChecked(True)
+        else:
+            dark_theme.setChecked(True)
+            
         # Separator
         settings_menu.addSeparator()
         
         # API Key Manager
-        api_key_action = QAction(self._tr("&API Key Manager..."), self)
-        api_key_action.triggered.connect(self._show_api_key_manager)
-        api_key_action.setStatusTip(self._tr("Manage API keys for weather providers"))
+        api_key_action = QAction(
+            self._tr('api_key_manager'),
+            self,
+            statusTip=self._tr('api_key_manager_tip'),
+            triggered=self._show_api_key_manager
+        )
         settings_menu.addAction(api_key_action)
         
         # Application settings
         app_settings_action = QAction(
-            self._tr('Application Settings...'),
+            self._tr('application_settings') + '...',
             self,
-            statusTip=self._tr('Configure application settings'),
+            statusTip=self._tr('app_settings_tip'),
             triggered=self._show_app_settings
         )
         settings_menu.addAction(app_settings_action)
     
     def _create_view_menu(self) -> None:
         """Create the View menu with display options."""
-        view_menu = self.addMenu(self._tr('👁️ &View'))
+        view_menu = self.addMenu(self._tr('view_menu'))
         
         # Add Weather Maps & Radar action
         self.maps_action = QAction(
             QIcon(str(Path('assets/map.png'))) if Path('assets/map.png').exists() else QIcon(),
-            self._tr('Weather &Maps && Radar'),
+            self._tr('weather_maps'),
             self
         )
+        self.maps_action.setStatusTip(self._tr('weather_maps_tip'))
         self.maps_action.triggered.connect(self._show_maps_dialog)
         view_menu.addAction(self.maps_action)
         view_menu.addSeparator()
         
         # Toggle History action
         self.toggle_history_action = QAction(
-            self._tr('Show &History'),
+            self._tr('show_history'),
             self,
             checkable=True,
             checked=False,
-            statusTip=self._tr('Show or hide the history panel')
+            statusTip=self._tr('show_history_tip')
         )
         self.toggle_history_action.triggered.connect(self.toggle_history.emit)
         view_menu.addAction(self.toggle_history_action)
@@ -378,10 +423,10 @@ class MenuBar(QMenuBar):
         
         # Fullscreen toggle
         fullscreen_action = QAction(
-            self._tr('&Fullscreen'),
+            self._tr('fullscreen'),
             self,
             shortcut=QKeySequence.StandardKey.FullScreen,
-            statusTip=self._tr('Toggle fullscreen mode'),
+            statusTip=self._tr('fullscreen_tip'),
             triggered=self._toggle_fullscreen
         )
         view_menu.addAction(fullscreen_action)
@@ -391,32 +436,62 @@ class MenuBar(QMenuBar):
     
     def _create_language_menu(self) -> None:
         """Create the Language menu with available translations."""
-        self.language_menu = self.addMenu(self._tr('&Language'))
-        
-        # Create action group for language selection
+        language_menu = self.addMenu(self._tr('language_menu'))
         self.language_group = QActionGroup(self)
-        self.language_group.setExclusive(True)
         
         # Get available languages from the language manager
-        try:
-            languages = self.language_manager.get_available_languages()
-            
-            for lang_code in languages:
-                # Get the language name in its own language (e.g., 'English' for 'en')
-                lang_name = self.language_manager.get(f'language_{lang_code}', lang_code.upper())
-                action = self.language_menu.addAction(lang_name)
-                action.setCheckable(True)
-                action.setChecked(lang_code == self.language)
-                action.setData(lang_code)
-                self.language_group.addAction(action)
-            
-            # Connect signal
-            self.language_group.triggered.connect(self._on_language_changed)
-            
-        except Exception as e:
-            logger.error(f"Error creating language menu: {e}")
+        if not hasattr(self, 'language_manager') or not self.language_manager:
+            logger.warning("Language manager not available")
             # Fallback to English if there's an error
-            action = self.language_menu.addAction("English")
+            action = language_menu.addAction(self._tr('english'))
+            action.setCheckable(True)
+            action.setChecked(True)
+            action.setData('en')
+            self.language_group.addAction(action)
+            return
+            
+        try:
+            # Get available languages from the translations directory
+            available_languages = {}
+            for file in self.language_manager.translations_dir.glob('*.json'):
+                lang_code = file.stem.lower()
+                # Get the language name from the translation file itself
+                try:
+                    with open(file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        lang_name = data.get(f'language_{lang_code}', lang_code)
+                        available_languages[lang_code] = lang_name
+                except Exception as e:
+                    logger.error(f"Error loading language {lang_code}: {e}")
+            
+            # Sort languages by their display name
+            sorted_languages = sorted(available_languages.items(), key=lambda x: x[1])
+            
+            # Add a language action for each available language
+            for lang_code, lang_name in sorted_languages:
+                # Skip if we don't have a display name for this language
+                if not lang_name or not lang_code:
+                    continue
+                
+                # Create the action with the language name
+                action = QAction(lang_name, self, checkable=True)
+                action.setData(lang_code)
+                
+                # Use a lambda with a default argument to capture the current lang_code
+                action.triggered.connect(lambda checked, lc=lang_code: self._on_language_changed(lc))
+                
+                # Add to the action group and menu
+                self.language_group.addAction(action)
+                language_menu.addAction(action)
+                
+                # Check if this is the current language
+                if lang_code == self.language:
+                    action.setChecked(True)
+                    
+        except Exception as e:
+            logger.error(f"Error creating language menu: {e}", exc_info=True)
+            # Fallback to English if there's an error
+            action = language_menu.addAction('English')
             action.setCheckable(True)
             action.setChecked(True)
             action.setData('en')
@@ -424,20 +499,21 @@ class MenuBar(QMenuBar):
     
     def _create_help_menu(self) -> None:
         """Create the Help menu with support and information options."""
-        help_menu = self.addMenu(self._tr('❓ &Help'))
+        help_menu = self.addMenu(self._tr('help_menu'))
         
-        # Help actions
+        # Help actions with translations
         actions = [
-            (self._tr('&About'), None, self._show_about_dialog),
-            (self._tr('&Help'), 'F1', self._show_help_dialog),
-            (self._tr('&Documentation'), 'F2', self._show_documentation),
-            (self._tr('View &Logs'), 'F3', self._show_log_viewer),
-            (self._tr('&Sponsor'), None, self._show_sponsor_dialog),
-            (self._tr('Check for &Updates'), None, self._check_for_updates)
+            (self._tr('about'), 'F1', self._show_about_dialog, self._tr('about_tip')),
+            (self._tr('help'), 'F1', self._show_help_dialog, self._tr('help_tip')),
+            (self._tr('documentation'), 'F2', self._show_documentation, self._tr('documentation_tip')),
+            (self._tr('view_logs'), 'F3', self._show_log_viewer, self._tr('view_logs_tip')),
+            (self._tr('sponsor'), None, self._show_sponsor_dialog, self._tr('sponsor_tip')),
+            (self._tr('check_updates'), None, self._check_for_updates, self._tr('check_updates_tip'))
         ]
         
-        for i, (text, shortcut, slot) in enumerate(actions):
+        for i, (text, shortcut, slot, tooltip) in enumerate(actions):
             action = QAction(text, self, triggered=slot)
+            action.setStatusTip(tooltip)
             if shortcut:
                 action.setShortcut(shortcut)
             help_menu.addAction(action)
@@ -449,14 +525,21 @@ class MenuBar(QMenuBar):
 
     
     def _apply_styling(self) -> None:
-        """Apply consistent styling to the menu bar and its components."""
-        # Only apply styling if the widget is properly initialized
-        if not self.isVisible():
+        """Apply consistent styling to the menu bar and its components.
+        
+        This method applies styles to the menu bar and its components. It includes
+        additional safety checks to prevent QPainter warnings that can occur when
+        the widget is not yet properly initialized or visible.
+        """
+        # Only apply styling if the widget is properly initialized and has a paint device
+        if not self.isVisible() or not self.testAttribute(Qt.WidgetAttribute.WA_WState_Created):
+            # Schedule restyling for when the widget is shown
+            QTimer.singleShot(100, self._apply_styling)
             return
             
-        # Use a more robust approach to styling
         try:
-            self.setStyleSheet("""
+            # Store the current style sheet
+            style_sheet = """
                 QMenuBar {
                     background-color: #2c3e50;
                     padding: 2px;
@@ -521,9 +604,26 @@ class MenuBar(QMenuBar):
                     border: 1px solid #2980b9;
                     border-radius: 3px;
                 }
-            """)
+            """
+            
+            # Apply the style sheet
+            self.setStyleSheet(style_sheet)
+            
+            # Force a style refresh
+            self.style().unpolish(self)
+            self.style().polish(self)
+            
+        except RuntimeError as e:
+            if "wrapped C/C++ object" in str(e):
+                # Widget was deleted, ignore
+                return
+            logger.error(f"Runtime error applying menu styling: {e}")
         except Exception as e:
             logger.error(f"Error applying menu styling: {e}")
+        finally:
+            # Ensure we don't have a dangling reference
+            if hasattr(self, '_style_timer'):
+                self._style_timer = None
     
     def _tr(self, text: str, **kwargs) -> str:
         """Translate text using the current translations.
@@ -545,49 +645,88 @@ class MenuBar(QMenuBar):
     def update_translations(self) -> None:
         """Update all menu items with the current translations."""
         try:
-            logger.info("Updating menu translations...")
+            logger.info("Force rebuilding menu for language update...")
             
-            # Update menu titles
-            for menu in self.findChildren(QMenu):
-                menu_title = menu.title().replace('&', '')
-                translated = self._tr(menu_title)
-                if '&' in menu.title():
-                    menu.setTitle('&' + translated)
-                else:
-                    menu.setTitle(translated)
+            # Store current state
+            current_theme = self.theme
+            current_language = self.language
+            current_units = self.units
+            current_provider = getattr(self, 'current_provider', None)
             
-            # Update action text
-            for action in self.actions():
-                action_text = action.text().replace('&', '')
-                translated = self._tr(action_text)
-                if '&' in action.text():
-                    action.setText('&' + translated)
-                else:
-                    action.setText(translated)
+            # Clear existing menus
+            self.clear()
+            
+            # Rebuild the menu structure
+            self._init_ui()
+            
+            # Restore the state
+            self.set_theme(current_theme)
+            self.set_units(current_units)
+            if current_provider:
+                self.set_providers([current_provider], current_provider)
                 
-                # Update tooltips and status tips if they exist
-                if action.toolTip():
-                    action.setToolTip(self._tr(action.toolTip()))
-                if action.statusTip():
-                    action.setStatusTip(self._tr(action.statusTip()))
+            # Force a complete UI update
+            self.update()
+            self.repaint()
             
-            # Update language menu title
-            if hasattr(self, 'language_menu'):
-                self.language_menu.setTitle(self._tr('🌐 &Language'))
-                
-                # Update language menu items
-                for action in self.language_menu.actions():
-                    lang_code = action.data()
-                    if lang_code:
-                        lang_name = self.language_manager.get(f'language_{lang_code}', lang_code.upper())
-                        action.setText(lang_name)
-            
-            logger.info("Menu translations updated successfully")
+            logger.info("Menu rebuilt successfully with new translations")
             
         except Exception as e:
-            logger.error(f"Error updating menu translations: {str(e)}", exc_info=True)
-            # Make sure the menu stays visible even if there's an error
-            self.setVisible(True)
+            logger.error(f"Error rebuilding menu: {str(e)}", exc_info=True)
+            try:
+                # Fallback to the old method if rebuild fails
+                self._update_translations_fallback()
+            except Exception as fallback_error:
+                logger.error(f"Fallback translation update failed: {str(fallback_error)}", exc_info=True)
+                
+    def _update_translations_fallback(self):
+        """Fallback method to update translations without rebuilding the menu."""
+        try:
+            logger.info("Using fallback translation update method...")
+            
+            def update_widget_text(widget, text):
+                if not text or not hasattr(widget, 'setText'):
+                    return
+                clean_text = text.replace('&', '')
+                translated = self._tr(clean_text)
+                if '&' in text:
+                    widget.setText('&' + translated)
+                else:
+                    widget.setText(translated)
+            
+            # Update all menus and actions
+            for widget in self.findChildren((QMenu, QAction)):
+                try:
+                    if isinstance(widget, QMenu):
+                        update_widget_text(widget, widget.title())
+                    else:  # QAction
+                        update_widget_text(widget, widget.text())
+                        if widget.toolTip():
+                            widget.setToolTip(self._tr(widget.toolTip()))
+                        if widget.statusTip():
+                            widget.setStatusTip(self._tr(widget.statusTip()))
+                except Exception as e:
+                    logger.error(f"Error updating widget {widget}: {str(e)}", exc_info=True)
+            
+            # Special handling for language menu items
+            if hasattr(self, 'language_menu'):
+                try:
+                    for action in self.language_menu.actions():
+                        if action.data():
+                            lang_name = self.language_manager.get(
+                                f'language_{action.data()}', 
+                                action.data().upper()
+                            )
+                            action.setText(lang_name)
+                except Exception as e:
+                    logger.error(f"Error updating language menu: {str(e)}", exc_info=True)
+            
+            self.update()
+            self.repaint()
+            logger.info("Fallback translation update completed")
+            
+        except Exception as e:
+            logger.error(f"Critical error in fallback translation update: {str(e)}", exc_info=True)
     
     def set_units(self, units: str) -> None:
         """Set the currently selected units."""
@@ -649,9 +788,18 @@ class MenuBar(QMenuBar):
         """Handle units change."""
         self.units_changed.emit(units)
     
-    def _on_language_changed(self, action: QAction) -> None:
-        """Handle language change from the menu."""
-        language = action.data()
+    def _on_language_changed(self, action_or_lang: Union[QAction, str]) -> None:
+        """Handle language change from the menu.
+        
+        Args:
+            action_or_lang: Either a QAction with language data or a string language code
+        """
+        # Handle both QAction and direct string language codes
+        if isinstance(action_or_lang, QAction):
+            language = action_or_lang.data()
+        else:
+            language = action_or_lang
+            
         if language and hasattr(self, 'language') and language != self.language:
             # Update the language in the language manager
             if self.language_manager.set_language(language):
@@ -727,13 +875,14 @@ class MenuBar(QMenuBar):
         """Show the Weather Maps & Radar dialog."""
         try:
             from script.maps_dialog import show_maps_dialog
-            show_maps_dialog(self.parent, self.language_manager)
+            # Call parent() to get the parent widget, not the parent method
+            show_maps_dialog(self.parent(), self.language_manager)
         except ImportError as e:
             logger.error(f"Failed to load maps dialog: {e}")
             QMessageBox.critical(
                 self,
-                self._tr("Error"),
-                self._tr("Failed to load the Weather Maps & Radar feature.")
+                self._tr("error"),
+                self._tr("error_loading_maps")
             )
     
     def _show_about_dialog(self):
@@ -947,20 +1096,26 @@ class MenuBar(QMenuBar):
     
     def _toggle_fullscreen(self) -> None:
         """Toggle fullscreen mode for the main window."""
-        if not hasattr(self, 'parent') or not self.parent:
-            logger.warning("Cannot toggle fullscreen: No parent window found")
-            return
+        try:
+            # Get the parent widget (using callable check in case it's a method)
+            parent = self.parent() if callable(self.parent) else self.parent
             
-        if self.parent.isFullScreen():
-            self.parent.showNormal()
-            if hasattr(self, 'fullscreen_action'):
-                self.fullscreen_action.setChecked(False)
-            logger.debug("Exited fullscreen mode")
-        else:
-            self.parent.showFullScreen()
-            if hasattr(self, 'fullscreen_action'):
-                self.fullscreen_action.setChecked(True)
-            logger.debug("Entered fullscreen mode")
+            if not parent:
+                logger.warning("Cannot toggle fullscreen: No parent window found")
+                return
+                
+            if parent.isFullScreen():
+                parent.showNormal()
+                if hasattr(self, 'fullscreen_action'):
+                    self.fullscreen_action.setChecked(False)
+                logger.debug("Exited fullscreen mode")
+            else:
+                parent.showFullScreen()
+                if hasattr(self, 'fullscreen_action'):
+                    self.fullscreen_action.setChecked(True)
+                logger.debug("Entered fullscreen mode")
+        except Exception as e:
+            logger.error(f"Error toggling fullscreen: {e}")
     
     def _on_layout_changed(self, layout: str) -> None:
         """Handle layout change in the view menu.

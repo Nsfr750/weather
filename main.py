@@ -152,29 +152,30 @@ class WeatherApp(QMainWindow):
         """Create and set up the menu bar."""
         from script.menu import MenuBar
         
-        # Create the menu bar
+        # Create the menu bar with callbacks
         self.menu_bar = MenuBar(
             parent=self,
             language_manager=self.language_manager,
             language=self.language,
-            units=self.units
+            units=self.units,
+            on_refresh=self.refresh_weather,
+            on_units_changed=self.set_units,
+            on_theme_changed=self._on_theme_changed,  # Add this method if needed
+            on_show_about=self.show_about,
+            on_show_help=self.show_help,
+            on_show_sponsor=self.show_sponsor,
+            on_check_updates=self.check_for_updates,
+            on_show_maps=self._show_maps,  # Add this method if needed
+            on_show_log_viewer=self.show_log_viewer,
+            on_quit=self.close
         )
         
-        # Connect signals
-        self.menu_bar.refresh_triggered.connect(self.refresh_weather)
-        self.menu_bar.units_changed.connect(self.set_units)
+        # Connect remaining signals that don't have direct callbacks
         self.menu_bar.language_changed.connect(self.set_language)
         self.menu_bar.toggle_history.connect(self.toggle_history)
         self.menu_bar.add_to_favorites.connect(self.add_current_to_favorites)
         self.menu_bar.manage_favorites.connect(self.manage_favorites)
         self.menu_bar.favorite_selected.connect(self.set_location)
-        self.menu_bar.show_about.connect(self.show_about)
-        self.menu_bar.show_help.connect(self.show_help)
-        self.menu_bar.show_md_viewer.connect(self.show_md_viewer)
-        self.menu_bar.show_log_viewer.connect(self.show_log_viewer)
-        self.menu_bar.show_sponsor.connect(self.show_sponsor)
-        self.menu_bar.check_updates.connect(self.check_for_updates)
-        self.menu_bar.exit_triggered.connect(self.close)
         
         # Set the menu bar
         self.setMenuBar(self.menu_bar)
@@ -928,6 +929,43 @@ class WeatherApp(QMainWindow):
         sponsor_dialog = Sponsor(self)
         sponsor_dialog.exec()
         
+    def _on_theme_changed(self, theme: str):
+        """Handle theme change from the menu bar.
+        
+        Args:
+            theme: The name of the theme to change to (e.g., 'light', 'dark')
+        """
+        # Store the theme preference
+        self.config_manager.set('theme', theme)
+        self.config_manager.save()
+        
+        # Apply the theme (you'll need to implement this method)
+        self._apply_theme(theme)
+        
+    def _apply_theme(self, theme: str):
+        """Apply the specified theme to the application.
+        
+        Args:
+            theme: The name of the theme to apply (e.g., 'light', 'dark')
+        """
+        # This is a placeholder - implement your theme switching logic here
+        # For example, you might want to load a QSS stylesheet based on the theme
+        pass
+        
+    def _show_maps(self):
+        """Show the maps dialog."""
+        try:
+            from script.maps_dialog import MapsDialog
+            maps_dialog = MapsDialog(self.city, self.weather_provider, self)
+            maps_dialog.exec()
+        except ImportError as e:
+            logger.error(f"Failed to load maps dialog: {e}")
+            QMessageBox.warning(
+                self,
+                self._tr("Feature Not Available"),
+                self._tr("Maps feature is not available. Please check if all required dependencies are installed.")
+            )
+        
     def set_language(self, language_code):
         """Set the application language.
         
@@ -960,7 +998,7 @@ class WeatherApp(QMainWindow):
             logger.info("Updating UI translations...")
             
             # Get translation function from language manager
-            t = self.language_manager.t
+            t = self.language_manager.tr
             
             # Update window title
             self.setWindowTitle(f'{t("app_name", "Weather")} v{get_version()}')

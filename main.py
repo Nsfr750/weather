@@ -160,12 +160,11 @@ class WeatherApp(QMainWindow):
             units=self.units,
             on_refresh=self.refresh_weather,
             on_units_changed=self.set_units,
-            on_theme_changed=self._on_theme_changed,  # Add this method if needed
             on_show_about=self.show_about,
             on_show_help=self.show_help,
             on_show_sponsor=self.show_sponsor,
             on_check_updates=self.check_for_updates,
-            on_show_maps=self._show_maps,  # Add this method if needed
+            on_show_maps=self._show_maps,
             on_show_log_viewer=self.show_log_viewer,
             on_quit=self.close
         )

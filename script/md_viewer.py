@@ -20,14 +20,14 @@ from PyQt6.QtGui import QDesktopServices
 # Import language manager
 from lang.language_manager import LanguageManager
 
-# Import translations
-from translations import TRANSLATIONS
+# Import language manager
+from lang.language_manager import get_language_manager
 
 class MarkdownViewer(QMainWindow):
-    def __init__(self, file_path=None, language='EN'):
+    def __init__(self, file_path=None, language='en'):
         super().__init__()
-        self.language = language
-        self.translations = TRANSLATIONS.get(language, TRANSLATIONS['EN'])
+        self.language = language.lower()
+        self.language_manager = get_language_manager()
         self.zoom_level = 0
         self.init_ui()
         
@@ -40,7 +40,7 @@ class MarkdownViewer(QMainWindow):
             self.load_file(file_path)
     
     def init_ui(self):
-        self.setWindowTitle(self.translations.get('documentation', 'Documentation'))
+        self.setWindowTitle(self.tr('Documentation'))
         self.setGeometry(100, 100, 800, 600)
         
         # Create central widget and layout
@@ -55,13 +55,13 @@ class MarkdownViewer(QMainWindow):
         left_controls = QHBoxLayout()
         
         # Add label for dropdown
-        label = QLabel(self.translations.get('select_document', 'Select Document:'))
+        label = QLabel(self.tr('Select Document:'))
         left_controls.addWidget(label)
         
         # Create dropdown for markdown files
         self.file_dropdown = QComboBox()
         self.file_dropdown.setMinimumWidth(200)
-        self.file_dropdown.setToolTip(self.translations.get('select_document_tooltip', 'Select a document to view'))
+        self.file_dropdown.setToolTip(self.tr('Select a document to view'))
         self.file_dropdown.currentTextChanged.connect(self.on_document_selected)
         left_controls.addWidget(self.file_dropdown)
         
@@ -76,21 +76,21 @@ class MarkdownViewer(QMainWindow):
         
         # Zoom out button
         self.zoom_out_btn = QPushButton('−')  # Minus sign
-        self.zoom_out_btn.setToolTip(self.translations.get('zoom_out', 'Zoom Out (Ctrl+-)'))
+        self.zoom_out_btn.setToolTip(self.tr('Zoom Out (Ctrl+-)'))
         self.zoom_out_btn.setFixedSize(30, 30)
         self.zoom_out_btn.clicked.connect(self.zoom_out)
         right_controls.addWidget(self.zoom_out_btn)
         
         # Zoom reset button
         self.zoom_reset_btn = QPushButton('100%')
-        self.zoom_reset_btn.setToolTip(self.translations.get('reset_zoom', 'Reset Zoom (Ctrl+0)'))
+        self.zoom_reset_btn.setToolTip(self.tr('Reset Zoom (Ctrl+0)'))
         self.zoom_reset_btn.setFixedSize(50, 30)
         self.zoom_reset_btn.clicked.connect(self.reset_zoom)
         right_controls.addWidget(self.zoom_reset_btn)
         
         # Zoom in button
         self.zoom_in_btn = QPushButton('+')
-        self.zoom_in_btn.setToolTip(self.translations.get('zoom_in', 'Zoom In (Ctrl++)'))
+        self.zoom_in_btn.setToolTip(self.tr('Zoom In (Ctrl++)'))
         self.zoom_in_btn.setFixedSize(30, 30)
         self.zoom_in_btn.clicked.connect(self.zoom_in)
         right_controls.addWidget(self.zoom_in_btn)
@@ -101,8 +101,8 @@ class MarkdownViewer(QMainWindow):
         right_controls.addWidget(separator)
         
         # About button
-        self.about_btn = QPushButton(self.translations.get('about', 'About'))
-        self.about_btn.setToolTip(self.translations.get('about_tooltip', 'Show information about this application'))
+        self.about_btn = QPushButton(self.language_manager.get('about', 'About'))
+        self.about_btn.setToolTip(self.language_manager.get('about_tooltip', 'Show information about this application'))
         self.about_btn.clicked.connect(self.show_about)
         self.about_btn.setFixedHeight(30)
         right_controls.addWidget(self.about_btn)
@@ -121,10 +121,10 @@ class MarkdownViewer(QMainWindow):
         layout.addWidget(self.text_browser)
         
         # Add close button
-        close_button = QPushButton(self.translations.get('close', 'Close'))
+        close_button = QPushButton(self.language_manager.get('close', 'Close'))
         close_button.clicked.connect(self.close)
         close_button.setFixedWidth(100)
-        close_button.setToolTip(self.translations.get('close_tooltip', 'Close this window'))
+        close_button.setToolTip(self.language_manager.get('close_tooltip', 'Close this window'))
         
         # Create a horizontal layout for the button to center it
         button_layout = QHBoxLayout()
@@ -156,37 +156,37 @@ class MarkdownViewer(QMainWindow):
         menubar = self.menuBar()
         
         # File menu
-        file_menu = menubar.addMenu(self.translations.get('file', 'File'))
+        file_menu = menubar.addMenu(self.language_manager.get('file', 'File'))
         
-        open_action = QAction(self.translations.get('open', 'Open'), self)
+        open_action = QAction(self.language_manager.get('open', 'Open'), self)
         open_action.triggered.connect(self.open_file_dialog)
         file_menu.addAction(open_action)
         
         file_menu.addSeparator()
         
-        exit_action = QAction(self.translations.get('exit', 'Exit'), self)
+        exit_action = QAction(self.language_manager.get('exit', 'Exit'), self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
         # View menu
-        view_menu = menubar.addMenu(self.translations.get('view', 'View'))
+        view_menu = menubar.addMenu(self.language_manager.get('view', 'View'))
         
-        zoom_in_action = QAction(self.translations.get('zoom_in', 'Zoom In'), self)
+        zoom_in_action = QAction(self.language_manager.get('zoom_in', 'Zoom In'), self)
         zoom_in_action.triggered.connect(self.zoom_in)
         view_menu.addAction(zoom_in_action)
         
-        zoom_out_action = QAction(self.translations.get('zoom_out', 'Zoom Out'), self)
+        zoom_out_action = QAction(self.language_manager.get('zoom_out', 'Zoom Out'), self)
         zoom_out_action.triggered.connect(self.zoom_out)
         view_menu.addAction(zoom_out_action)
         
-        reset_zoom_action = QAction(self.translations.get('reset_zoom', 'Reset Zoom'), self)
+        reset_zoom_action = QAction(self.language_manager.get('reset_zoom', 'Reset Zoom'), self)
         reset_zoom_action.triggered.connect(self.reset_zoom)
         view_menu.addAction(reset_zoom_action)
         
         # Help menu
-        help_menu = menubar.addMenu(self.translations.get('help', 'Help'))
+        help_menu = menubar.addMenu(self.language_manager.get('help', 'Help'))
         
-        about_action = QAction(self.translations.get('about', 'About'), self)
+        about_action = QAction(self.language_manager.get('about', 'About'), self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
     
@@ -287,9 +287,9 @@ class MarkdownViewer(QMainWindow):
                 # If we get here, the file wasn't found
                 reply = QMessageBox.question(
                     self,
-                    self.translations.get('file_not_found', 'File Not Found'),
-                    f"{self.translations.get('could_not_find', 'Could not find:')} {os.path.basename(file_path)}\n\n"
-                    f"{self.translations.get('create_file', 'Would you like to create this file?')}",
+                    self.language_manager.get('file_not_found', 'File Not Found'),
+                    f"{self.language_manager.get('could_not_find', 'Could not find:')} {os.path.basename(file_path)}\n\n"
+                    f"{self.language_manager.get('create_file', 'Would you like to create this file?')}",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.Yes
                 )
@@ -306,8 +306,8 @@ class MarkdownViewer(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    self.translations.get('error', 'Error'),
-                    f"{self.translations.get('error_loading', 'Error loading file:')} {str(e)}"
+                    self.language_manager.get('error', 'Error'),
+                    f"{self.language_manager.get('error_loading', 'Error loading file:')} {str(e)}"
                 )
         else:
             # For external links, open in default application
@@ -335,8 +335,8 @@ class MarkdownViewer(QMainWindow):
             if not os.path.exists(file_path):
                 QMessageBox.warning(
                     self,
-                    self.translations.get('error', 'Error'),
-                    f"{self.translations.get('file_not_found', 'File not found:')} {file_path}"
+                    self.language_manager.get('error', 'Error'),
+                    f"{self.language_manager.get('file_not_found', 'File not found:')} {file_path}"
                 )
                 return False
             
@@ -409,8 +409,8 @@ class MarkdownViewer(QMainWindow):
             """.format(html, QUrl.fromLocalFile(base_dir + '/').toString())
             
             self.text_browser.setHtml(styled_html)
-            self.setWindowTitle(f"{self.translations.get('documentation', 'Documentation')} - {os.path.basename(file_path)}")
-            self.status_bar.showMessage(f"{self.translations.get('loaded', 'Loaded:')} {file_path}")
+            self.setWindowTitle(f"{self.language_manager.get('documentation', 'Documentation')} - {os.path.basename(file_path)}")
+            self.status_bar.showMessage(f"{self.language_manager.get('loaded', 'Loaded:')} {file_path}")
             
             # Store current file path
             self.current_file = file_path
@@ -420,8 +420,8 @@ class MarkdownViewer(QMainWindow):
         except Exception as e:
             QMessageBox.critical(
                 self,
-                self.translations.get('error', 'Error'),
-                f"{self.translations.get('error_loading_file', 'Error loading file:')} {str(e)}"
+                self.language_manager.get('error', 'Error'),
+                f"{self.language_manager.get('error_loading_file', 'Error loading file:')} {str(e)}"
             )
             return False
 
@@ -500,8 +500,8 @@ class MarkdownViewer(QMainWindow):
     def show_about(self):
         QMessageBox.about(
             self,
-            self.translations.get('about', 'About'),
-            self.translations.get('about_text', 'Markdown Viewer\nVersion 1.2.0\n\nA markdown documentation viewer.')
+            self.tr('About'),
+            self.tr('Markdown Viewer\nVersion 1.2.0\n\nA markdown documentation viewer.')
         )
 
 

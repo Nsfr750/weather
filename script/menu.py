@@ -18,7 +18,8 @@ from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QTimer
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QIcon
 from PyQt6.QtWidgets import (
     QMenuBar, QMenu, QMessageBox, QFileDialog, QVBoxLayout, 
-    QLabel, QLineEdit, QDialogButtonBox, QWidget, QStyle
+    QLabel, QLineEdit, QDialogButtonBox, QWidget, QStyle,
+    QDialog, QCheckBox
 )
 
 # Local application imports
@@ -26,6 +27,8 @@ from script.about import About
 from script.help import Help
 from script.sponsor import Sponsor
 from script.log_viewer import LogViewer
+from script.maps_dialog import MapsDialog
+from script.md_viewer import MarkdownViewer
 from script.api_key_manager import ApiKeyManagerDialog
 from lang.language_manager import LanguageManager
 
@@ -53,7 +56,6 @@ class MenuBar(QMenuBar):
     add_to_favorites = pyqtSignal()
     manage_favorites = pyqtSignal()
     favorite_selected = pyqtSignal(str)
-    theme_changed = pyqtSignal(str)
     offline_mode_changed = pyqtSignal(bool)
     settings_updated = pyqtSignal()
     provider_changed = pyqtSignal(str)
@@ -90,7 +92,6 @@ class MenuBar(QMenuBar):
                  units: str = DEFAULT_UNITS,
                  on_refresh: Optional[Callable] = None,
                  on_units_changed: Optional[Callable] = None,
-                 on_theme_changed: Optional[Callable] = None,
                  on_show_about: Optional[Callable] = None,
                  on_show_help: Optional[Callable] = None,
                  on_show_sponsor: Optional[Callable] = None,
@@ -128,14 +129,12 @@ class MenuBar(QMenuBar):
         # Store references
         self.language_manager = language_manager or LanguageManager()
         self.config_manager = config_manager
-        self.theme = theme
         self.language = language
         self.units = units
         
         # Store callbacks
         self.on_refresh = on_refresh
         self.on_units_changed = on_units_changed
-        self.on_theme_changed = on_theme_changed
         self.on_show_about = on_show_about
         self.on_show_help = on_show_help
         self.on_show_sponsor = on_show_sponsor
@@ -346,31 +345,7 @@ class MenuBar(QMenuBar):
             metric_action.setChecked(True)
         else:
             imperial_action.setChecked(True)
-            
-        # Theme submenu
-        theme_menu = settings_menu.addMenu(self._tr('theme'))
-        self.theme_group = QActionGroup(self)
-        
-        # Light theme
-        light_theme = QAction(self._tr('light_theme'), self, checkable=True)
-        light_theme.setData('light')
-        light_theme.triggered.connect(lambda: self._on_theme_changed('light'))
-        self.theme_group.addAction(light_theme)
-        theme_menu.addAction(light_theme)
-        
-        # Dark theme
-        dark_theme = QAction(self._tr('dark_theme'), self, checkable=True)
-        dark_theme.setData('dark')
-        dark_theme.triggered.connect(lambda: self._on_theme_changed('dark'))
-        self.theme_group.addAction(dark_theme)
-        theme_menu.addAction(dark_theme)
-        
-        # Set the current theme
-        if self.theme == 'light':
-            light_theme.setChecked(True)
-        else:
-            dark_theme.setChecked(True)
-            
+                               
         # Separator
         settings_menu.addSeparator()
         
@@ -522,8 +497,6 @@ class MenuBar(QMenuBar):
             if i in [0, 2, 3]:
                 help_menu.addSeparator()
     
-
-    
     def _apply_styling(self) -> None:
         """Apply consistent styling to the menu bar and its components.
         
@@ -648,7 +621,6 @@ class MenuBar(QMenuBar):
             logger.info("Force rebuilding menu for language update...")
             
             # Store current state
-            current_theme = self.theme
             current_language = self.language
             current_units = self.units
             current_provider = getattr(self, 'current_provider', None)
@@ -660,7 +632,6 @@ class MenuBar(QMenuBar):
             self._init_ui()
             
             # Restore the state
-            self.set_theme(current_theme)
             self.set_units(current_units)
             if current_provider:
                 self.set_providers([current_provider], current_provider)
@@ -733,14 +704,6 @@ class MenuBar(QMenuBar):
         if hasattr(self, 'unit_group'):
             for action in self.unit_group.actions():
                 if action.data() == units:
-                    action.setChecked(True)
-                    break
-    
-    def set_theme(self, theme: str) -> None:
-        """Set the currently selected theme."""
-        if hasattr(self, 'theme_group'):
-            for action in self.theme_group.actions():
-                if action.data() == theme:
                     action.setChecked(True)
                     break
     
@@ -822,11 +785,7 @@ class MenuBar(QMenuBar):
                     if a.data() == self.language:
                         a.setChecked(True)
                         break
-    
-    def _on_theme_changed(self, theme: str) -> None:
-        """Handle theme change."""
-        self.theme_changed.emit(theme)
-    
+        
     def _show_documentation(self) -> None:
         """Show the documentation using markdown_viewer.py."""
         try:
@@ -920,13 +879,14 @@ class MenuBar(QMenuBar):
     def _show_api_key_manager(self):
         """Show the API Key Manager dialog."""
         try:
-            dialog = ApiKeyManagerDialog(self.parent)
+            # Use self as the parent widget instead of self.parent
+            dialog = ApiKeyManagerDialog(self)
             dialog.api_keys_updated.connect(self._on_api_keys_updated)
             dialog.exec()
         except Exception as e:
             logger.error(f"Error showing API key manager: {e}")
             QMessageBox.critical(
-                self.parent,
+                self,  # Use self as the parent widget
                 self._tr("Error"),
                 self._tr("Failed to load API key manager: {}").format(str(e))
             )
@@ -1116,20 +1076,7 @@ class MenuBar(QMenuBar):
                 logger.debug("Entered fullscreen mode")
         except Exception as e:
             logger.error(f"Error toggling fullscreen: {e}")
-    
-    def _on_layout_changed(self, layout: str) -> None:
-        """Handle layout change in the view menu.
         
-        Args:
-            layout: The selected layout name (e.g., 'standard', 'compact', 'detailed')
-        """
-        logger.info(f"Layout changed to: {layout}")
-        self.settings.setValue("layout", layout)
-        
-        # Emit a signal if needed (uncomment if you want to connect this to other components)
-        # if hasattr(self.parent(), 'on_layout_changed'):
-        #     self.parent().on_layout_changed(layout)
-    
 def create_menu_bar(parent: Optional[QWidget] = None, 
                     language_manager: Optional[LanguageManager] = None) -> MenuBar:
     """

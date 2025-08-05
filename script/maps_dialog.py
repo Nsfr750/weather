@@ -33,12 +33,9 @@ from lang.language_manager import LanguageManager
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Skip Qt.AA_ShareOpenGLContexts as it needs to be set before QApplication is created
-# This will be handled in main.py
-
-# Default coordinates (centered on Europe)
-DEFAULT_LATITUDE = 46.0
-DEFAULT_LONGITUDE = 2.0
+# Default coordinates
+DEFAULT_LATITUDE = 45.7627855
+DEFAULT_LONGITUDE = 8.4451747
 DEFAULT_ZOOM = 4
 
 class MapsDialog(QDialog):

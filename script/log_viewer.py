@@ -16,27 +16,21 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
 from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QFont, QTextOption
 
-# Import language manager
-from lang.language_manager import LanguageManager
-
 class LogViewer(QMainWindow):
     """
     A dialog to view and filter application log files using PyQt6.
     """
     
-    def __init__(self, parent=None, translations_manager=None, language='en'):
+    def __init__(self, parent=None):
         super().__init__(parent)
         
-        # Store references
-        self.translations_manager = translations_manager or getattr(parent, 'translations_manager', None)
-        self.language = language
+        # Initialize variables
         self.current_log_file = None  # Initialize current_log_file to None
         self.current_level = 'ALL'    # Default log level filter
-        self.refresh_interval = 5000  # Default refresh interval in milliseconds (5 seconds)
+        self.refresh_interval = 15000  # Refresh interval in milliseconds (15 seconds)
         
         # Initialize UI
         self.setup_ui()
-        self.translate_ui()
         
         # Load logs
         self.load_log_files()
@@ -46,47 +40,16 @@ class LogViewer(QMainWindow):
         self.refresh_timer.timeout.connect(self.refresh_logs)
         self.refresh_timer.start(self.refresh_interval)
         
-    def translate_ui(self):
-        """Translate the UI elements to the current language."""
-        if not self.translations_manager:
-            return
-            
-        # Set window title
-        self.setWindowTitle(self._tr("Log Viewer"))
-        
-        # Set labels
-        self.file_label.setText(self._tr("Log File:"))
-        self.level_label.setText(self._tr("Log Level:"))
-               
-        # Set tooltips
-        self.refresh_btn.setToolTip(self._tr("Refresh log view"))
-        self.clear_btn.setToolTip(self._tr("Clear the log file"))
-        self.delete_btn.setToolTip(self._tr("Delete the log file"))
-        self.auto_refresh_btn.setToolTip(self._tr("Toggle auto-refresh of logs"))
-        self.save_btn.setToolTip(self._tr("Save the log file"))
-        
-        # Update log level combo box
-        current_level = self.level_combo.currentText()
-        self.level_combo.clear()
-        levels = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        for level in levels:
-            self.level_combo.addItem(self._tr(level), level)
-        
-        # Restore selected level if possible
-        index = self.level_combo.findText(self._tr(current_level))
-        if index >= 0:
-            self.level_combo.setCurrentIndex(index)
-    
     def _tr(self, text):
-        """Translate text using the translations manager if available."""
-        if self.translations_manager:
-            return self.translations_manager.t(text)
+        """Translation placeholder - returns text as is for English."""
         return text
-    
-    def set_language(self, language):
-        """Update the language of the UI."""
-        self.language = language
-        self.translate_ui()
+        
+    def translate_ui(self):
+        """Translate the UI elements to the current language.
+        
+        This is a no-op since we're keeping the UI in English only.
+        """
+        pass
     
     def setup_ui(self):
         """Initialize the user interface."""
@@ -96,6 +59,40 @@ class LogViewer(QMainWindow):
         # Create main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
+        
+        # Set up UI elements with English text
+        self.file_label = QLabel("Log File:")
+        self.level_label = QLabel("Log Level:")
+        
+        # Log level combo box
+        self.level_combo = QComboBox()
+        levels = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        for level in levels:
+            self.level_combo.addItem(level, level)
+        self.level_combo.currentIndexChanged.connect(self.on_level_select)
+        
+        # Buttons
+        self.refresh_btn = QPushButton("Refresh")
+        self.clear_btn = QPushButton("Clear")
+        self.delete_btn = QPushButton("Delete")
+        self.save_btn = QPushButton("Save As...")
+        self.auto_refresh_btn = QPushButton("Auto-refresh")
+        self.auto_refresh_btn.setCheckable(True)
+        self.auto_refresh_btn.setChecked(True)
+        
+        # Set tooltips
+        self.refresh_btn.setToolTip("Refresh log view")
+        self.clear_btn.setToolTip("Clear the log file")
+        self.delete_btn.setToolTip("Delete the log file")
+        self.auto_refresh_btn.setToolTip("Toggle auto-refresh of logs")
+        self.save_btn.setToolTip("Save the log file")
+        
+        # Connect buttons
+        self.refresh_btn.clicked.connect(self.refresh_logs)
+        self.clear_btn.clicked.connect(self.clear_logs)
+        self.delete_btn.clicked.connect(self.delete_log)
+        self.save_btn.clicked.connect(self.save_log_as)
+        self.auto_refresh_btn.toggled.connect(self.toggle_auto_refresh)
         
         # Main layout
         main_layout = QVBoxLayout(main_widget)
@@ -243,7 +240,7 @@ class LogViewer(QMainWindow):
             
             QComboBox QAbstractItemView {
                 background-color: #3c3f41;
-                color: #e0e0e0;
+                color: white;
                 selection-background-color: #4e5254;
                 border: 1px solid #555555;
                 padding: 5px;
@@ -341,13 +338,16 @@ class LogViewer(QMainWindow):
             
         log_level = 'INFO'  # Default log level
         
-        # Try to extract log level from the line
-        level_match = re.search(r'\[(DEBUG|INFO|WARNING|ERROR|CRITICAL)\]', line)
+        # Try to extract log level from the line (case-insensitive)
+        level_match = re.search(r'\[([a-zA-Z]+)\]', line)
         if level_match:
-            log_level = level_match.group(1)
+            level_str = level_match.group(1).upper()
+            if level_str in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+                log_level = level_str
         
-        # Skip if log level doesn't match the filter
-        if self.current_level != 'ALL' and log_level != self.current_level:
+        # Skip if log level doesn't match the filter (case-insensitive comparison)
+        if (self.current_level != 'ALL' and 
+            log_level.upper() != self.current_level.upper()):
             return
         
         # Create text format based on log level
@@ -372,6 +372,20 @@ class LogViewer(QMainWindow):
         
         # Apply formatting
         cursor.insertText(line + '\n', format)
+    def load_log_content(self):
+        """Load the content of the selected log file with the current filters."""
+        if not self.current_log_file or not self.current_log_file.exists():
+            self.log_display.clear()
+            return
+            
+        try:
+            with open(self.current_log_file, 'r', encoding='utf-8') as f:
+                self.log_display.clear()
+                for line in f:
+                    self._process_log_line(line.strip())
+        except Exception as e:
+            self.log_display.clear()
+            self.log_display.append(f"Error loading log file: {str(e)}")
     
     def on_file_select(self, index):
         """Handle log file selection."""
@@ -385,11 +399,16 @@ class LogViewer(QMainWindow):
                 self.status_bar.showMessage('Selected log file does not exist')
                 self.delete_btn.setEnabled(False)
     
-    def on_level_select(self, level):
-        """Handle log level filter selection."""
-        self.current_level = level
-        if self.current_log_file and self.current_log_file.exists():
-            self.load_log_content()
+    def on_level_select(self, index):
+        """Handle log level filter selection.
+        
+        Args:
+            index: The index of the selected level in the combo box
+        """
+        if index >= 0:
+            self.current_level = self.level_combo.itemData(index)
+            if self.current_log_file and self.current_log_file.exists():
+                self.load_log_content()
     
     def toggle_auto_refresh(self, checked):
         """Toggle auto-refresh of logs."""
@@ -494,33 +513,134 @@ class LogViewer(QMainWindow):
                 f'Failed to delete log file: {str(e)}'
             )
     
+    def clear_logs(self):
+        """Clear the currently selected log file."""
+        if not self.current_log_file:
+            QMessageBox.warning(self, 'No Log File', 'No log file is currently selected.')
+            return
+            
+        # Ask for confirmation
+        reply = QMessageBox.question(
+            self,
+            'Confirm Clear',
+            f'Are you sure you want to clear "{self.current_log_file.name}"?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                # Clear the file by opening in write mode and closing immediately
+                with open(self.current_log_file, 'w', encoding='utf-8') as f:
+                    pass
+                self.status_bar.showMessage('Log file cleared')
+                self.refresh_logs()  # Refresh the display
+            except Exception as e:
+                QMessageBox.critical(self, 'Error', f'Failed to clear log file: {str(e)}')
+    
+    def delete_log(self):
+        """Delete the currently selected log file."""
+        if not self.current_log_file:
+            QMessageBox.warning(self, 'No Log File', 'No log file is currently selected.')
+            return
+            
+        if send2trash is None:
+            QMessageBox.critical(
+                self,
+                'Error',
+                'The send2trash module is not installed.\n'
+                'Please install it with: pip install send2trash'
+            )
+            return
+            
+        try:
+            # Ask for confirmation
+            reply = QMessageBox.question(
+                self,
+                'Confirm Delete',
+                f'Are you sure you want to move "{self.current_log_file.name}" to the trash?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # Move file to trash
+                send2trash(str(self.current_log_file))
+                
+                # Update UI
+                current_index = self.file_combo.currentIndex()
+                self.file_combo.removeItem(current_index)
+                
+                # Select next or previous item
+                new_count = self.file_combo.count()
+                if new_count > 0:
+                    new_index = min(current_index, new_count - 1)
+                    self.file_combo.setCurrentIndex(new_index)
+                else:
+                    self.current_log_file = None
+                    self.log_display.clear()
+                    self.delete_btn.setEnabled(False)
+                
+                self.status_bar.showMessage('Log file moved to trash')
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                'Error',
+                f'Failed to delete log file: {str(e)}'
+            )
+    
+    def save_log_as(self):
+        """Save the current log content to a new file."""
+        if not self.current_log_file:
+            QMessageBox.warning(self, 'No Log File', 'No log file is currently selected.')
+            return
+            
+        # Get the default save location
+        default_name = f"{self.current_log_file.stem}_saved{self.current_log_file.suffix}"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            'Save Log As',
+            str(self.current_log_file.parent / default_name),
+            'Log Files (*.log);;Text Files (*.txt);;All Files (*)'
+        )
+        
+        if file_path:
+            try:
+                # Get the current log content
+                log_content = self.log_display.toPlainText()
+                
+                # Save to the new file
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(log_content)
+                
+                self.status_bar.showMessage(f'Log saved to {Path(file_path).name}')
+                
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    'Error',
+                    f'Failed to save log file: {str(e)}'
+                )
+    
     def closeEvent(self, event):
         """Handle window close event."""
         self.refresh_timer.stop()
         event.accept()
 
 
-def show_log(parent=None, translations_manager=None, language='en'):
+def show_log(parent=None):
     """
     Show the log viewer dialog.
     
     Args:
         parent: Parent widget
-        translations_manager: Translations manager instance
-        language: Current language code
     """
-    if not hasattr(show_log, 'instance') or show_log.instance is None:
-        show_log.instance = LogViewer(parent, translations_manager, language)
-    
-    # Update translations if needed
-    if translations_manager is not None:
-        show_log.instance.translations_manager = translations_manager
-        show_log.instance.set_language(language)
-    
-    show_log.instance.show()
-    show_log.instance.raise_()
-    show_log.instance.activateWindow()
-    return show_log.instance
+    log_viewer = LogViewer(parent)
+    log_viewer.show()
+    log_viewer.raise_()
+    log_viewer.activateWindow()
+    return log_viewer
 
 # For direct execution
 if __name__ == '__main__':

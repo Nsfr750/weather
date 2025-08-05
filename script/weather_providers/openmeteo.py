@@ -11,6 +11,9 @@ from typing import Dict, List, Any, Optional
 import requests
 from pathlib import Path
 
+# Local imports
+from lang.language_manager import get_language_manager
+
 logger = logging.getLogger(__name__)
 
 class OpenMeteoProvider:
@@ -29,6 +32,10 @@ class OpenMeteoProvider:
         self.cache = {}
         self.history = []
         self.max_history = 10  # Number of historical queries to keep
+        self.language_manager = get_language_manager()
+        
+        # Initialize weather code translations
+        self._init_weather_descriptions()
         
     def get_weather(self, location: str) -> Dict[str, Any]:
         """Get current weather for a location.
@@ -353,19 +360,51 @@ class OpenMeteoProvider:
             
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 403:
-                logger.warning("Nominatim API rate limit exceeded. Please provide a custom user agent and respect the usage policy.")
+                logger.warning(self.language_manager.tr("nominatim_rate_limit_exceeded"))
             else:
-                logger.warning(f"Nominatim reverse geocoding failed for ({lat}, {lon}): {e}")
+                logger.warning(self.language_manager.tr("nominatim_reverse_geocoding_failed").format(lat=lat, lon=lon, error=str(e)))
         except Exception as e:
-            logger.warning(f"Error in reverse geocoding for ({lat}, {lon}): {e}")
+            logger.warning(self.language_manager.tr("reverse_geocoding_error").format(lat=lat, lon=lon, error=str(e)))
         
         # Fallback to just showing coordinates
         return f"{lat:.4f}, {lon:.4f}"
     
-    def _get_weather_description(self, code: int) -> str:
-        """Convert weather code to description."""
-        # WMO Weather interpretation codes (WW)
-        weather_codes = {
+    def _init_weather_descriptions(self) -> None:
+        """Initialize weather code translations."""
+        # WMO Weather interpretation codes (WW) with translation keys
+        self.weather_code_keys = {
+            0: "weather_clear_sky",
+            1: "weather_mainly_clear",
+            2: "weather_partly_cloudy",
+            3: "weather_overcast",
+            45: "weather_fog",
+            48: "weather_depositing_rime_fog",
+            51: "weather_light_drizzle",
+            53: "weather_moderate_drizzle",
+            55: "weather_dense_drizzle",
+            56: "weather_light_freezing_drizzle",
+            57: "weather_dense_freezing_drizzle",
+            61: "weather_slight_rain",
+            63: "weather_moderate_rain",
+            65: "weather_heavy_rain",
+            66: "weather_light_freezing_rain",
+            67: "weather_heavy_freezing_rain",
+            71: "weather_slight_snow_fall",
+            73: "weather_moderate_snow_fall",
+            75: "weather_heavy_snow_fall",
+            77: "weather_snow_grains",
+            80: "weather_slight_rain_showers",
+            81: "weather_moderate_rain_showers",
+            82: "weather_violent_rain_showers",
+            85: "weather_slight_snow_showers",
+            86: "weather_heavy_snow_showers",
+            95: "weather_thunderstorm",
+            96: "weather_thunderstorm_slight_hail",
+            99: "weather_thunderstorm_heavy_hail"
+        }
+        
+        # Default English translations
+        self.default_weather_descriptions = {
             0: "Clear sky",
             1: "Mainly clear",
             2: "Partly cloudy",
@@ -395,7 +434,24 @@ class OpenMeteoProvider:
             96: "Thunderstorm with slight hail",
             99: "Thunderstorm with heavy hail"
         }
-        return weather_codes.get(code, "Unknown")
+        
+        # We'll use default descriptions if translations aren't available
+        # The actual translations should be added to the language files
+        pass
+    
+    def _get_weather_description(self, code: int) -> str:
+        """Convert weather code to description."""
+        if code not in self.weather_code_keys:
+            return self.default_weather_descriptions.get(code, "Unknown weather")
+            
+        key = self.weather_code_keys[code]
+        translated = self.language_manager.tr(key)
+        
+        # If translation not found, return the default description
+        if translated == key and code in self.default_weather_descriptions:
+            return self.default_weather_descriptions[code]
+            
+        return translated
     
     def _get_weather_icon(self, code: int) -> str:
         """Convert weather code to icon name."""
@@ -458,4 +514,4 @@ class OpenMeteoProvider:
             self.units = units
             logger.info(f"Units set to: {units}")
         else:
-            logger.warning(f"Invalid units: {units}. Must be 'metric' or 'imperial'.")
+            logger.warning(self.language_manager.tr("invalid_units").format(units=units))

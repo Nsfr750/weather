@@ -54,7 +54,7 @@ class HelpDialog(QDialog):
         self.translations_manager = translations_manager
         self.language = language
         
-        self.setWindowTitle(self.translations_manager.t('help_title', self.language))
+        self.setWindowTitle(self.translations_manager.tr('help_title'))
         self.setMinimumSize(700, 500)
         
         # Set window flags to make it a dialog
@@ -90,7 +90,7 @@ class HelpDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(10, 0, 10, 10)
         
-        close_button = QPushButton(self.translations_manager.t('help_close_btn', self.language))
+        close_button = QPushButton(self.translations_manager.tr('help_close_btn'))
         close_button.clicked.connect(self.accept)
         close_button.setFixedWidth(120)
         
@@ -147,21 +147,21 @@ class HelpDialog(QDialog):
     
     def _create_usage_tab(self):
         """Create the Usage tab with instructions."""
-        usage_text = self.translations_manager.t('help_usage_text', self.language)
+        usage_text = self.translations_manager.tr('help_usage_text')
         usage_widget = self._create_scrollable_tab_content(usage_text)
-        self.tab_widget.addTab(usage_widget, self.translations_manager.t('help_usage_tab', self.language))
+        self.tab_widget.addTab(usage_widget, self.translations_manager.tr('help_usage_tab'))
     
     def _create_features_tab(self):
         """Create the Features tab with application features."""
-        features_text = self.translations_manager.t('help_features_text', self.language)
+        features_text = self.translations_manager.tr('help_features_text')
         features_widget = self._create_scrollable_tab_content(features_text)
-        self.tab_widget.addTab(features_widget, self.translations_manager.t('help_features_tab', self.language))
+        self.tab_widget.addTab(features_widget, self.translations_manager.tr('help_features_tab'))
     
     def _create_tips_tab(self):
         """Create the Tips tab with usage tips."""
-        tips_text = self.translations_manager.t('help_tips_text', self.language)
+        tips_text = self.translations_manager.tr('help_tips_text')
         tips_widget = self._create_scrollable_tab_content(tips_text)
-        self.tab_widget.addTab(tips_widget, self.translations_manager.t('help_tips_tab', self.language))
+        self.tab_widget.addTab(tips_widget, self.translations_manager.tr('help_tips_tab'))
     
     def _apply_styling(self):
         """Apply styling to the dialog and its components."""

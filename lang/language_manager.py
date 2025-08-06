@@ -58,7 +58,7 @@ class LanguageManager(QObject):
         # Initialize instance variables
         self.translations: Dict[str, Dict[str, str]] = {}
         self.available_languages: Set[str] = set()
-        self.current_language: str = "en"  # Default to English
+        self.current_language: str = "it"  # Default to Italian
         
         # Load available languages
         self._discover_languages()

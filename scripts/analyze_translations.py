@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Dict, Set, List, Tuple
 
 # Configuration
-SCRIPT_DIR = Path(__file__).parent / "script"
-LANG_DIR = Path(__file__).parent / "lang"
-TRANSLATIONS_DIR = LANG_DIR / "translations"
+SCRIPT_DIR = Path(__file__).parent.parent / "script"
+LANG_DIR = Path(__file__).parent.parent / "lang"
+TRANSLATIONS_DIR = Path(__file__).parent.parent / 'lang' / 'translations'
 REFERENCE_LANG = "it"
 
 # Regular expression to find translation patterns

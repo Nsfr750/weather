@@ -1,0 +1,225 @@
+================================================================================
+TRANSLATION STATUS REPORT
+================================================================================
+Reference file: it.json (279 keys)
+--------------------------------------------------------------------------------
+
+LANGUAGE TRANSLATION STATUS
+--------------------------------------------------------------------------------
+en.json: ⚠️ 88.2% (246/279 keys)
+ar.json: ⚠️ 66.3% (185/279 keys)
+de.json: ⚠️ 66.3% (185/279 keys)
+es.json: ⚠️ 66.3% (185/279 keys)
+fr.json: ⚠️ 66.3% (185/279 keys)
+ja.json: ⚠️ 66.3% (185/279 keys)
+pt.json: ⚠️ 66.3% (185/279 keys)
+ru.json: ⚠️ 66.3% (185/279 keys)
+zh.json: ❌ 0.0% (0/279 keys)
+hi.json: ❌ 0.0% (0/279 keys)
+ko.json: ❌ 0.0% (0/279 keys)
+tr.json: ❌ 0.0% (0/279 keys)
+nl.json: ❌ 0.0% (0/279 keys)
+pl.json: ❌ 0.0% (0/279 keys)
+he.json: ❌ 0.0% (0/279 keys)
+
+MISSING TRANSLATIONS
+--------------------------------------------------------------------------------
+
+en.json - Missing 33 keys:
+  1. add_favorite
+  2. arabic
+  3. enter_city
+  4. exit
+  5. file
+  6. french
+  7. german
+  8. italian
+  9. japanese
+  10. language_zh
+  ... and 23 more
+
+ar.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+de.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+es.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+fr.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+ja.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+pt.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+ru.json - Missing 94 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 84 more
+
+zh.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+hi.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+ko.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+tr.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+nl.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+pl.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+he.json - Missing 279 keys:
+  1. &Refresh
+  2. API Key Manager
+  3. API key is valid!
+  4. API keys have been saved. Changes will take effect the next time you fetch weather data.
+  5. Application Settings
+  6. Application settings have been saved.
+  7. Check for updates automatically
+  8. Clear the log file
+  9. Close
+  10. Clouds
+  ... and 269 more
+
+================================================================================
+Report generated: 2025-08-05 21:40:07
+================================================================================

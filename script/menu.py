@@ -418,7 +418,7 @@ class MenuBar(QMenuBar):
         if not hasattr(self, 'language_manager') or not self.language_manager:
             logger.warning("Language manager not available")
             # Fallback to English if there's an error
-            action = language_menu.addAction(self._tr('english'))
+            action = language_menu.addAction('English')
             action.setCheckable(True)
             action.setChecked(True)
             action.setData('en')
@@ -426,21 +426,69 @@ class MenuBar(QMenuBar):
             return
             
         try:
-            # Get available languages from the translations directory
+            # Get all available language files
             available_languages = {}
-            for file in self.language_manager.translations_dir.glob('*.json'):
-                lang_code = file.stem.lower()
-                # Get the language name from the translation file itself
-                try:
-                    with open(file, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        lang_name = data.get(f'language_{lang_code}', lang_code)
-                        available_languages[lang_code] = lang_name
-                except Exception as e:
-                    logger.error(f"Error loading language {lang_code}: {e}")
             
-            # Sort languages by their display name
-            sorted_languages = sorted(available_languages.items(), key=lambda x: x[1])
+            # First, try to load English language names as fallback
+            en_lang_file = self.language_manager.translations_dir / "en.json"
+            en_language_names = self._load_language_names(en_lang_file)
+            
+            # Then try to load current language names
+            current_lang_file = self.language_manager.translations_dir / f"{self.language}.json"
+            current_language_names = self._load_language_names(current_lang_file)
+            
+            # Get all available language files
+            for file in sorted(self.language_manager.translations_dir.glob('*.json')):
+                lang_code = file.stem.lower()
+                
+                # Skip non-language files
+                if lang_code not in ['en', 'it', 'es', 'fr', 'de', 'ja', 'ru', 'pt', 'zh', 'ko', 'ar', 'he', 'hu', 'pl', 'tr', 'nl']:
+                    continue
+                
+                # Try to get the language name in the current language first
+                lang_name = current_language_names.get(lang_code)
+                
+                # If not found, try to get it from English
+                if not lang_name:
+                    lang_name = en_language_names.get(lang_code)
+                
+                # If still not found, try to load it directly from the file
+                if not lang_name:
+                    try:
+                        with open(file, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            # Try to get the language name in its own language
+                            lang_name = data.get(f'language_{lang_code}')
+                    except Exception as e:
+                        logger.error(f"Error loading language name for {lang_code}: {e}")
+                
+                # If we still don't have a name, use a default based on the language code
+                if not lang_name:
+                    # Map of language codes to default names
+                    default_names = {
+                        'en': 'English',
+                        'it': 'Italiano',
+                        'es': 'Español',
+                        'fr': 'Français',
+                        'de': 'Deutsch',
+                        'ja': '日本語',
+                        'ru': 'Русский',
+                        'pt': 'Português',
+                        'zh': '中文',
+                        'ko': '한국어',
+                        'ar': 'العربية',
+                        'he': 'עברית',
+                        'hu': 'Magyar',
+                        'pl': 'Polski',
+                        'tr': 'Türkçe',
+                        'nl': 'Nederlands'
+                    }
+                    lang_name = default_names.get(lang_code, lang_code.upper())
+                
+                available_languages[lang_code] = lang_name
+            
+            # Sort languages by their display name (case-insensitive)
+            sorted_languages = sorted(available_languages.items(), key=lambda x: x[1].lower() if x[1] else x[0])
             
             # Add a language action for each available language
             for lang_code, lang_name in sorted_languages:
@@ -471,6 +519,38 @@ class MenuBar(QMenuBar):
             action.setChecked(True)
             action.setData('en')
             self.language_group.addAction(action)
+            
+    def _load_language_names(self, file_path):
+        """Load language names from a translation file."""
+        if not file_path.exists():
+            return {}
+            
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                language_names = {}
+                
+                # First try to get language names from the current file
+                for k, v in data.items():
+                    if k.startswith('language_') and not k in ['language_menu', 'language_tip']:
+                        lang_code = k[8:]  # Remove 'language_' prefix
+                        language_names[lang_code] = v
+                
+                # If no language names found, try to get them from the 'language' key
+                if not language_names and 'language' in data:
+                    # If there's a 'language' key, it might be a string with language names
+                    # in the format 'en:English,es:Español,fr:Français'
+                    lang_pairs = data['language'].split(',')
+                    for pair in lang_pairs:
+                        if ':' in pair:
+                            code, name = pair.split(':', 1)
+                            language_names[code.strip()] = name.strip()
+                
+                return language_names
+                
+        except Exception as e:
+            logger.error(f"Error loading language names from {file_path}: {e}", exc_info=True)
+            return {}
     
     def _create_help_menu(self) -> None:
         """Create the Help menu with support and information options."""

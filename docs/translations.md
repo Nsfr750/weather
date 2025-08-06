@@ -13,20 +13,44 @@ The Weather App currently supports the following languages:
 | French  | fr   | Français    | No  | Complete |
 | German  | de   | Deutsch     | No  | Complete |
 | Italian | it   | Italiano    | No  | Complete |
-| Portuguese | pt   | Português | No  | Complete |
+| Portuguese | pt   | Português   | No  | Complete |
 | Russian | ru   | Русский     | No  | Complete |
 | Japanese | ja   | 日本語      | No  | Complete |
+| Korean  | ko   | 한국어      | No  | Complete |
 | Arabic  | ar   | اَلْعَرَبِيَّةُ | Yes | Complete |
-| Chinese (Simplified) | zh-CN | 简体中文 | No  | In Progress  |
-| Hindi   | hi   | हिन्दी      | No  | In Progress |
-| Korean  | ko   | 한국어      | No  | In Progress |
-| Turkish | tr   | Türkçe      | No  | In Progress |
-| Dutch   | nl   | Nederlands  | No  | In Progress |
-| Polish  | pl   | Polski      | No  | In Progress |
+| Hebrew  | he   | עברית      | Yes | Complete |
+| Hungarian | hu  | Magyar      | No  | Complete |
+| Polish  | pl   | Polski      | No  | Complete |
+| Turkish | tr   | Türkçe      | No  | Complete |
+| Dutch   | nl   | Nederlands  | No  | Complete |
+| Chinese (Simplified) | zh | 简体中文   | No  | Complete |
+
+## Language Menu Implementation
+
+The language menu automatically displays available languages using the following logic:
+
+1. It first tries to load language names from the current UI language's translation file
+2. If not found, it falls back to English names
+3. As a last resort, it uses a built-in dictionary of common language names
+
+### Language Name Keys
+
+Each translation file should include language names for all supported languages using the pattern `language_XX` where `XX` is the language code. For example:
+
+- `language_en`: "English"
+- `language_es": "Español"
+- `language_fr": "Français"
+
+### Menu Text
+
+Each translation file should also include these UI-specific keys:
+
+- `language_menu`: The menu title (e.g., "Language")
+- `language_tip`: Tooltip text for the language menu
 
 ## Translation System
 
-The translation system is now based on JSON files and includes these features:
+The translation system is based on JSON files and includes these features:
 
 - String interpolation with variables
 - Right-to-left (RTL) language support
@@ -34,7 +58,7 @@ The translation system is now based on JSON files and includes these features:
 - Dynamic language switching without app restart
 - Optimized loading with translation memory
 
-### File Structure (New)
+### File Structure
 
 ```text
 lang/
@@ -49,7 +73,14 @@ lang/
     ├── pt.json           # Portuguese
     ├── ru.json           # Russian
     ├── ja.json           # Japanese
-    └── ar.json           # Arabic (RTL)
+    ├── ko.json           # Korean
+    ├── zh.json           # Chinese (Simplified)
+    ├── ar.json           # Arabic (RTL)
+    ├── he.json           # Hebrew (RTL)
+    ├── hu.json           # Hungarian
+    ├── pl.json           # Polish
+    ├── tr.json           # Turkish
+    └── nl.json           # Dutch
 ```
 
 ## Adding a New Language
@@ -58,9 +89,25 @@ lang/
 
 To add a new language:
 
-- Add a new JSON file in `lang/translations/` with the language code (e.g., `fr.json` for French)
-- Copy all keys from `en.json`
-- Translate all values to the target language
+1. Add a new JSON file in `lang/translations/` with the language code (e.g., `fr.json` for French)
+2. Copy all keys from `en.json`
+3. Translate all values to the target language
+4. Add the language name in its own language (e.g., `"language_fr": "Français"`)
+5. Add the language to the language menu by including these keys:
+   - `language_menu`: The menu title (e.g., "Language")
+   - `language_tip`: Tooltip text for the language menu (e.g., "Select application language")
+
+Example for French (`fr.json`):
+```json
+{
+  "language_menu": "&Langue",
+  "language_tip": "Sélectionner la langue de l'application",
+  "language_fr": "Français",
+  "language_en": "Anglais",
+  "language_es": "Espagnol"
+  // ... other translations
+}
+```
 
 ## Best Practices
 

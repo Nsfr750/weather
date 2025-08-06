@@ -87,7 +87,6 @@
   "api_key_manager_label": "Gestore chiavi API",
   "api_key_manager_menu": "&Gestisci chiavi API...",
   "api_key_manager_tip": "Gestisci le chiavi API per i fornitori meteo",
-  "app_name": "Weather",
   "app_settings_menu": "&Impostazioni applicazione...",
   "app_settings_tip": "Configura le impostazioni dell'applicazione",
   "application_settings": "Impostazioni applicazione",
@@ -170,7 +169,13 @@
   "language_menu": "🌐 &Lingua",
   "language_pt": "Portoghese",
   "language_ru": "Russo",
-  "light_theme": "",
+  "language_zh": "Cinese",
+  "language_ko": "Coreano",
+  "language_he": "Ebraico",
+  "language_pl": "Polacco",
+  "language_tr": "Turco",
+  "language_nl": "Olandese",
+  "language_hi": "Hindi",
   "log": "Log",
   "log_not_found": "File di log non trovato.",
   "log_title": "Log dell’Applicazione",
@@ -268,5 +273,10 @@
   "zoom_in_tip": "Ingrandisci la mappa",
   "zoom_out": "Riduci",
   "zoom_out_menu_item": "Riduci",
-  "zoom_out_tip": "Riduci la mappa"
+  "zoom_out_tip": "Riduci la mappa",
+  "app_name": "Weather",
+  "app_name_menu": "Weather",
+  "app_name_menu_item": "Weather",
+  "app_name_tip": "Weather"
+
 }

@@ -247,5 +247,17 @@
   "view_tip": "Configurações de exibição",
   "weather": "Clima",
   "weather_menu": "&Clima",
-  "weather_tip": "Exibir informações meteorológicas"
+  "weather_tip": "Exibir informações meteorológicas",
+  "help": "Ajuda",
+  "help_menu": "&Ajuda",
+  "help_tip": "Mostrar ajuda",
+  "help_usage_tab": "Uso",
+  "help_usage_tab_tip": "Informações de uso",
+  "help_about_tab": "Informações",
+  "help_about_tab_tip": "Informações do aplicativo",
+  "help_language_tab": "Idioma",
+  "help_language_tab_tip": "Selecionar idioma do aplicativo",
+  "help_usage_text": "<h2>Uso do aplicativo</h2>\n<p>1. Insira o nome de uma cidade no campo de pesquisa e pressione Enter ou clique no botão de pesquisa.</p>\n<p>2. Você pode ver as condições meteorológicas mais recentes na janela principal.</p>\n<p>3. Você pode alternar entre as abas de condições meteorológicas atuais, previsão do tempo e previsão do tempo para os próximos 7 dias.</p>\n<p>4. Você pode adicionar localizações aos favoritos para acesso fácil.</p>",
+  "help_features_text": "<h2>Funcionalidades do aplicativo</h2>\n<ul>\n <li>Detalhes das condições meteorológicas atuais</li>\n <li>Previsão do tempo para 7 dias</li>\n <li>Mapas meteorológicos e radar (online)</li>\n <li>Suporte a várias localizações (favoritos)</li>\n <li>Configurações de unidade de medida e opções de exibição</li>\n <li>Modo offline (para localizações com imagens)</li>\n</ul>",
+  "help_tips_text": "<h2>Dicas úteis</h2>\n<ul>\n <li>Pressione F5 ou clique no botão de atualização para atualizar as condições meteorológicas.</li>\n <li>Clique com o botão direito do mouse na mapa para adicionar uma localização personalizada.</li>\n <li>Use o menu de configurações para personalizar o aplicativo às suas preferências.</li>\n <li>Receba alertas meteorológicos para uma localização usando-a.</li>\n <li>Verifique o visualizador de log para resolver problemas.</li>\n</ul>"
 }

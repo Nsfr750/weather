@@ -247,5 +247,22 @@
   "view_tip": "查看设置",
   "weather": "天气",
   "weather_menu": "天气(&W)",
-  "weather_tip": "显示天气信息"
+  "weather_tip": "显示天气信息",
+  "wind": "风",
+  "wind_direction": "风向",
+  "wind_gusts": "阵风",
+  "wind_speed": "风速",
+  "wind_unit": "风速单位",
+  "help": "帮助",
+  "help_menu": "&帮助",
+  "help_tip": "显示帮助信息",
+  "help_usage_tab": "使用",
+  "help_usage_tab_tip": "使用信息",
+  "help_about_tab": "关于",
+  "help_about_tab_tip": "应用程序信息",
+  "help_language_tab": "语言",
+  "help_language_tab_tip": "选择应用程序语言",
+  "help_usage_text": "<h2>使用应用程序</h2>\n<p>1. 在搜索框中输入城市名称并按 Enter 或点击搜索按钮。</p>\n<p>2. 您可以在主窗口中查看最新的天气条件。</p>\n<p>3. 您可以切换到当前天气条件、天气预报和未来 7 天天气预报选项卡。</p>\n<p>4. 您可以将位置添加到收藏夹以便轻松访问。</p>",
+  "help_features_text": "<h2>应用程序功能</h2>\n<ul>\n<li>当前天气条件</li>\n<li>未来 7 天天气预报</li>\n<li>天气地图和雷达（在线）</li>\n<li>支持多个位置（收藏夹）</li>\n<li>设置度量单位和显示选项</li>\n<li>离线模式（对于带有图片的位置）</li>\n</ul>",
+  "help_tips_text": "<h2>有用的提示</h2>\n<ul>\n<li>按 F5 或点击刷新按钮更新天气条件。</li>\n<li>右键点击地图添加自定义位置。</li>\n<li>使用设置菜单自定义应用程序。</li>\n<li>使用位置接收天气警报。</li>\n<li>检查日志查看器解决问题。</li>\n</ul>"
 }

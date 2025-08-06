@@ -58,7 +58,7 @@ class LanguageManager(QObject):
         # Initialize instance variables
         self.translations: Dict[str, Dict[str, str]] = {}
         self.available_languages: Set[str] = set()
-        self.current_language: str = "it"  # Default to Italian
+        self.current_language: str = "en"  # English as default language
         
         # Load available languages
         self._discover_languages()
@@ -178,6 +178,36 @@ class LanguageManager(QObject):
         
         return True
     
+    def get_language_name(self, lang_code: str) -> str:
+        """
+        Get the display name of a language based on its language code.
+        
+        Args:
+            lang_code: Language code (e.g., 'en', 'it')
+            
+        Returns:
+            str: The display name of the language, or the language code if not found
+        """
+        lang_names = {
+            'en': 'English',
+            'it': 'Italiano',
+            'es': 'Español',
+            'fr': 'Français',
+            'de': 'Deutsch',
+            'pt': 'Português',
+            'ru': 'Русский',
+            'zh': '中文',
+            'ja': '日本語',
+            'ko': '한국어',
+            'ar': 'العربية',
+            'he': 'עברית',
+            'pl': 'Polski',
+            'tr': 'Türkçe',
+            'nl': 'Nederlands',
+            'hu': 'Magyar'
+        }
+        return lang_names.get(lang_code.lower(), lang_code.upper())
+    
     def get(self, key: str, default: str = None, **kwargs) -> str:
         """
         Get a translated string for the current language.
@@ -194,19 +224,25 @@ class LanguageManager(QObject):
             logger.warning("Empty translation key provided")
             return ""
         
+        logger.debug(f"Looking up translation for key: {key} in language: {self.current_language}")
+        
         # Ensure current language is loaded
         if self.current_language not in self.translations:
+            logger.debug(f"Language {self.current_language} not loaded, attempting to load...")
             if not self._load_language(self.current_language):
                 logger.warning(f"Failed to load language: {self.current_language}")
                 return default or key
         
         # Get the translation
         translations = self.translations.get(self.current_language, {})
+        logger.debug(f"Available keys in {self.current_language}: {list(translations.keys())}")
+        
         text = translations.get(key, default)
         
         # Return key if translation not found
         if text is None:
-            logger.debug(f"Translation not found for key: {key} in language: {self.current_language}")
+            logger.warning(f"Translation not found for key: {key} in language: {self.current_language}")
+            logger.warning(f"Available keys in {self.current_language}: {list(translations.keys())}")
             return key
         
         # Format the string if there are format arguments
@@ -217,6 +253,7 @@ class LanguageManager(QObject):
                 logger.warning(f"Error formatting string for key '{key}': {e}")
                 return text
                 
+        logger.debug(f"Found translation for {key}: {text}")
         return text
     
     def get_available_languages(self) -> List[str]:

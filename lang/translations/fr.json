@@ -247,5 +247,18 @@
   "view_tip": "Paramètres d'affichage",
   "weather": "Météo",
   "weather_menu": "&Météo",
-  "weather_tip": "Afficher les informations météorologiques"
+  "weather_tip": "Afficher les informations météorologiques",
+  "help": "Aide",
+  "help_menu": "&Aide",
+  "help_tip": "Afficher l'aide",
+  "help_title": "Aide",
+  "help_usage_tab": "Utilisation",
+  "help_usage_tab_tip": "Informations d'utilisation",
+  "help_about_tab": "A propos",
+  "help_about_tab_tip": "A propos de l'application",
+  "help_language_tab": "Langue",
+  "help_language_tab_tip": "Sélectionner la langue de l'application",
+  "help_usage_text": "<h2>Utilisation de l'application</h2>\n<p>1. Entrez le nom d'une ville dans la barre de recherche et appuyez sur Entrée ou cliquez sur le bouton de recherche.</p>\n<p>2. Consultez les conditions météorologiques actuelles dans la fenêtre principale.</p>\n<p>3. Utilisez les onglets pour basculer entre les conditions météorologiques actuelles, les prévisions horaires et les prévisions pour les 7 prochains jours.</p>\n<p>4. Ajoutez des emplacements à vos favoris pour les retrouver facilement.</p>",
+  "help_features_text": "<h2>Fonctionnalités de l'application</h2>\n<ul>\n <li>Conditions météorologiques actuelles avec des informations détaillées</li>\n <li>Prévisions horaires et prévisions pour les 7 prochains jours</li>\n <li>Cartes météo et radar (en ligne)</li>\n <li>Soutien à plusieurs emplacements avec favoris</li>\n <li>Personnalisation des unités de mesure et des options d'affichage</li>\n <li>Mode hors ligne pour les emplacements déjà affichés</li>\n</ul>",
+  "help_tips_text": "<h2>Conseils utiles</h2>\n<ul>\n <li>Appuyez sur F5 ou utilisez le bouton de rafraîchissement pour mettre à jour les données météorologiques.</li>\n <li>Cliquez avec le bouton droit de la souris sur la carte pour ajouter un emplacement personnalisé.</li>\n <li>Utilisez le menu d'option pour personnaliser l'application selon vos préférences.</li>\n <li>Activez les notifications pour recevoir des alertes météorologiques pour votre emplacement.</li>\n <li>Vérifiez le visionneur de journaux si vous rencontrez des problèmes.</li>\n</ul>"
 }

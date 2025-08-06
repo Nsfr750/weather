@@ -247,5 +247,22 @@
   "view_tip": "Görünüm ayarları",
   "weather": "Hava Durumu",
   "weather_menu": "&Hava Durumu",
-  "weather_tip": "Hava durumu bilgilerini göster"
+  "weather_tip": "Hava durumu bilgilerini göster",
+  "wind": "Rüzgar",
+  "wind_direction": "Rüzgar Yönü",
+  "wind_gusts": "Rüzgar Sert Esintileri",
+  "wind_speed": "Rüzgar Hızı",
+  "wind_unit": "Rüzgar Birimi",
+  "help": "Yardım",
+  "help_menu": "&Yardım",
+  "help_tip": "Yardım bilgilerini göster",
+  "help_usage_tab": "Kullanım",
+  "help_usage_tab_tip": "Kullanım bilgileri",
+  "help_about_tab": "Hakkında",
+  "help_about_tab_tip": "Uygulama hakkında bilgiler",
+  "help_language_tab": "Dil",
+  "help_language_tab_tip": "Uygulama dilini seçin",
+  "help_usage_text": "<h2>Uygulama Kullanımı</h2>\n<p>1. Arama alanına bir şehir adı girin ve Enter tuşuna basın veya Arama tuşuna basın.</p>\n<p>2. En son hava durumu bilgilerini ana pencerede görebilirsiniz.</p>\n<p>3. Mevcut hava durumu bilgilerini, hava durumu önlemleri ve sonraki 7 gün hava durumu önlemleri arasında geçiş yapabilirsiniz.</p>\n<p>4. Favoriler listesine yerleştirmek için yerleri ekleyebilirsiniz.</p>",
+  "help_features_text": "<h2>Uygulama Özellikleri</h2>\n<ul>\n<li>Mevcut hava durumu bilgileri</li>\n<li>Sonraki 7 gün hava durumu önlemleri</li>\n<li>Hava durumu haritaları ve radar (online)</li>\n<li>Farklı yerler (favoriler) desteği</li>\n<li>Ölçüm birimleri ve görüntüleme seçenekleri ayarı</li>\n<li>Offline modu (resimli yerler için)</li>\n</ul>",
+  "help_tips_text": "<h2>Yararlı İpuçları</h2>\n<ul>\n<li>F5 tuşuna basın veya Güncelle tuşuna basın, hava durumu bilgilerini günceller.</li>\n<li>Haritayı sağ tıklayarak özel bir yer ekleyin.</li>\n<li>Uygulama ayarlarını kullanarak uygulamayı kişiselleştirin.</li>\n<li>Yer kullanarak hava durumu uyarılarını alın.</li>\n<li>Log görüntüleyicisini kontrol ederek sorunları çözün.</li>\n</ul>"
 }

@@ -5,11 +5,26 @@
 ### Added
 
 - New language management system with JSON-based translations
-  - Support for 10+ languages including English, Italian, Spanish, French, German, Russian, Arabic, Japanese, and Portuguese
+  - Support for 16 languages including:
+    - Arabic
+    - German
+    - English
+    - French
+    - Hebrew
+    - Hungarian
+    - Italian
+    - Japanese
+    - Korean
+    - Dutch
+    - Polish
+    - Portuguese
+    - Russian
+    - Spanish
+    - Turkish
+    - Chinese
   - Dynamic language switching without app restart
   - Improved RTL language support
   - Fallback to English for missing translations
-- Enhanced menu system with language and theme options
 - Added comprehensive translation documentation
 - Enhanced notification system with system tray integration
   - Support for different alert types (info, warning, error, critical)

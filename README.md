@@ -32,7 +32,23 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 - **New Language System**
   - Completely redesigned translation system with JSON-based files
-  - Support for 10+ languages including English, Italian, Spanish, French, German, Russian, Arabic, Japanese, and Portuguese
+  - Support for 16 languages:
+    - English
+    - Italian
+    - Spanish
+    - French
+    - German
+    - Russian
+    - Arabic
+    - Japanese
+    - Korean
+    - Dutch
+    - Polish
+    - Portuguese
+    - Hebrew
+    - Hungarian
+    - Chinese
+    - Turkish
   - Dynamic language switching without app restart
   - Improved RTL language support for Arabic and Hebrew
   - Fallback to English for missing translations

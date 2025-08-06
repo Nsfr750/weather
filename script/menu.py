@@ -558,7 +558,7 @@ class MenuBar(QMenuBar):
         
         # Help actions with translations
         actions = [
-            (self._tr('about'), 'F1', self._show_about_dialog, self._tr('about_tip')),
+            (self._tr('about'), None, self._show_about_dialog, self._tr('about_tip')),
             (self._tr('help'), 'F1', self._show_help_dialog, self._tr('help_tip')),
             (self._tr('documentation'), 'F2', self._show_documentation, self._tr('documentation_tip')),
             (self._tr('view_logs'), 'F3', self._show_log_viewer, self._tr('view_logs_tip')),

@@ -258,5 +258,18 @@
   "wind_direction": "Szélirány",
   "wind_gusts": "Széllökések",
   "wind_speed": "Szélsebesség",
-  "wind_unit": "Szélsebesség egység"
+  "wind_unit": "Szélsebesség egység",
+  "help": "Segítség",
+  "help_menu": "&Segítség",
+  "help_tip": "Segítség",
+  "help_title": "Segítség",
+  "help_usage_tab": "Használat",
+  "help_usage_tab_tip": "Használati információ",
+  "help_about_tab": "Ról",
+  "help_about_tab_tip": "Ról a programról",
+  "help_language_tab": "Nyelv",
+  "help_language_tab_tip": "Program nyelvének kiválasztása",
+  "help_usage_text": "<h2>Program használati információ</h2>\n<p>1. Adja meg egy város nevét a keresőmezőben és nyomja le az Enter gombot vagy kattintson a keresés gombra.</p>\n<p>2. Látogasson meg az aktuális időjárás feltételeit a főablakban.</p>\n<p>3. Használja a fülöket az aktuális időjárás feltételek, időjárás előrejelzések és a következő 7 nap időjárás előrejelzések közötti váltásra.</p>\n<p>4. Adjon hozzá helyeket a kedvencekhez, hogy könnyen megtalálja őket.</p>",
+  "help_features_text": "<h2>Program funkciók</h2>\n<ul>\n <li>Aktuális időjárás feltételek részletes információk</li>\n <li>Időjárás előrejelzések 7 napig</li>\n <li>Időjárás térképek és radar (online)</li>\n <li>Támogatás több helyhez (kedvencek)</li>\n <li>Mértékegység és megjelenítési opciók beállítása</li>\n <li>Offline mód (már bejelentett helyek)</li>\n</ul>",
+  "help_tips_text": "<h2>Hasznos tippek</h2>\n<ul>\n <li>Indítsa el újraindítás gombot vagy nyomja le az újraindítás gombot, hogy frissítse az időjárásadatokat.</li>\n <li>Kattintson a térkép jobb gombbal a térképen, hogy egyedi helyet adjon hozzá.</li>\n <li>Használja a beállítások menüjét a program beállításainak testreszabásához.</li>\n <li>Engedélyezze a figyelmeztetéseket, hogy időjárásfigyelmeztetéseket kapjon a helyén.</li>\n <li>Ellenőrizze a napló nézőt, ha problémákat tapasztal.</li>\n</ul>"
 }

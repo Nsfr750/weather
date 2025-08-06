@@ -4,16 +4,11 @@
 
 - [ ] Add notification preferences dialog
 - [ ] Implement notification sounds for critical alerts
-- [ ] Add notification history viewer
-- [ ] Test notification system on different platforms
-- [ ] Add more language translations
-- [ ] Implement translation memory for faster loading
-- [ ] Add user-contributed translations system
 
 ## ✅ Completed (v1.6.0)
 
 - [x] Implemented new language management system with JSON-based translations
-- [x] Added support for 10+ languages
+- [x] Added support for 16 languages
 - [x] Implemented dynamic language switching
 - [x] Improved RTL language support
 - [x] Refactored menu system for better translation support
@@ -74,16 +69,7 @@
 - [x] Add weather alerts and warnings
 - [x] Add API key validation
 
-## 🔄 In Progress
-
-- [ ] Add more comprehensive weather visualization
-- [ ] Improve accessibility features
-- [ ] Add CI/CD pipeline for automated testing and deployment
-- [ ] Improve test coverage to 90%+
-- [ ] Set up automated documentation deployment
-- [ ] Implement weather data export functionality
-
-## 📅 Upcoming (v1.6.0)
+## 📅 Upcoming (v1.7.0)
 
 - [ ] New weather visualization features
   - [ ] Interactive weather maps
@@ -93,6 +79,10 @@
   - [ ] Wind chill
   - [ ] Heat index
   - [ ] UV index
+- [ ] Add more comprehensive weather visualization
+- [ ] Add CI/CD pipeline for automated testing and deployment
+- [ ] Improve test coverage to 90%+
+- [ ] Implement weather data export functionality
 
 ### Medium Priority
 - [ ] Add support for more weather data points (UV index, air quality, etc.)
@@ -100,8 +90,6 @@
 ### Low Priority
 - [ ] Implement a RESTful API for the application
 - [ ] Add support for voice commands
-
-## 🔮 Future Ideas
 
 ### Features
 - [ ] Desktop widgets
@@ -113,7 +101,6 @@
 - [ ] Migrate to PySide6 for better licensing
 - [ ] Implement a more modular architecture
 - [ ] Improve performance with caching
-- [ ] Add support for more platforms
 
 ## 📝 Notes
 

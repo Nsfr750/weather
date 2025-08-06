@@ -64,12 +64,7 @@ class LogViewer(QMainWindow):
         self.file_label = QLabel("Log File:")
         self.level_label = QLabel("Log Level:")
         
-        # Log level combo box
-        self.level_combo = QComboBox()
-        levels = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        for level in levels:
-            self.level_combo.addItem(level, level)
-        self.level_combo.currentIndexChanged.connect(self.on_level_select)
+        # Log level combo box will be set up later in the control frame
         
         # Buttons
         self.refresh_btn = QPushButton("Refresh")
@@ -115,10 +110,13 @@ class LogViewer(QMainWindow):
         control_layout.addWidget(self.file_combo)
         
         # Log level filter
-        self.level_label = QLabel()
+        self.level_label = QLabel("Log Level:")
         control_layout.addWidget(self.level_label)
         
         self.level_combo = QComboBox()
+        levels = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        for level in levels:
+            self.level_combo.addItem(level, level)
         self.level_combo.currentTextChanged.connect(self.on_level_select)
         control_layout.addWidget(self.level_combo)
         
@@ -180,6 +178,19 @@ class LogViewer(QMainWindow):
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        
+        # Add Close button at the bottom
+        close_btn = QPushButton('Close')
+        close_btn.clicked.connect(self.close)
+        close_btn.setFixedWidth(100)
+        
+        # Create a horizontal layout for the close button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()  # Push button to the right
+        button_layout.addWidget(close_btn)
+        
+        # Add the button layout to the main layout
+        main_layout.addLayout(button_layout)
         
         # Apply initial translations
         self.translate_ui()
@@ -399,14 +410,14 @@ class LogViewer(QMainWindow):
                 self.status_bar.showMessage('Selected log file does not exist')
                 self.delete_btn.setEnabled(False)
     
-    def on_level_select(self, index):
+    def on_level_select(self, level_text):
         """Handle log level filter selection.
         
         Args:
-            index: The index of the selected level in the combo box
+            level_text: The text of the selected level in the combo box
         """
-        if index >= 0:
-            self.current_level = self.level_combo.itemData(index)
+        if level_text:  # Check if text is not empty
+            self.current_level = level_text
             if self.current_log_file and self.current_log_file.exists():
                 self.load_log_content()
     

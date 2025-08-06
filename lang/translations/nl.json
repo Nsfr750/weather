@@ -245,5 +245,17 @@
   "view_tip": "Weergave-instellingen",
   "weather": "Weer",
   "weather_menu": "&Weer",
-  "weather_tip": "Toon weersinformatie"
+  "weather_tip": "Toon weersinformatie",
+  "help": "Help",
+  "help_menu": "&Help",
+  "help_tip": "Toon helpinformatie",
+  "help_usage_tab": "Usage",
+  "help_usage_tab_tip": "Usage information",
+  "help_about_tab": "About",
+  "help_about_tab_tip": "Application information",
+  "help_language_tab": "Language",
+  "help_language_tab_tip": "Application language selection",
+  "help_usage_text": "<h2>Application usage</h2>\n<p>1. Enter a city name in the search box and press Enter or click the search button.</p>\n<p>2. You can view the latest weather conditions in the main window.</p>\n<p>3. You can switch between the current weather conditions, weather forecast, and the next 7 days weather forecast tabs.</p>\n<p>4. You can add locations to favorites for easy access.</p>",
+  "help_features_text": "<h2>Application features</h2>\n<ul>\n <li>Current weather conditions details</li>\n <li>7 days weather forecast</li>\n <li>Weather maps and radar (online)</li>\n <li>Support for multiple locations (favorites)</li>\n <li>Measurement unit and display option settings</li>\n <li>Offline mode (for locations with images)</li>\n</ul>",
+  "help_tips_text": "<h2>Useful tips</h2>\n<ul>\n <li>Press F5 or click the update button to update weather data.</li>\n <li>Right-click on the map to add a custom location.</li>\n <li>Use the settings menu to customize the application to your preferences.</li>\n <li>Receive weather warnings for a location by using it.</li>\n <li>Check the log viewer to resolve issues.</li>\n</ul>"
 }

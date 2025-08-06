@@ -260,5 +260,17 @@
   "wind_direction": "Kierunek wiatru",
   "wind_gusts": "Porywy wiatru",
   "wind_speed": "Prędkość wiatru",
-  "wind_unit": "Jednostka prędkości wiatru"
+  "wind_unit": "Jednostka prędkości wiatru",
+  "help": "Pomoc",
+  "help_menu": "&Pomoc",
+  "help_tip": "Pokaż pomoc",
+  "help_usage_tab": "Użycie",
+  "help_usage_tab_tip": "Informacje o użyciu",
+  "help_about_tab": "Informacje",
+  "help_about_tab_tip": "Informacje o aplikacji",
+  "help_language_tab": "Język",
+  "help_language_tab_tip": "Wybierz język aplikacji",
+  "help_usage_text": "<h2>Użycie aplikacji</h2>\n<p>1. Wprowadź nazwę miasta w polach wyszukiwania i naciśnij Enter lub kliknij przycisk wyszukiwania.</p>\n<p>2. Możesz zobaczyć najnowsze warunki pogodowe w głównym oknie.</p>\n<p>3. Możesz przełączyć się między zakładkami aktualnych warunków pogodowych, prognozy pogodowe i prognozy pogodowe na następne 7 dni.</p>\n<p>4. Możesz dodać lokalizacje do ulubionych dla łatwego dostępu.</p>",
+  "help_features_text": "<h2>Właściwości aplikacji</h2>\n<ul>\n <li>Detale aktualnych warunków pogodowych</li>\n <li>Prognoza pogodowa na 7 dni</li>\n <li>Mapy pogodowe i radar (online)</li>\n <li>Obsługa wielu lokalizacji (ulubione)</li>\n <li>Ustawienia jednostek pomiaru i opcji wyświetlania</li>\n <li>Tryb offline (dla lokalizacji z obrazami)</li>\n</ul>",
+  "help_tips_text": "<h2>Przydatne porady</h2>\n<ul>\n <li>Naciśnij F5 lub kliknij przycisk aktualizacji, aby zaktualizować dane pogodowe.</li>\n <li>Przeciągnij prawym przyciskiem myszy mapę, aby dodać lokalizację niestandardową.</li>\n <li>Użyj menu ustawień, aby dostosować aplikację do swoich preferencji.</li>\n <li>Otrzymuj ostrzeżenia pogodowe dla lokalizacji, używając ich.</li>\n <li>Sprawdź przeglądarkę dziennika, aby rozwiązać problemy.</li>\n</ul>"
 }

@@ -850,11 +850,25 @@ class WeatherApp(QMainWindow):
         """Show the About dialog."""
         about = About(self)
         about.exec()
-    
+        
     def show_help(self):
         """Show the Help dialog."""
-        help_dialog = Help(self, self.translations_manager, self.language)
-        help_dialog.exec()
+        # Close any existing help dialog
+        if hasattr(self, '_help_dialog') and self._help_dialog:
+            try:
+                self._help_dialog.close()
+                self._help_dialog.deleteLater()
+            except RuntimeError:
+                pass  # Dialog was already deleted
+                
+        # Create and show new help dialog
+        from script.help import HelpDialog
+        self._help_dialog = HelpDialog.show_help(self, self.language_manager, self.language)
+        
+        # Connect language change signal from main app to help dialog
+        self.language_manager.language_changed.disconnect()
+        self.language_manager.language_changed.connect(self.on_language_changed)
+        self.language_manager.language_changed.connect(self._help_dialog._on_language_code_changed)
     
     def check_for_updates(self):
         """Check for application updates."""

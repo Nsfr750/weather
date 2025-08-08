@@ -909,8 +909,8 @@ class WeatherApp(QMainWindow):
     def show_md_viewer(self):
         """Show the Markdown documentation viewer."""
         try:
-            from script.md_viewer import MarkdownViewer
-            self.md_viewer = MarkdownViewer(language=self.language.upper())
+            from script.md_viewer import DocumentationViewer
+            self.md_viewer = DocumentationViewer(language=self.language.upper())
             self.md_viewer.show()
         except Exception as e:
             logger.error(f"Error showing markdown viewer: {e}")

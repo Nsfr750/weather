@@ -1,0 +1,35 @@
+{
+  "title": "Installation Guide",
+  "filename": "installation.md",
+  "content": "# Installation Guide\n\n## Prerequisites\n\n- Python 3.10 or higher\n- pip (Python package manager)\n- Git (for development installations)\n- System dependencies:\n  - **Windows**: Microsoft Visual C++ Build Tools\n  - **macOS**: Xcode Command Line Tools\n  - **Linux**: Build essentials (gcc, make, etc.)\n\n## Installation Methods\n\n### Method 1: Using pip (Recommended)\n\n1. Create a virtual environment (recommended):\n   ```bash\n   # Windows\n   python -m venv venv\n   .\\venv\\Scripts\\activate\n   \n   # Unix/macOS\n   python3 -m venv venv\n   source venv/bin/activate\n   ```\n\n2. Install the package:\n   ```bash\n   pip install git+https://github.com/Nsfr750/weather.git\n   ```\n\n### Method 2: From Source\n\n1. Clone the repository:\n   ```bash\n   git clone https://github.com/Nsfr750/weather.git\n   cd weather\n   ```\n\n2. Create and activate a virtual environment:\n   ```bash\n   # Windows\n   python -m venv venv\n   .\\venv\\Scripts\\activate\n   \n   # Unix/macOS\n   python3 -m venv venv\n   source venv/bin/activate\n   ```\n\n3. Install dependencies:\n   ```bash\n   pip install -r requirements.txt\n   ```\n\n## Running the Application\n\n1. After installation, run the application with:\n   ```bash\n   # From source\n   python -m script.main\n   \n   # If installed via pip\n   weather-app\n   ```\n\n2. The application should open in a new window.\n\n## Updating\n\n### For pip installation:\n```bash\npip install --upgrade git+https://github.com/Nsfr750/weather.git\n```\n\n### For source installation:\n```bash\ngit pull origin main\npip install -r requirements.txt --upgrade\n```\n\n## System Requirements\n\n- **OS**: Windows 10/11 64-bit, macOS 10.15+, or Linux (64-bit)\n- **CPU**: 64-bit processor\n- **Memory**: Minimum 4GB RAM (8GB recommended)\n- **Disk Space**: 200MB free space (SSD recommended)\n- **Display**: 1280x720 minimum resolution\n- **Internet Connection**: Required for weather data\n\n## Platform-Specific Notes\n\n### Windows\n- Install the latest Microsoft Visual C++ Redistributable\n- Ensure your system is up to date with Windows Update\n\n### macOS\n- Requires Xcode Command Line Tools (install with `xcode-select --install`)\n- May require additional permissions for location services\n\n### Linux\n- Install required build tools:\n  ```bash\n  # Debian/Ubuntu\n  sudo apt-get install build-essential python3-dev\n  \n  # Fedora\n  sudo dnf install python3-devel gcc\n  \n  # Arch Linux\n  sudo pacman -S base-devel python\n  ```\n\n## Troubleshooting\n\nIf you encounter any issues during installation, please check the [Troubleshooting](troubleshooting.md) guide or open an issue on our [GitHub repository](https://github.com/Nsfr750/weather/issues).\n\nCommon issues include:\n- Missing system dependencies\n- Permission errors (use `--user` flag or run as administrator)\n- Outdated pip version (update with `python -m pip install --upgrade pip`)\n- Conflicting Python installations (use `python3` explicitly if needed)\n",
+  "sections": [
+    {
+      "title": "Prerequisites",
+      "content": "- Python 3.10 or higher\n- pip (Python package manager)\n- Git (for development installations)\n- System dependencies:\n  - **Windows**: Microsoft Visual C++ Build Tools\n  - **macOS**: Xcode Command Line Tools\n  - **Linux**: Build essentials (gcc, make, etc.)"
+    },
+    {
+      "title": "Installation Methods",
+      "content": "### Method 1: Using pip (Recommended)\n\n1. Create a virtual environment (recommended):\n   ```bash\n   # Windows\n   python -m venv venv\n   .\\venv\\Scripts\\activate\n   \n   # Unix/macOS\n   python3 -m venv venv\n   source venv/bin/activate\n   ```\n\n2. Install the package:\n   ```bash\n   pip install git+https://github.com/Nsfr750/weather.git\n   ```\n\n### Method 2: From Source\n\n1. Clone the repository:\n   ```bash\n   git clone https://github.com/Nsfr750/weather.git\n   cd weather\n   ```\n\n2. Create and activate a virtual environment:\n   ```bash\n   # Windows\n   python -m venv venv\n   .\\venv\\Scripts\\activate\n   \n   # Unix/macOS\n   python3 -m venv venv\n   source venv/bin/activate\n   ```\n\n3. Install dependencies:\n   ```bash\n   pip install -r requirements.txt\n   ```"
+    },
+    {
+      "title": "Running the Application",
+      "content": "1. After installation, run the application with:\n   ```bash\n   # From source\n   python -m script.main\n   \n   # If installed via pip\n   weather-app\n   ```\n\n2. The application should open in a new window."
+    },
+    {
+      "title": "Updating",
+      "content": "### For pip installation:\n```bash\npip install --upgrade git+https://github.com/Nsfr750/weather.git\n```\n\n### For source installation:\n```bash\ngit pull origin main\npip install -r requirements.txt --upgrade\n```"
+    },
+    {
+      "title": "System Requirements",
+      "content": "- **OS**: Windows 10/11 64-bit, macOS 10.15+, or Linux (64-bit)\n- **CPU**: 64-bit processor\n- **Memory**: Minimum 4GB RAM (8GB recommended)\n- **Disk Space**: 200MB free space (SSD recommended)\n- **Display**: 1280x720 minimum resolution\n- **Internet Connection**: Required for weather data"
+    },
+    {
+      "title": "Platform-Specific Notes",
+      "content": "### Windows\n- Install the latest Microsoft Visual C++ Redistributable\n- Ensure your system is up to date with Windows Update\n\n### macOS\n- Requires Xcode Command Line Tools (install with `xcode-select --install`)\n- May require additional permissions for location services\n\n### Linux\n- Install required build tools:\n  ```bash\n  # Debian/Ubuntu\n  sudo apt-get install build-essential python3-dev\n  \n  # Fedora\n  sudo dnf install python3-devel gcc\n  \n  # Arch Linux\n  sudo pacman -S base-devel python\n  ```"
+    },
+    {
+      "title": "Troubleshooting",
+      "content": "If you encounter any issues during installation, please check the [Troubleshooting](troubleshooting.md) guide or open an issue on our [GitHub repository](https://github.com/Nsfr750/weather/issues).\n\nCommon issues include:\n- Missing system dependencies\n- Permission errors (use `--user` flag or run as administrator)\n- Outdated pip version (update with `python -m pip install --upgrade pip`)\n- Conflicting Python installations (use `python3` explicitly if needed)"
+    }
+  ]
+}

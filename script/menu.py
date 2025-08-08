@@ -28,7 +28,6 @@ from script.help import Help
 from script.sponsor import Sponsor
 from script.log_viewer import LogViewer
 from script.maps_dialog import MapsDialog
-from script.md_viewer import MarkdownViewer
 from script.api_key_manager import ApiKeyManagerDialog
 from lang.language_manager import LanguageManager
 
@@ -867,19 +866,19 @@ class MenuBar(QMenuBar):
                         break
         
     def _show_documentation(self) -> None:
-        """Show the documentation using markdown_viewer.py."""
+        """Show the documentation using docs.py."""
         try:
             # Get the current language from the application
             current_lang = getattr(self, 'current_language', 'EN')
             
-            # Start the markdown viewer in a separate process
+            # Start the documentation viewer in a separate process
             import subprocess
             import sys
             import os
             
             # Get the path to the Python interpreter and the script
             python = sys.executable
-            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'md_viewer.py'))
+            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'docs.py'))
             
             # Get the project root directory (one level up from script directory)
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

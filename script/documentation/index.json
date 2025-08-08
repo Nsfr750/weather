@@ -1,0 +1,61 @@
+{
+  "title": "Documentation Index",
+  "last_updated": "2025-08-08T08:20:31.525140Z",
+  "documents": [
+    {
+      "title": "Index",
+      "filename": "index.json",
+      "type": "index"
+    },
+    {
+      "title": "Readme",
+      "filename": "README.json",
+      "type": "readme"
+    },
+    {
+      "title": "Contributing",
+      "filename": "CONTRIBUTING.json",
+      "type": "contributing"
+    },
+    {
+      "title": "Code Of Conduct",
+      "filename": "CODE_OF_CONDUCT.json",
+      "type": "code_of_conduct"
+    },
+    {
+      "title": "Changelog",
+      "filename": "CHANGELOG.json",
+      "type": "changelog"
+    },
+    {
+      "title": "Installation",
+      "filename": "installation.json",
+      "type": "installation"
+    },
+    {
+      "title": "Translations",
+      "filename": "translations.json",
+      "type": "translations"
+    },
+    {
+      "title": "Troubleshooting",
+      "filename": "troubleshooting.json",
+      "type": "troubleshooting"
+    },
+    {
+      "title": "Usage",
+      "filename": "usage.json",
+      "type": "usage"
+    },
+    {
+      "title": "Development",
+      "filename": "development.json",
+      "type": "development"
+    },
+    {
+      "title": "API Reference",
+      "filename": "api.json",
+      "type": "api"
+    }
+  ]
+}

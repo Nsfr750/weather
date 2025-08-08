@@ -905,11 +905,11 @@ class MenuBar(QMenuBar):
             # Show error message to the user
             QMessageBox.critical(
                 self,
-                self._translations.get('error', 'Error'),
-                self._translations.get('error_loading_file', 'Error loading file:') + f" {str(e)}"
+                self._tr("Error"),
+                self._tr("Failed to open documentation: {}".format(str(e)))
             )
     
-    def _show_maps_dialog(self):
+    def _show_maps_dialog(self) -> None:
         """Show the Weather Maps & Radar dialog."""
         try:
             from script.maps_dialog import show_maps_dialog
@@ -919,34 +919,82 @@ class MenuBar(QMenuBar):
             logger.error(f"Failed to load maps dialog: {e}")
             QMessageBox.critical(
                 self,
-                self._tr("error"),
-                self._tr("error_loading_maps")
+                self._tr("Error"),
+                self._tr("Failed to load maps dialog: {}".format(str(e)))
             )
     
-    def _show_about_dialog(self):
+    def _show_about_dialog(self) -> None:
         """Show the about dialog."""
+        from script.about import About
         About.show_about(self)
+    
+    def _show_api_key_manager(self) -> None:
+        """Show the API Key Manager dialog."""
+        try:
+            # Create and show the API key manager dialog
+            dialog = ApiKeyManagerDialog(self)
+            
+            # Connect the api_keys_updated signal to our handler
+            dialog.api_keys_updated.connect(self._on_api_keys_updated)
+            
+            # Show the dialog
+            dialog.exec()
+            
+        except Exception as e:
+            logger.error(f"Error showing API key manager: {e}")
+            QMessageBox.critical(
+                self,
+                self._tr("Error"),
+                self._tr("Failed to open API Key Manager: {}").format(str(e))
+            )
     
     def _check_for_updates(self) -> None:
         """Check for application updates."""
         try:
-            # Placeholder for update check logic
-            update_available = False
-            version = "1.0.0"
+            # Import here to avoid circular imports
+            from script.update import check_for_updates
+            
+            # Check for updates
+            update_available, version, download_url = check_for_updates()
             
             if update_available:
-                reply = QMessageBox.information(
-                    self,
-                    self._tr('Update Available'),
-                    self._tr('Version {} is available. Would you like to download it now?').format(version),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                # Show update available dialog
+                from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox
+                
+                dialog = QDialog(self)
+                dialog.setWindowTitle(self._tr('Update Available'))
+                dialog.setMinimumWidth(400)
+                
+                layout = QVBoxLayout(dialog)
+                
+                # Add update message
+                message = self._tr(
+                    'A new version ({}) is available.\n\n'
+                    'Would you like to download it now?',
+                    version
                 )
+                layout.addWidget(QLabel(message))
+                
+                # Add buttons
+                button_box = QDialogButtonBox(
+                    QDialogButtonBox.StandardButton.Yes |
+                    QDialogButtonBox.StandardButton.No
+                )
+                button_box.accepted.connect(dialog.accept)
+                button_box.rejected.connect(dialog.reject)
+                layout.addWidget(button_box)
+                
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    # Open the download URL in the default browser
+                    import webbrowser
+                    webbrowser.open(download_url)
             else:
                 QMessageBox.information(
                     self,
                     self._tr('No Updates'),
                     self._tr('You are using the latest version.')
                 )
+                
         except Exception as e:
             logger.error(f"Error checking for updates: {e}")
             QMessageBox.critical(
@@ -954,44 +1002,56 @@ class MenuBar(QMenuBar):
                 self._tr('Error'),
                 self._tr('Failed to check for updates: {}').format(str(e))
             )
-    
-    def _show_api_key_manager(self):
+            
+    def _show_api_key_manager(self) -> None:
         """Show the API Key Manager dialog."""
         try:
-            # Use self as the parent widget instead of self.parent
+            # Create and show the API key manager dialog
             dialog = ApiKeyManagerDialog(self)
+            
+            # Connect the api_keys_updated signal to our handler
             dialog.api_keys_updated.connect(self._on_api_keys_updated)
+            
+            # Show the dialog
             dialog.exec()
+            
         except Exception as e:
             logger.error(f"Error showing API key manager: {e}")
             QMessageBox.critical(
-                self,  # Use self as the parent widget
+                self,
                 self._tr("Error"),
-                self._tr("Failed to load API key manager: {}").format(str(e))
+                self._tr("Failed to open API Key Manager: {}").format(str(e))
             )
     
     def _on_api_keys_updated(self):
         """Handle API keys being updated."""
-        logger.info("API keys were updated")
-        # Emit signal to notify other components
+        # Show a success message
+        QMessageBox.information(
+            self,
+            self._tr('Success'),
+            self._tr('API keys have been updated successfully.')
+        )
+        
+        # Emit signal to notify the main application
         self.settings_updated.emit()
     
     def _show_api_key_dialog(self) -> None:
-        """Show the API key management dialog."""
+        """Show the legacy API key management dialog."""
         dialog = QDialog(self)
-        dialog.setWindowTitle(self._tr('Manage API Keys'))
-        dialog.setMinimumWidth(400)
+        dialog.setWindowTitle(self._tr('API Keys'))
+        dialog.setMinimumWidth(500)
         
         layout = QVBoxLayout(dialog)
         
-        # Add form fields for API keys
-        layout.addWidget(QLabel(self._tr('OpenMeteo API Key:')))
+        # Add API key input fields
+        # OpenWeatherMap API Key
+        owm_key_layout = QHBoxLayout()
+        owm_key_label = QLabel('OpenWeatherMap API Key:')
         owm_key_edit = QLineEdit()
-        # Load current key from config
-        # owm_key_edit.setText(self.config_manager.get('api_keys', {}).get('openmeteo', ''))
-        layout.addWidget(owm_key_edit)
-        
-        # Add more API key fields as needed
+        # owm_key_edit.setText(self.config_manager.get('api_keys', {}).get('openweathermap', ''))
+        owm_key_layout.addWidget(owm_key_label)
+        owm_key_layout.addWidget(owm_key_edit)
+        layout.addLayout(owm_key_layout)
         
         # Add buttons
         button_box = QDialogButtonBox(
@@ -1005,7 +1065,7 @@ class MenuBar(QMenuBar):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Save API keys to config
             # self.config_manager.set('api_keys', {
-            #     'openmeteo': owm_key_edit.text().strip()
+            #     'openweathermap': owm_key_edit.text().strip()
             # })
             QMessageBox.information(
                 self,

@@ -20,13 +20,91 @@ DEFAULT_CONFIG = {
     'language': 'en',  # Default to English
     'theme': 'dark',   # Only dark theme is supported
     'provider': 'openmeteo',  # Default provider
+    'map': {
+        'default_zoom': 6,
+        'default_center': [51.505, -0.09],  # Default center (London)
+        'min_zoom': 1,
+        'max_zoom': 18,
+        'tile_size': 256,
+        'attribution': 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://openweathermap.org/">OpenWeather</a>',
+    },
     'providers': {
         'open-meteo': {
-            'api_key': ''  # Open-Meteo doesn't require an API key for basic usage
+            'api_key': '',  # Open-Meteo doesn't require an API key for basic usage
+            'endpoints': {
+                'forecast': 'https://api.open-meteo.com/v1/forecast',
+                'geocoding': 'https://geocoding-api.open-meteo.com/v1/search',
+            }
         },
         'openweathermap': {
-            'api_key': '',  # OpenWeatherMap API key for map tiles
-            'tile_url': 'https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}'
+            'api_key': '',  # OpenWeatherMap API key
+            'endpoints': {
+                'current': 'https://api.openweathermap.org/data/2.5/weather',
+                'forecast': 'https://api.openweathermap.org/data/2.5/forecast',
+                'onecall': 'https://api.openweathermap.org/data/2.5/onecall',
+                'geocoding': 'http://api.openweathermap.org/geo/1.0/direct',
+                'reverse_geocoding': 'http://api.openweathermap.org/geo/1.0/reverse',
+            },
+            'tile_servers': {
+                'base': 'https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}',
+                'clouds': 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid={api_key}',
+                'precipitation': 'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid={api_key}',
+                'pressure': 'https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid={api_key}',
+                'wind': 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid={api_key}',
+                'temperature': 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid={api_key}',
+            },
+            'map_layers': {
+                'temperature': {
+                    'name': 'Temperature',
+                    'enabled': True,
+                    'opacity': 0.7,
+                    'legend': {
+                        'title': '°C',
+                        'colors': ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8',
+                                 '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026']
+                    }
+                },
+                'precipitation': {
+                    'name': 'Precipitation',
+                    'enabled': True,
+                    'opacity': 0.7,
+                    'legend': {
+                        'title': 'mm',
+                        'colors': ['#f7f7f7', '#d9f0d3', '#a6dba0', '#5aae61', '#1b7837', '#00441b']
+                    }
+                },
+                'wind': {
+                    'name': 'Wind Speed',
+                    'enabled': True,
+                    'opacity': 0.7,
+                    'legend': {
+                        'title': 'm/s',
+                        'colors': ['#ffffcc', '#c7e9b4', '#7fcdbb', '#41b6c4', '#2c7fb8', '#253494']
+                    }
+                },
+                'clouds': {
+                    'name': 'Clouds',
+                    'enabled': True,
+                    'opacity': 0.5,
+                    'legend': {
+                        'title': '%',
+                        'colors': ['#f7f7f7', '#d9d9d9', '#bdbdbd', '#969696', '#636363', '#252525']
+                    }
+                },
+                'pressure': {
+                    'name': 'Pressure',
+                    'enabled': True,
+                    'opacity': 0.7,
+                    'legend': {
+                        'title': 'hPa',
+                        'colors': ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#f7f7f7',
+                                 '#d1e5f0', '#92c5de', '#4393c3', '#2166ac', '#053061']
+                    }
+                }
+            },
+            'default_layers': ['temperature', 'precipitation', 'wind', 'clouds', 'pressure'],
+            'update_interval': 10,  # minutes
+            'max_requests_per_minute': 60  # API rate limit
         },
     }
 }

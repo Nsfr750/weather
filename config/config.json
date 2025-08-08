@@ -8,7 +8,7 @@
       "api_key": ""
     },
     "openweathermap": {
-      "api_key": "APO_KEY_HERE",
+      "api_key": "API_KEY_HERE",
       "tile_url": "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}"
     }
   },

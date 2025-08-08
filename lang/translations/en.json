@@ -148,7 +148,7 @@
   "help_menu_item": "&Help",
   "help_menu_label": "Help",
   "help_tip": "Show help documentation",
-  "help_tips_tab": "Tips & Tricks",
+  "help_tips_tab": "Tips and Tricks",
   "help_tips_text": "Quick Tips:\n\n1. Troubleshooting:\n   - Check your internet connection if data doesn't load\n   - Ensure your API key is properly configured in settings\n   - Check the logs for detailed error information\n",
   "help_title": "Weather App Help",
   "help_usage_tab": "Usage",

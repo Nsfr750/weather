@@ -75,9 +75,7 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 
 ## ✨ Features
 
-![Weather App Screenshot](assets/S1.png)
-![Weather App Screenshot](assets/S2.png)
-![Weather App Screenshot](assets/S3.png)
+![Weather App Screenshot](assets/map.png)
 
 - **Interactive Maps**: View real-time weather maps with radar, satellite, temperature, precipitation, and wind data
 - **Location Search**: Find any location with the built-in geocoding powered by Nominatim

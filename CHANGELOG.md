@@ -1,5 +1,7 @@
 # Changelog
 
+## [Unreleased]
+
 ## [1.6.0] - 2025-08-03
 
 ### Added
@@ -54,7 +56,13 @@
 - Optimized translation loading performance
 
 ### Fixed
-
+- Map base layer switching in the weather radar dialog
+  - Fixed satellite map overlay not displaying correctly
+  - Added proper support for OpenTopoMap base layer
+  - Fixed Stamen Terrain map layer with proper tile provider
+  - Improved layer control and attribution display
+- Resolved issues with map rendering and layer management
+- Fixed map zoom and pan behavior when switching between different map types
 - Fixed issues with special characters in translations
 - Resolved RTL text alignment in weather cards
 - Fixed translation caching issues

@@ -140,7 +140,19 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
    pip install -r requirements.txt
    ```
 
-4. **Install additional dependencies for weather maps (optional)**
+4. **Set up OpenWeatherMap API Key (Required for Weather Maps)**
+
+   The weather maps feature requires an API key from OpenWeatherMap. You can get a free API key by signing up at [OpenWeatherMap](https://openweathermap.org/api). The free tier includes 1,000,000 calls/month which is more than enough for personal use.
+
+   After obtaining your API key, run the setup script:
+
+   ```bash
+   python script/setup_owm_api.py
+   ```
+
+   Follow the prompts to enter your API key. The key will be securely stored in the application's configuration.
+
+5. **Install additional dependencies for weather maps (optional)**
    
    The weather maps feature requires these additional packages:
    

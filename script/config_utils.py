@@ -24,12 +24,17 @@ DEFAULT_CONFIG = {
         'open-meteo': {
             'api_key': ''  # Open-Meteo doesn't require an API key for basic usage
         },
+        'openweathermap': {
+            'api_key': '',  # OpenWeatherMap API key for map tiles
+            'tile_url': 'https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}'
+        },
     }
 }
 
 # Test endpoints for API key validation
 VALIDATION_ENDPOINTS = {
     'open-meteo': 'https://api.open-meteo.com/v1/forecast?latitude=51.51&longitude=-0.13&current_weather=true',
+    'openweathermap': 'https://api.openweathermap.org/data/2.5/weather?q=London,uk&appid={api_key}',
 }
 
 class ConfigManager:

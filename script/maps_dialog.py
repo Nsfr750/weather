@@ -18,7 +18,10 @@ import geopy
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
-from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject, Q_ARG, QThread, pyqtSignal
+# Import config manager
+from script.config_utils import ConfigManager
+
+from PyQt6.QtCore import Qt, QUrl, QSize, QCoreApplication, QMetaObject, Q_ARG, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
     QComboBox, QLabel, QPushButton, QSizePolicy, QCompleter, QLineEdit
@@ -74,6 +77,9 @@ class MapsDialog(QDialog):
         self.current_lat = DEFAULT_LATITUDE
         self.current_lon = DEFAULT_LONGITUDE
         self.current_zoom = DEFAULT_ZOOM
+        
+        # Initialize config manager
+        self.config_manager = ConfigManager()
         
         # Initialize geocoder with rate limiting (max 1 request per second)
         self.geolocator = Nominatim(user_agent="weather_app_maps")
@@ -282,263 +288,325 @@ class MapsDialog(QDialog):
         # Add tab
         self.tab_widget.addTab(wind_widget, self._tr("Wind"))
     
+    def _update_temperature_map(self):
+        """Update the temperature map based on selected unit."""
+        temp_unit = self.temp_unit.currentData()
+        
+        # Create a map centered on current location with OpenStreetMap as base
+        m = folium.Map(
+            location=[self.current_lat, self.current_lon],
+            zoom_start=self.current_zoom,
+            tiles='OpenStreetMap',
+            attr='Map data &copy; OpenStreetMap contributors',
+            control_scale=True
+        )
+        
+        # Add temperature overlay using OpenWeatherMap
+        owm_api_key = self.config_manager.get_provider_api_key('openweathermap')
+        if not owm_api_key:
+            self._update_status(self._tr('OpenWeatherMap API key not configured. Please set it in settings.'), is_error=True)
+            # Show error in web view
+            self.temp_web_view.setHtml(
+                "<h3 style='color: red;'>OpenWeatherMap API key not configured</h3>"
+                "<p>Please set your OpenWeatherMap API key in the settings.</p>"
+            )
+            return
+        
+        # Add temperature overlay with selected unit
+        unit_param = 'imperial' if temp_unit == 'fahrenheit' else 'metric'
+        folium.TileLayer(
+            tiles=f'https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&units={unit_param}&opacity=0.7',
+            attr='OpenWeatherMap',
+            name=f'Temperature ({temp_unit})',
+            overlay=True,
+            show=True,
+            opacity=0.7
+        ).add_to(m)
+        
+        # Add layer control
+        folium.LayerControl(position='topright').add_to(m)
+        
+        # Save map to HTML and load in web view
+        self._load_map_in_webview(m, self.temp_web_view)
+    
     def _update_radar_map(self):
         """Update the radar map based on selected type and layer."""
-        def _update_map():
-            map_type = self.radar_type.currentData()
-            layer = self.radar_layer.currentData()
-                
-            # Create a map centered on current location
-            m = folium.Map(
-                location=[self.current_lat, self.current_lon],
-                zoom_start=self.current_zoom,
-                tiles=self._get_tile_url(map_type),
-                attr='Map data &copy; OpenStreetMap contributors',
-                control_scale=True
-            )
-                
-            # Add layer based on selection
-            if layer == "radar":
-                # Add radar overlay (example using OpenWeatherMap)
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Precipitation',
-                    overlay=True
-                ).add_to(m)
-            elif layer == "satellite":
-                # Add satellite layer
-                folium.TileLayer(
-                    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                    attr='Esri',
-                    name='Satellite',
-                    overlay=True
-                ).add_to(m)
-                
-            # Add layer control
-            folium.LayerControl().add_to(m)
-                
-            # Save map to HTML and load in web view
-            self._load_map_in_webview(m, self.radar_web_view)
-            
-        # Ensure we're on the main thread when updating the UI
-        if QThread.currentThread() != self.thread():
-            QMetaObject.invokeMethod(self, "_update_radar_map", 
-                                   Qt.ConnectionType.QueuedConnection)
-        else:
-            _update_map()
-    
-    def _update_temperature_map(self):
-        """Update the temperature map."""
-        def _update_map():
-            unit = self.temp_unit.currentData()
-            
-            # Create a map centered on current location
-            m = folium.Map(
-                location=[self.current_lat, self.current_lon],
-                zoom_start=self.current_zoom,
-                tiles='OpenStreetMap',
-                attr='Map data &copy; OpenStreetMap contributors',
-                control_scale=True
-            )
-            
-            # Add temperature overlay (example using OpenWeatherMap)
-            folium.TileLayer(
-                tiles=f'https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid=YOUR_API_KEY&units={"imperial" if unit == "fahrenheit" else "metric"}',
-                attr='OpenWeatherMap',
-                name='Temperature',
-                overlay=True
-            ).add_to(m)
-            
-            # Add layer control
-            folium.LayerControl().add_to(m)
-            
-            # Save map to HTML and load in web view
-            self._load_map_in_webview(m, self.temp_web_view)
+        map_type = self.radar_type.currentData()
+        layer = self.radar_layer.currentData()
         
-        # Ensure we're on the main thread when updating the UI
-        if QThread.currentThread() != self.thread():
-            QMetaObject.invokeMethod(self, "_update_temperature_map", 
-                                   Qt.ConnectionType.QueuedConnection)
-        else:
-            _update_map()
+        # Create a map centered on current location with a default base layer
+        # We'll add the actual base layers below with proper control
+        m = folium.Map(
+            location=[self.current_lat, self.current_lon],
+            zoom_start=self.current_zoom,
+            tiles=None,  # Start with no base layer
+            control_scale=True
+        )
+        
+        # Define all base layers
+        base_layers = {
+            'osm': {
+                'tiles': 'OpenStreetMap',
+                'attr': '© OpenStreetMap contributors',
+                'name': 'OpenStreetMap',
+                'show': map_type == 'osm' and layer != 'satellite'
+            },
+            'topo': {
+                'tiles': 'OpenTopoMap',
+                'attr': 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)',
+                'name': 'OpenTopoMap',
+                'show': map_type == 'topo' and layer != 'satellite',
+                'tile_url': 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+            },
+            'stamen_terrain': {
+                'tiles': 'stamenterrain',
+                'attr': 'Map tiles by <a href="https://stamen.com">Stamen Design</a>, under <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="https://openstreetmap.org">OpenStreetMap</a>, under <a href="https://www.openstreetmap.org/copyright">ODbL</a>.',
+                'name': 'Stamen Terrain',
+                'show': map_type == 'stamen_terrain' and layer != 'satellite'
+            },
+            'satellite': {
+                'tiles': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                'attr': 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                'name': 'Satellite',
+                'show': layer == 'satellite',
+                'overlay': False
+            }
+        }
+        
+        # Add all base layers to the map
+        for key, layer_config in base_layers.items():
+            # Special handling for Stamen Terrain
+            if key == 'stamen_terrain':
+                # Use folium's built-in Stamen Terrain provider
+                folium.TileLayer(
+                    tiles=layer_config['tiles'],
+                    attr=layer_config['attr'],
+                    name=layer_config['name'],
+                    overlay=layer_config.get('overlay', False),
+                    control=True,
+                    show=layer_config['show']
+                ).add_to(m)
+            else:
+                # Standard tile layer for other map types
+                folium.TileLayer(
+                    tiles=layer_config.get('tile_url', layer_config['tiles']),
+                    attr=layer_config['attr'],
+                    name=layer_config['name'],
+                    overlay=layer_config.get('overlay', False),
+                    control=True,
+                    show=layer_config['show']
+                ).add_to(m)
+        
+        # Add weather overlay based on selection
+        owm_api_key = self.config_manager.get_provider_api_key('openweathermap')
+        if not owm_api_key:
+            self._update_status(self._tr('OpenWeatherMap API key not configured. Please set it in settings.'), is_error=True)
+            # Show error in web view
+            self.radar_web_view.setHtml(
+                "<h3 style='color: red;'>OpenWeatherMap API key not configured</h3>"
+                "<p>Please set your OpenWeatherMap API key in the settings.</p>"
+            )
+            return
+            
+        if layer == "radar":
+            # Add precipitation overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}',
+                attr='OpenWeatherMap',
+                name='Precipitation',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        
+        # Add layer control with base layers and overlays
+        layer_control = folium.LayerControl(
+            position='topright',
+            collapsed=False,  # Keep expanded for better UX
+            autoZIndex=True  # Automatically manage z-index of layers
+        )
+        m.add_child(layer_control)
+        
+        # Save map to HTML and load in web view
+        self._load_map_in_webview(m, self.radar_web_view)
     
     def _update_precipitation_map(self):
-        """Update the precipitation map."""
-        def _update_map():
-            prec_type = self.prec_type.currentData()
-            
-            # Create a map centered on current location
-            m = folium.Map(
-                location=[self.current_lat, self.current_lon],
-                zoom_start=self.current_zoom,
-                tiles='OpenStreetMap',
-                attr='Map data &copy; OpenStreetMap contributors',
-                control_scale=True
-            )
-            
-            # Add precipitation overlay based on type
-            if prec_type == "rain":
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Precipitation',
-                    overlay=True
-                ).add_to(m)
-            elif prec_type == "snow":
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Snow',
-                    overlay=True
-                ).add_to(m)
-            else:  # clouds
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Clouds',
-                    overlay=True
-                ).add_to(m)
-                
-            # Add layer control
-            folium.LayerControl().add_to(m)
-                
-            # Save map to HTML and load in web view
-            self._load_map_in_webview(m, self.prec_web_view)
+        """Update the precipitation map based on selected precipitation type."""
+        prec_type = self.prec_type.currentData()
         
-        # Ensure we're on the main thread when updating the UI
-        if QThread.currentThread() != self.thread():
-            QMetaObject.invokeMethod(self, "_update_precipitation_map",
-                                  Qt.ConnectionType.QueuedConnection)
-        else:
-            _update_map()
+        # Create a map centered on current location with OpenStreetMap as base
+        m = folium.Map(
+            location=[self.current_lat, self.current_lon],
+            zoom_start=self.current_zoom,
+            tiles='OpenStreetMap',
+            attr='Map data &copy; OpenStreetMap contributors',
+            control_scale=True
+        )
+        
+        # Add precipitation overlay using OpenWeatherMap
+        owm_api_key = self.config_manager.get_provider_api_key('openweathermap')
+        if not owm_api_key:
+            self._update_status(self._tr('OpenWeatherMap API key not configured. Please set it in settings.'), is_error=True)
+            # Show error in web view
+            self.prec_web_view.setHtml(
+                "<h3 style='color: red;'>OpenWeatherMap API key not configured</h3>"
+                "<p>Please set your OpenWeatherMap API key in the settings.</p>"
+            )
+            return
+        
+        # Add precipitation layer based on selection
+        if prec_type == 'rain':
+            # Add rain overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7',
+                attr='OpenWeatherMap',
+                name='Rain',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        elif prec_type == 'snow':
+            # Add snow overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/snow_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7',
+                attr='OpenWeatherMap',
+                name='Snow',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        else:  # clouds
+            # Add clouds overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/clouds_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7',
+                attr='OpenWeatherMap',
+                name='Clouds',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        
+        # Add layer control
+        folium.LayerControl(position='topright').add_to(m)
+        
+        # Save map to HTML and load in web view
+        self._load_map_in_webview(m, self.prec_web_view)
     
     def _update_wind_map(self):
-        """Update the wind map."""
-        def _update_map():
-            layer = self.wind_layer.currentData()
-                
-            # Create a map centered on current location
-            m = folium.Map(
-                location=[self.current_lat, self.current_lon],
-                zoom_start=self.current_zoom,
-                tiles='OpenStreetMap',
-                attr='Map data &copy; OpenStreetMap contributors',
-                control_scale=True
-            )
-                
-            # Add wind layer based on selection
-            if layer == "wind":
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Wind Speed',
-                    overlay=True
-                ).add_to(m)
-            elif layer == "gust":
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Wind Gusts',
-                    overlay=True
-                ).add_to(m)
-            else:  # direction
-                folium.TileLayer(
-                    tiles='https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY',
-                    attr='OpenWeatherMap',
-                    name='Wind Direction',
-                    overlay=True
-                ).add_to(m)
-                
-            # Add layer control
-            folium.LayerControl().add_to(m)
-                
-            # Save map to HTML and load in web view
-            self._load_map_in_webview(m, self.wind_web_view)
+        """Update the wind map based on selected wind layer."""
+        wind_layer = self.wind_layer.currentData()
         
-        # Ensure we're on the main thread when updating the UI
-        if QThread.currentThread() != self.thread():
-            QMetaObject.invokeMethod(self, "_update_wind_map", 
-                                   Qt.ConnectionType.QueuedConnection)
-        else:
-            _update_map()
+        # Create a map centered on current location with OpenStreetMap as base
+        m = folium.Map(
+            location=[self.current_lat, self.current_lon],
+            zoom_start=self.current_zoom,
+            tiles='OpenStreetMap',
+            attr='Map data &copy; OpenStreetMap contributors',
+            control_scale=True
+        )
+        
+        # Add wind overlay using OpenWeatherMap
+        owm_api_key = self.config_manager.get_provider_api_key('openweathermap')
+        if not owm_api_key:
+            self._update_status(self._tr('OpenWeatherMap API key not configured. Please set it in settings.'), is_error=True)
+            # Show error in web view
+            self.wind_web_view.setHtml(
+                "<h3 style='color: red;'>OpenWeatherMap API key not configured</h3>"
+                "<p>Please set your OpenWeatherMap API key in the settings.</p>"
+            )
+            return
+        
+        # Add wind layer based on selection
+        if wind_layer == 'wind':
+            # Add wind speed overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7',
+                attr='OpenWeatherMap',
+                name='Wind Speed',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        elif wind_layer == 'gust':
+            # Add wind gusts overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7&gust=1',
+                attr='OpenWeatherMap',
+                name='Wind Gusts',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        else:  # direction
+            # Add wind direction overlay
+            folium.TileLayer(
+                tiles=f'https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={owm_api_key}&opacity=0.7&direction=1',
+                attr='OpenWeatherMap',
+                name='Wind Direction',
+                overlay=True,
+                show=True,
+                opacity=0.7
+            ).add_to(m)
+        
+        # Add layer control
+        folium.LayerControl(position='topright').add_to(m)
+        
+        # Save map to HTML and load in web view
+        self._load_map_in_webview(m, self.wind_web_view)
     
     def _load_map_in_webview(self, folium_map, web_view):
         """
         Load a Folium map into a QWebEngineView.
         
         Args:
-            folium_map: The Folium map object
-            web_view: The QWebEngineView to load the map into
+            folium_map: The Folium map object to display
+            web_view: The QWebEngineView widget to display the map in
         """
-        def _update_webview():
+        try:
+            # Save the map to a temporary HTML file
+            temp_file = Path("temp_map.html")
+            folium_map.save(str(temp_file))
+            
+            # Read the HTML content
+            with open(temp_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            # Configure web view settings
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.ErrorPageEnabled, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+            web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
+            
+            # Load the HTML content
+            web_view.setHtml(html_content, QUrl.fromLocalFile(str(temp_file.absolute())))
+            
+            # Force a refresh
+            web_view.reload()
+            
+            logger.info("Map loaded successfully")
+            
+        except Exception as e:
+            error_msg = f"Error loading map: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            self._update_status(error_msg, is_error=True)
+            
+            # Show error in web view
+            web_view.setHtml(f"<h3 style='color: red;'>{error_msg}</h3><p>Please check your internet connection and try again.</p>")
+            
+            # Try a fallback to OpenStreetMap if the main map fails
             try:
-                # Generate the HTML content with Leaflet.js and CSS
-                html_content = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Weather Map</title>
-                    <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                        crossorigin=""/>
-                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                        crossorigin=""></script>
-                    <style>
-                        body {{ margin: 0; padding: 0; }}
-                        #map {{ width: 100%; height: 100vh; }}
-                    </style>
-                </head>
-                <body>
-                    <div id="map"></div>
-                    <script>
-                        // Initialize the map
-                        var map = L.map('map').setView([{self.current_lat}, {self.current_lon}], {self.current_zoom});
-                        
-                        // Add OpenStreetMap tiles
-                        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                            maxZoom: 19
-                        }}).addTo(map);
-                        
-                        // Add a marker at the center
-                        L.marker([{self.current_lat}, {self.current_lon}]).addTo(map)
-                            .bindPopup('Current Location');
-                    </script>
-                </body>
-                </html>
-                """
-                
-                # Load the HTML content directly
-                web_view.setHtml(html_content, QUrl("about:blank"))
-                
-                # Configure web view settings
-                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
-                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
-                web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
-                
-            except Exception as e:
-                error_msg = f"Error loading map: {str(e)}"
-                logger.error(error_msg)
-                web_view.setHtml(f"<h3 style='color: red;'>{error_msg}</h3><p>Please check your internet connection and try again.</p>")
-                
-                # Try a fallback to OpenStreetMap if the main map fails
-                try:
-                    web_view.setUrl(QUrl("https://www.openstreetmap.org/"))
-                except Exception as fallback_error:
-                    logger.error(f"Fallback map also failed: {fallback_error}")
+                web_view.setUrl(QUrl("https://www.openstreetmap.org/"))
+            except Exception as fallback_error:
+                logger.error(f"Fallback map also failed: {fallback_error}")
         
         # Ensure we're on the main thread when updating the web view
         if QThread.currentThread() != self.thread():
-            QMetaObject.invokeMethod(self, "_load_map_in_webview", 
+            QMetaObject.invokeMethod(self, "_load_map_in_webview",
                                    Qt.ConnectionType.QueuedConnection,
                                    Q_ARG(object, folium_map),
                                    Q_ARG(object, web_view))
-        else:
-            _update_webview()
+            return
     
     def _get_tile_url(self, map_type: str) -> str:
         """Get the tile URL for the specified map type."""
@@ -585,6 +653,7 @@ class MapsDialog(QDialog):
             Q_ARG(str, f'color: {color};')
         )
     
+    @pyqtSlot(object, str)
     def _handle_geocode_result(self, result: Optional[Dict[str, Any]], original_query: str):
         """Handle the result of a geocoding operation."""
         def _update_ui():

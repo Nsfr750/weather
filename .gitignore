@@ -73,3 +73,5 @@ db.sqlite3
 
 # Logs
 *.log
+temp_map.html
+config/config.json

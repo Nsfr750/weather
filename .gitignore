@@ -75,3 +75,5 @@ db.sqlite3
 *.log
 temp_map.html
 config/config.json
+config/config.json
+config/providers.json

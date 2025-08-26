@@ -23,7 +23,7 @@
       }
     },
     "openweathermap": {
-      "api_key": "API_KEY_HERE",
+      "api_key": "c57b98b2c33786fb547009eb8048bd9c",
       "tile_url": "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}",
       "endpoints": {
         "current": "https://api.openweathermap.org/data/2.5/weather",

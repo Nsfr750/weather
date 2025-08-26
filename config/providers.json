@@ -1,7 +1,0 @@
-{
-  "Providers": {
-    "openweathermap": {
-      "api_key": "c57b98b2c33786fb547009eb8048bd9c"
-    }
-  }
-}

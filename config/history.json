@@ -1,6 +1,16 @@
 [
   {
     "location": "Bolzano Novarese",
+    "temperature": 22.5,
+    "timestamp": "2025-08-25 19:04:43.034151",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 6.1,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Bolzano Novarese",
     "temperature": 28.2,
     "timestamp": "2025-08-12 11:39:12.519055",
     "feels_like": null,

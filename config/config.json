@@ -23,7 +23,7 @@
       }
     },
     "openweathermap": {
-      "api_key": "c57b98b2c33786fb547009eb8048bd9c",
+      "api_key": "API_KEY_HERE",
       "tile_url": "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png?appid={api_key}",
       "endpoints": {
         "current": "https://api.openweathermap.org/data/2.5/weather",
@@ -143,10 +143,10 @@
       "max_requests_per_minute": 60
     }
   },
-  "last_city": "Boston",
+  "last_city": "Bolzano Novarese",
   "weather_provider": "open-meteo",
   "layout": "standard",
-  "window/geometry": "01d9d0cb0003000000000130000000350000057b0000037300000130000000540000057b000003730000000000000000078000000130000000540000057b00000373",
-  "window/state": "000000ff00000000fd000000000000044c000002ec00000004000000040000000800000008fc00000000",
-  "ui/show_history": true
+  "window/geometry": "01d9d0cb00030000000002300000005e0000054f0000039c000002300000007d0000054f0000039c00000000000000000780000002300000007d0000054f0000039c",
+  "window/state": "000000ff00000000fd0000000000000320000002ec00000004000000040000000800000008fc00000000",
+  "ui/show_history": false
 }

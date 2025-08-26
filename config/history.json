@@ -1,0 +1,102 @@
+[
+  {
+    "location": "Bolzano Novarese",
+    "temperature": 22.5,
+    "timestamp": "2025-08-25 19:04:43.034151",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 6.1,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Bolzano Novarese",
+    "temperature": 28.2,
+    "timestamp": "2025-08-12 11:39:12.519055",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 3.7,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Bolzano Novarese",
+    "temperature": 21.1,
+    "timestamp": "2025-08-08 08:13:55.323465",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 2.6,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Bolzano Novarese",
+    "temperature": 17.7,
+    "timestamp": "2025-08-04 07:38:29.426673",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 2.9,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Honolulu",
+    "temperature": 26.5,
+    "timestamp": "2025-08-04 07:38:08.640607",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 18.9,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Bolzano Novarese",
+    "temperature": 25.5,
+    "timestamp": "2025-08-03 14:42:20.605323",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 7.6,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Seattle",
+    "temperature": 14.2,
+    "timestamp": "2025-08-03 13:01:15.145709",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 6.2,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "London",
+    "temperature": 20.5,
+    "timestamp": "2025-08-03 13:01:06.446356",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 14.7,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Madrid",
+    "temperature": 31.5,
+    "timestamp": "2025-08-03 13:00:58.928639",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 5.8,
+    "pressure": null,
+    "visibility": null
+  },
+  {
+    "location": "Dubai",
+    "temperature": 39.8,
+    "timestamp": "2025-08-03 13:00:22.571725",
+    "feels_like": null,
+    "humidity": null,
+    "wind_speed": 17.1,
+    "pressure": null,
+    "visibility": null
+  }
+]

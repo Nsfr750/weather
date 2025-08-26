@@ -1,0 +1,9 @@
+{
+    "notifications": {
+        "enabled": true,
+        "sound": true,
+        "vibration": false,
+        "alert": true,
+        "alert_type": "notification"
+    }
+}

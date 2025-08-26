@@ -1,0 +1,20 @@
+{
+  "bolzano novarese": {
+    "latitude": 45.7627855,
+    "longitude": 8.4451747,
+    "display_name": "Bolzano Novarese, Novara, Piemonte, Italia",
+    "timestamp": 1754237075.6765354
+  },
+  "torino": {
+    "latitude": 45.0677551,
+    "longitude": 7.6824892,
+    "display_name": "Torino, Piemonte, Italia",
+    "timestamp": 1754239389.3514445
+  },
+  "london": {
+    "latitude": 51.5074456,
+    "longitude": -0.1277653,
+    "display_name": "London, Greater London, England, United Kingdom",
+    "timestamp": 1754635795.45726
+  }
+}

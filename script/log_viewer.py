@@ -13,8 +13,9 @@ from PyQt6.QtWidgets import (
     QTextEdit, QFileDialog, QMessageBox, QFrame, QSizePolicy, QApplication,
     QWidget, QStatusBar, QMainWindow
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
-from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QFont, QTextOption
+from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal, QRect
+from PyQt6.QtGui import (QTextCursor, QTextCharFormat, QColor, QFont, QTextOption,
+                        QFontDatabase, QIcon, QPixmap, QPainter)
 
 class LogViewer(QMainWindow):
     """
@@ -23,6 +24,10 @@ class LogViewer(QMainWindow):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("Log Viewer")
+        self.setMinimumSize(800, 600)
+        self.icon_font = None
+        self._init_icon_font()
         
         # Initialize variables
         self.current_log_file = None  # Initialize current_log_file to None
@@ -40,6 +45,91 @@ class LogViewer(QMainWindow):
         self.refresh_timer.timeout.connect(self.refresh_logs)
         self.refresh_timer.start(self.refresh_interval)
         
+    def _init_icon_font(self):
+        """Initialize the Material Icons font for the buttons."""
+        try:
+            # Try to load the font from resources
+            font_id = QFontDatabase.addApplicationFont(":/fonts/materialdesignicons-webfont.ttf")
+            if font_id == -1:
+                # Try to load from system fonts
+                font_family = "Material Design Icons"
+                if font_family in QFontDatabase.families():
+                    self.icon_font = QFont(font_family)
+                    self.icon_font.setPointSize(12)
+                else:
+                    logger.warning("Material Icons font not found. Using default icons.")
+                    self.icon_font = None
+            else:
+                font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+                self.icon_font = QFont(font_family)
+                self.icon_font.setPointSize(12)
+                
+            # Define icon mappings (Unicode points for Material Icons)
+            self.icon_map = {
+                'refresh': '\U000F0450',    # mdi-refresh
+                'clear': '\U000F0156',      # mdi-close-box-outline
+                'delete': '\U000F01B4',     # mdi-delete-outline
+                'save': '\U000F0193',       # mdi-content-save-outline
+                'auto_refresh': '\U000F0450', # mdi-refresh (same as refresh)
+                'auto_refresh_off': '\U000F0451' # mdi-refresh-off
+            }
+            
+        except Exception as e:
+            logger.warning(f"Error initializing icon font: {e}")
+            self.icon_font = None
+    
+    def _create_icon(self, icon_name, size=16, color=None):
+        """Create an icon from the Material Icons font."""
+        if not self.icon_font or not hasattr(self, 'icon_map') or icon_name not in self.icon_map:
+            return QIcon()
+            
+        # Set default color based on theme
+        if color is None:
+            # Check if dark theme is active (you may need to adjust this based on your theme system)
+            is_dark = self.palette().window().color().lightness() < 128
+            color = QColor("#ffffff" if is_dark else "#000000")
+        
+        # Create a pixmap to draw the icon
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        
+        # Set up the painter
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        
+        # Set font and color
+        self.icon_font.setPointSize(size - 4)  # Slightly smaller than the pixmap
+        painter.setFont(self.icon_font)
+        painter.setPen(color)
+        
+        # Draw the icon centered
+        text_rect = QRect(0, 0, size, size)
+        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.icon_map[icon_name])
+        painter.end()
+        
+        return QIcon(pixmap)
+    
+    def _set_button_icons(self):
+        """Set icons for all buttons using Material Icons."""
+        if not hasattr(self, 'icon_font') or not self.icon_font:
+            return
+            
+        # Set icons for buttons
+        self.refresh_btn.setIcon(self._create_icon('refresh'))
+        self.clear_btn.setIcon(self._create_icon('clear'))
+        self.delete_btn.setIcon(self._create_icon('delete'))
+        self.save_btn.setIcon(self._create_icon('save'))
+        
+        # Set initial auto-refresh icon
+        self._update_auto_refresh_icon(self.auto_refresh_btn.isChecked())
+    
+    def _update_auto_refresh_icon(self, enabled):
+        """Update the auto-refresh button icon based on its state."""
+        if hasattr(self, 'auto_refresh_btn') and hasattr(self, 'icon_font') and self.icon_font:
+            icon_name = 'auto_refresh' if enabled else 'auto_refresh_off'
+            self.auto_refresh_btn.setIcon(self._create_icon(icon_name))
+    
     def _tr(self, text):
         """Translation placeholder - returns text as is for English."""
         return text
@@ -66,21 +156,31 @@ class LogViewer(QMainWindow):
         
         # Log level combo box will be set up later in the control frame
         
-        # Buttons
-        self.refresh_btn = QPushButton("Refresh")
-        self.clear_btn = QPushButton("Clear")
-        self.delete_btn = QPushButton("Delete")
-        self.save_btn = QPushButton("Save As...")
-        self.auto_refresh_btn = QPushButton("Auto-refresh")
+        # Buttons with icons
+        self.refresh_btn = QPushButton(" Refresh")
+        self.clear_btn = QPushButton(" Clear")
+        self.delete_btn = QPushButton(" Delete")
+        self.save_btn = QPushButton(" Save As...")
+        self.auto_refresh_btn = QPushButton(" Auto-refresh")
         self.auto_refresh_btn.setCheckable(True)
         self.auto_refresh_btn.setChecked(True)
         
-        # Set tooltips
-        self.refresh_btn.setToolTip("Refresh log view")
-        self.clear_btn.setToolTip("Clear the log file")
-        self.delete_btn.setToolTip("Delete the log file")
-        self.auto_refresh_btn.setToolTip("Toggle auto-refresh of logs")
-        self.save_btn.setToolTip("Save the log file")
+        # Set button icons using Material Icons
+        self._set_button_icons()
+        
+        # Set tooltips with keyboard shortcuts
+        self.refresh_btn.setToolTip("Refresh log view (F5)")
+        self.clear_btn.setToolTip("Clear the log file (Ctrl+L)")
+        self.delete_btn.setToolTip("Delete the log file (Del)")
+        self.auto_refresh_btn.setToolTip("Toggle auto-refresh of logs (Ctrl+R)")
+        self.save_btn.setToolTip("Save the log file (Ctrl+S)")
+        
+        # Set keyboard shortcuts
+        self.refresh_btn.setShortcut("F5")
+        self.clear_btn.setShortcut("Ctrl+L")
+        self.delete_btn.setShortcut("Delete")
+        self.auto_refresh_btn.setShortcut("Ctrl+R")
+        self.save_btn.setShortcut("Ctrl+S")
         
         # Connect buttons
         self.refresh_btn.clicked.connect(self.refresh_logs)
@@ -88,6 +188,8 @@ class LogViewer(QMainWindow):
         self.delete_btn.clicked.connect(self.delete_log)
         self.save_btn.clicked.connect(self.save_log_as)
         self.auto_refresh_btn.toggled.connect(self.toggle_auto_refresh)
+        # Connect the auto-refresh button's toggled signal to update its icon
+        self.auto_refresh_btn.toggled.connect(self._update_auto_refresh_icon)
         
         # Main layout
         main_layout = QVBoxLayout(main_widget)
@@ -430,6 +532,8 @@ class LogViewer(QMainWindow):
             self.refresh_timer.stop()
             self.refresh_btn.setEnabled(True)
         self.auto_refresh_btn.setChecked(checked)
+        # Update the icon based on the new state
+        self._update_auto_refresh_icon(checked)
     
     def refresh_logs(self):
         """Refresh the log file list and content."""

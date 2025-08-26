@@ -1,0 +1,8 @@
+# Weather App Version Information
+Version: 1.6.0
+Build Date: 2025-08-24 11:13:44+02:00
+Author: Nsfr750
+License: GPL-3.0-or-later
+Website: https://github.com/Nsfr750/weather
+Source: https://github.com/Nsfr750/weather
+Issues: https://github.com/Nsfr750/weather/issues

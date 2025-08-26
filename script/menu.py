@@ -356,7 +356,7 @@ class MenuBar(QMenuBar):
             triggered=self._show_api_key_manager
         )
         settings_menu.addAction(api_key_action)
-        
+
         # Application settings
         app_settings_action = QAction(
             self._tr('application_settings') + '...',
@@ -365,6 +365,18 @@ class MenuBar(QMenuBar):
             triggered=self._show_app_settings
         )
         settings_menu.addAction(app_settings_action)
+        
+        # Separator
+        settings_menu.addSeparator()
+        # Download Weather Icons
+        download_icons_action = QAction(
+            self._tr('download_weather_icons'),
+            self,
+            statusTip=self._tr('download_weather_icons_tip'),
+            triggered=self._download_weather_icons
+        )
+        settings_menu.addAction(download_icons_action)
+        
     
     def _create_view_menu(self) -> None:
         """Create the View menu with display options."""
@@ -920,32 +932,104 @@ class MenuBar(QMenuBar):
             QMessageBox.critical(
                 self,
                 self._tr("Error"),
-                self._tr("Failed to load maps dialog: {}".format(str(e)))
+                self._tr("Failed to load maps dialog: {}").format(str(e))
             )
     
-    def _show_about_dialog(self) -> None:
-        """Show the about dialog."""
-        from script.about import About
-        About.show_about(self)
-    
-    def _show_api_key_manager(self) -> None:
-        """Show the API Key Manager dialog."""
+    def _download_weather_icons(self) -> None:
+        """Download weather icons using the download script."""
         try:
-            # Create and show the API key manager dialog
-            dialog = ApiKeyManagerDialog(self)
+            import subprocess
+            import sys
+            from pathlib import Path
             
-            # Connect the api_keys_updated signal to our handler
-            dialog.api_keys_updated.connect(self._on_api_keys_updated)
+            script_path = Path(__file__).parent.parent / 'scripts' / 'download_weather_icons.py'
+            if not script_path.exists():
+                QMessageBox.critical(
+                    self,
+                    self._tr('Error'),
+                    self._tr('Download script not found at: {}').format(script_path)
+                )
+                return
+                
+            # Run the script in a separate process
+            process = subprocess.Popen(
+                [sys.executable, str(script_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
             
-            # Show the dialog
-            dialog.exec()
+            # Show a message that the download has started
+            msg = QMessageBox(
+                QMessageBox.Icon.Information,
+                self._tr('Downloading Icons'),
+                self._tr('Downloading weather icons. Please wait...'),
+                QMessageBox.StandardButton.Ok,
+                self
+            )
+            msg.setModal(False)
+            msg.show()
+            
+            # Check the result when done
+            def check_result():
+                if process.poll() is not None:
+                    msg.close()
+                    if process.returncode == 0:
+                        QMessageBox.information(
+                            self,
+                            self._tr('Success'),
+                            self._tr('Weather icons downloaded successfully!')
+                        )
+                    else:
+                        error_output = process.stderr.read()
+                        QMessageBox.critical(
+                            self,
+                            self._tr('Error'),
+                            self._tr('Failed to download icons: {}').format(error_output)
+                        )
+            
+            # Check every second if the process is done
+            timer = QTimer(self)
+            timer.timeout.connect(check_result)
+            timer.start(1000)
             
         except Exception as e:
-            logger.error(f"Error showing API key manager: {e}")
+            QMessageBox.critical(
+                self,
+                self._tr('Error'),
+                self._tr('An error occurred: {}').format(str(e))
+            )
+    
+    def _on_language_changed(self, action_or_lang: Union[QAction, str]) -> None:
+        """Handle language change from the menu.
+        
+        Args:
+            action_or_lang: Either a QAction with language data or a string language code
+        """
+        try:
+            # Handle both QAction and direct string language codes
+            if isinstance(action_or_lang, QAction):
+                language = action_or_lang.data()
+            else:
+                language = action_or_lang
+                
+            if language and hasattr(self, 'language') and language != self.language:
+                # Update the language in the language manager
+                if self.language_manager.set_language(language):
+                    self.language = language
+                    dialog = ApiKeyManagerDialog(self)
+                    
+                    # Connect the api_keys_updated signal to our handler
+                    dialog.api_keys_updated.connect(self._on_api_keys_updated)
+                    
+                    # Show the dialog
+                    dialog.exec()
+        except Exception as e:
+            logger.error(f"Error in language change handler: {e}")
             QMessageBox.critical(
                 self,
                 self._tr("Error"),
-                self._tr("Failed to open API Key Manager: {}").format(str(e))
+                self._tr("Failed to change language: {}").format(str(e))
             )
     
     def _check_for_updates(self) -> None:
@@ -1122,16 +1206,21 @@ class MenuBar(QMenuBar):
     
     def _show_log_viewer(self) -> None:
         """Show the log viewer dialog."""
-        try:
-            from script.log_viewer import show_log
-            show_log(self)
-        except Exception as e:
-            logger.error(f"Failed to open log viewer: {e}")
-            QMessageBox.critical(
-                self,
-                self._tr('Error'),
-                self._tr('Failed to open log viewer: {}').format(str(e))
-            )
+        if self.on_show_log_viewer:
+            self.on_show_log_viewer()
+        else:
+            from script.log_viewer import LogViewer
+            log_viewer = LogViewer(self)
+            log_viewer.show()
+            
+    def _show_about_dialog(self) -> None:
+        """Show the about dialog."""
+        if self.on_show_about:
+            self.on_show_about()
+        else:
+            from script.about import show_about_dialog
+            show_about_dialog(self.parent())
+            
     
     def _on_provider_changed(self, provider: str) -> None:
         """Handle weather provider change.

@@ -105,12 +105,6 @@ class Sponsor(QDialog):
                 'icon': 'github'
             },
             {
-                'name': 'Patreon',
-                'description': 'Become a patron on Patreon',
-                'url': 'https://www.patreon.com/Nsfr750',
-                'icon': 'patreon'
-            },
-            {
                 'name': 'PayPal',
                 'description': 'Make a one-time donation via PayPal',
                 'url': 'https://paypal.me/3dmega',

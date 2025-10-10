@@ -5,7 +5,6 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Discord](https://img.shields.io/discord/1234567890123456789?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/ryqNeuRYjD)
 
 ![Weather App Screenshot](assets/screenshot.png)
 
@@ -208,19 +207,12 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 - The PyQt community for the excellent GUI framework
 - All contributors who have helped improve this project
 
-## 📞 Support
-
-For support, please join our [Discord server](https://discord.gg/ryqNeuRYjD) or open an issue on GitHub.
-
 ---
 
 <div align="center">
-  Made with ❤️ by <a href="https://github.com/Nsfr750">Nsfr750</a>
+  Made by <a href="https://github.com/Nsfr750">Nsfr750</a>
   <br>
   <a href="https://www.paypal.me/3dmega">
     <img src="https://img.shields.io/badge/Support%20me-PayPal-ff5a5f?style=for-the-badge&logo=paypal" alt="Support me on PayPal">
-  </a>
-  <a href="https://www.patreon.com/Nsfr750">
-    <img src="https://img.shields.io/badge/Support%20me-Patreon-FF424D?style=for-the-badge&logo=patreon" alt="Support me on Patreon">
   </a>
 </div>

@@ -41,7 +41,7 @@ class WeatherAppUI(QMainWindow):
         
         # Set application icon
         try:
-            icon_path = Path('assets/meteo.png')
+            icon_path = Path('script/assets/meteo.png')
             if icon_path.exists():
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:

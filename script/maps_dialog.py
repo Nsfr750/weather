@@ -789,9 +789,9 @@ class MapsDialog(QDialog):
     def _set_window_icon(self):
         """Set the window icon."""
         try:
-            icon_path = Path('assets/map.svg')
+            icon_path = Path('script/assets/map.svg')
             if not icon_path.exists():
-                icon_path = Path('assets/meteo.png')  # Fallback to main app icon
+                icon_path = Path('script/assets/meteo.png')  # Fallback to main app icon
             if icon_path.exists():
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:

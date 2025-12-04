@@ -371,7 +371,7 @@ class WeatherApp(QMainWindow):
     def set_application_icon(self):
         """Set the application icon."""
         try:
-            icon_path = Path('assets/meteo.png')
+            icon_path = Path('script/assets/meteo.png')
             if icon_path.exists():
                 self.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:
@@ -555,7 +555,7 @@ class WeatherApp(QMainWindow):
             
             # Update weather icon
             icon_name = weather_data.get("icon", "01d")
-            icon_path = Path(f"assets/weather_icons/{icon_name}.png")
+            icon_path = Path(f"script/assets/weather_icons/{icon_name}.png")
             if icon_path.exists():
                 pixmap = QPixmap(str(icon_path)).scaled(100, 100, 
                                                        Qt.AspectRatioMode.KeepAspectRatio,
@@ -614,7 +614,7 @@ class WeatherApp(QMainWindow):
                 
                 # Weather icon
                 icon_label = QLabel()
-                icon_path = Path(f"assets/weather_icons/{day.get('icon', '01d')}.png")
+                icon_path = Path(f"script/assets/weather_icons/{day.get('icon', '01d')}.png")
                 if icon_path.exists():
                     pixmap = QPixmap(str(icon_path)).scaled(64, 64, 
                                                           Qt.AspectRatioMode.KeepAspectRatio,

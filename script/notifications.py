@@ -275,7 +275,7 @@ class NotificationManager(QObject):
             # Ensure we have a system tray icon
             if not hasattr(self, '_tray_icon') or self._tray_icon is None:
                 try:
-                    self._tray_icon = QSystemTrayIcon(QIcon("assets/meteo.png"), parent=QApplication.instance())
+                    self._tray_icon = QSystemTrayIcon(QIcon("script/assets/meteo.png"), parent=QApplication.instance())
                     self._tray_icon.show()
                 except Exception as e:
                     logger.error(f"Failed to initialize system tray icon: {e}")

@@ -31,7 +31,7 @@ def download_weather_icons():
     ]
     
     # Create assets directory if it doesn't exist
-    assets_dir = Path("assets/weather_icons")
+    assets_dir = Path("script/assets/weather_icons")
     assets_dir.mkdir(parents=True, exist_ok=True)
     
     # Download each icon

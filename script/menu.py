@@ -400,7 +400,7 @@ class MenuBar(QMenuBar):
         
         # Add Weather Maps & Radar action
         self.maps_action = QAction(
-            QIcon(str(Path('assets/map.png'))) if Path('assets/map.png').exists() else QIcon(),
+            QIcon(str(Path('script/assets/map.png'))) if Path('script/assets/map.png').exists() else QIcon(),
             self._tr('weather_maps'),
             self
         )

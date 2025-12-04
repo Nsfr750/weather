@@ -118,7 +118,7 @@ class AboutDialog(QDialog):
         icon_label = QLabel()
         # Try multiple possible paths for the logo
         logo_paths = [
-            'assets/meteo.png',  # Development path
+            'script/assets/meteo.png',  # Development path
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'meteo.png'),  # Installed path
             'meteo.png'  # Fallback if in same directory
         ]

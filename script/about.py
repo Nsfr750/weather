@@ -6,6 +6,7 @@ It displays information about the application including version number,
 copyright information, dependencies, and system information.
 """
 
+import os
 import platform
 import sys
 import webbrowser

@@ -1,14 +1,28 @@
 # 🌦️ Weather App
 
-A modern, feature-rich Python weather application (v1.6.0) with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, alerts, and interactive weather maps for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
+A modern, feature-rich Python weather application (v1.6.1) with a beautiful, responsive GUI built using PyQt6. Get real-time weather conditions, forecasts, alerts, and interactive weather maps for any location worldwide. The app supports multiple weather providers, languages, and units, making it a versatile tool for users everywhere.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Version](https://img.shields.io/badge/version-1.6.1-blue.svg)](https://github.com/yourusername/weather/releases/tag/v1.6.1)
 
 ![Weather App Screenshot](assets/screenshot.png)
 
-## 🚀 What's New in v1.6.0
+## 🚀 What's New in v1.6.1
+
+- **System Tray Integration**
+  - New minimize to system tray functionality
+  - Background updates when minimized
+  - System tray notifications for weather alerts
+  - Quick access menu from system tray
+  - Configurable minimize behavior
+  - Support for all 16 languages
+  - Improved memory management
+
+## 📋 Previous Updates
+
+### v1.6.0
 
 - **New Features**
   - Interactive Weather Maps & Radar

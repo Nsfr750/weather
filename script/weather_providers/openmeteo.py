@@ -6,6 +6,7 @@ It implements the standard weather provider interface used by the application.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import requests

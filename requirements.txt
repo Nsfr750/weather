@@ -45,11 +45,6 @@ mkdocs>=1.5.2,<2.0.0
 mkdocs-material>=9.1.21,<10.0.0
 mkdocstrings[python]>=0.22.0,<1.0.0
 
-# Development
-sphinx>=7.1.2,<8.0.0
-sphinx-rtd-theme>=1.3.0,<2.0.0
-sphinx-autodoc-typehints>=1.24.0,<2.0.0
-
 # Optional Dependencies
 docker>=6.1.3,<7.0.0  # For containerization
 pandas>=2.0.0,<3.0.0  # For data analysis and export

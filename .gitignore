@@ -83,3 +83,4 @@ firma.bat
 pyinstaller_build_win.py
 pyinstaller_build_win.py
 help_translations.json
+.windsurf/rules

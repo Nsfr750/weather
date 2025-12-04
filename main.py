@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Weather Application - 1.6.0
+Weather Application - 1.6.1
 
 A modern weather application that displays current weather, 7-day forecast,
 and historical weather data using the Open-Meteo.com API.
@@ -60,6 +60,7 @@ from script.weather_providers.openmeteo import OpenMeteoProvider
 # Constants
 DEFAULT_CITY = "Rome, IT"
 REFRESH_INTERVAL = 30 * 60 * 1000  # 30 minutes in milliseconds
+app_name = "Weather"
 
 # Configure logging
 logger = setup_logging()

@@ -34,6 +34,17 @@ class OpenMeteoProvider:
         self.max_history = 10  # Number of historical queries to keep
         self.language_manager = get_language_manager()
         
+        # Initialize geocoding cache
+        self.geocode_cache = {}
+        self.reverse_geocode_cache = {}
+        self.last_geocode_time = 0
+        self.last_reverse_geocode_time = 0
+        self.min_geocode_interval = 1.0  # 1 second minimum between geocode requests
+        self.cache_file = Path.home() / '.weather_app' / 'geocode_cache.json'
+        
+        # Load cache from disk if it exists
+        self._load_geocode_cache()
+        
         # Initialize weather code translations
         self._init_weather_descriptions()
         
@@ -275,18 +286,33 @@ class OpenMeteoProvider:
             return {"error": str(e)}
     
     def _geocode(self, location: str) -> Optional[Dict[str, float]]:
-        """Convert location name to coordinates using Open-Meteo geocoding."""
+        """Convert location name to coordinates using Open-Meteo geocoding with caching."""
         if not location:
             return None
+            
+        # Check cache first
+        cache_key = location.lower().strip()
+        if cache_key in self.geocode_cache:
+            logger.debug(f"Using cached geocode result for: {location}")
+            return self.geocode_cache[cache_key]
             
         # Check if location is already in coordinates format (lat,lon)
         if "," in location:
             try:
-                lat, lon = map(float, location.split(","))
-                return {"latitude": lat, "longitude": lon}
-            except (ValueError, IndexError):
+                lat, lon = map(float, [x.strip() for x in location.split(",")])
+                result = {"latitude": lat, "longitude": lon}
+                self.geocode_cache[cache_key] = result
+                return result
+            except (ValueError, IndexError) as e:
+                logger.debug(f"Error parsing coordinates: {e}")
                 pass
-                
+        
+        # Rate limiting: ensure we don't make requests too frequently
+        current_time = time.time()
+        time_since_last = current_time - self.last_geocode_time
+        if time_since_last < self.min_geocode_interval:
+            time.sleep(self.min_geocode_interval - time_since_last)
+        
         # Try to geocode the location name
         try:
             params = {
@@ -296,31 +322,96 @@ class OpenMeteoProvider:
                 "format": "json"
             }
             
-            response = requests.get("https://geocoding-api.open-meteo.com/v1/search", params=params)
+            logger.debug(f"Geocoding location: {location}")
+            response = requests.get(
+                "https://geocoding-api.open-meteo.com/v1/search",
+                params=params,
+                timeout=10
+            )
             response.raise_for_status()
             data = response.json()
             
             if data.get("results") and len(data["results"]) > 0:
                 result = data["results"][0]
-                return {
+                result_data = {
                     "latitude": result.get("latitude"),
                     "longitude": result.get("longitude"),
                     "name": result.get("name"),
                     "admin1": result.get("admin1"),
                     "country": result.get("country")
                 }
+                # Cache the result
+                self.geocode_cache[cache_key] = result_data
+                self._save_geocode_cache()
+                self.last_geocode_time = time.time()
+                return result_data
                 
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                logger.warning("Geocoding API rate limit exceeded")
+                retry_after = int(e.response.headers.get('Retry-After', 5))
+                logger.info(f"Waiting {retry_after} seconds before retrying...")
+                time.sleep(retry_after)
+                return self._geocode(location)  # Retry once after waiting
+            logger.error(f"Geocoding HTTP error for {location}: {e}")
         except Exception as e:
             logger.error(f"Geocoding error for {location}: {e}")
             
+        # If we get here, geocoding failed - cache the failure to avoid repeated lookups
+        self.geocode_cache[cache_key] = None
+        self._save_geocode_cache()
         return None
     
+    def _load_geocode_cache(self) -> None:
+        """Load geocoding cache from disk."""
+        try:
+            if self.cache_file.exists():
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                    self.geocode_cache = cache_data.get('geocode', {})
+                    self.reverse_geocode_cache = cache_data.get('reverse_geocode', {})
+                    logger.info(f"Loaded geocoding cache with {len(self.geocode_cache)} entries")
+        except Exception as e:
+            logger.warning(f"Failed to load geocode cache: {e}")
+            self.geocode_cache = {}
+            self.reverse_geocode_cache = {}
+    
+    def _save_geocode_cache(self) -> None:
+        """Save geocoding cache to disk."""
+        try:
+            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'geocode': self.geocode_cache,
+                    'reverse_geocode': self.reverse_geocode_cache,
+                    'timestamp': int(time.time())
+                }, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to save geocode cache: {e}")
+    
+    def _get_cache_key(self, lat: float, lon: float) -> str:
+        """Generate a consistent cache key for coordinates."""
+        # Round to 4 decimal places (~11m precision) to group nearby locations
+        return f"{round(lat, 4)},{round(lon, 4)}"
+    
     def _reverse_geocode(self, lat: float, lon: float) -> str:
-        """Convert coordinates to location name using OpenStreetMap Nominatim as fallback.
+        """Convert coordinates to location name using OpenStreetMap Nominatim with caching.
         
         Note: According to Nominatim's usage policy, you must include a custom user agent
         and respect their usage limits (max 1 request per second).
         """
+        # Check cache first
+        cache_key = self._get_cache_key(lat, lon)
+        if cache_key in self.reverse_geocode_cache:
+            logger.debug(f"Using cached reverse geocode result for: {lat}, {lon}")
+            return self.reverse_geocode_cache[cache_key]
+        
+        # Rate limiting: ensure we don't make requests too frequently
+        current_time = time.time()
+        time_since_last = current_time - self.last_reverse_geocode_time
+        if time_since_last < self.min_geocode_interval:
+            time.sleep(self.min_geocode_interval - time_since_last)
+        
         # First try OpenStreetMap Nominatim as it's more reliable for reverse geocoding
         try:
             # Create a proper user agent that identifies your application
@@ -328,6 +419,7 @@ class OpenMeteoProvider:
                 'User-Agent': 'WeatherApp/1.0 (https://github.com/Nsfr750/weather; nsfr750@yandex.com)'
             }
             
+            logger.debug(f"Reverse geocoding coordinates: {lat}, {lon}")
             response = requests.get(
                 "https://nominatim.openstreetmap.org/reverse",
                 params={
@@ -341,22 +433,38 @@ class OpenMeteoProvider:
                 headers=headers,
                 timeout=10
             )
+            
+            # Handle rate limiting
+            if response.status_code == 429:
+                retry_after = int(response.headers.get('Retry-After', 5))
+                logger.warning(f"Nominatim rate limit exceeded. Waiting {retry_after} seconds...")
+                time.sleep(retry_after)
+                return self._reverse_geocode(lat, lon)  # Retry once after waiting
+                
             response.raise_for_status()
             data = response.json()
             
             # Extract location name from the response
+            location_name = None
             if 'display_name' in data:
-                return data['display_name']
+                location_name = data['display_name']
+            else:
+                # Fallback to address components if display_name is not available
+                address = data.get('address', {})
+                location_parts = []
+                for key in ['city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state', 'country']:
+                    if key in address:
+                        location_parts.append(address[key])
                 
-            # Fallback to address components if display_name is not available
-            address = data.get('address', {})
-            location_parts = []
-            for key in ['city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state', 'country']:
-                if key in address:
-                    location_parts.append(address[key])
+                if location_parts:
+                    location_name = ', '.join(location_parts[:3])  # Return up to 3 most specific parts
             
-            if location_parts:
-                return ', '.join(location_parts[:3])  # Return up to 3 most specific parts
+            # Cache the result if we got a valid location name
+            if location_name:
+                self.reverse_geocode_cache[cache_key] = location_name
+                self._save_geocode_cache()
+                self.last_reverse_geocode_time = time.time()
+                return location_name
             
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 403:
@@ -366,8 +474,11 @@ class OpenMeteoProvider:
         except Exception as e:
             logger.warning(self.language_manager.tr("reverse_geocoding_error").format(lat=lat, lon=lon, error=str(e)))
         
-        # Fallback to just showing coordinates
-        return f"{lat:.4f}, {lon:.4f}"
+        # If we get here, reverse geocoding failed - use coordinates as fallback
+        location_name = f"{lat:.4f}, {lon:.4f}"
+        self.reverse_geocode_cache[cache_key] = location_name
+        self._save_geocode_cache()
+        return location_name
     
     def _init_weather_descriptions(self) -> None:
         """Initialize weather code translations."""

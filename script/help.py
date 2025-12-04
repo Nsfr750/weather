@@ -19,7 +19,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('help_dialog.log')
+        logging.FileHandler('logs/help_dialog.log')
     ]
 )
 logger = logging.getLogger(__name__)

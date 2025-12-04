@@ -17,7 +17,7 @@ def get_version():
         return version_str, display_version
     except Exception as e:
         print(f"Warning: Could not read version: {e}")
-        return "1.6.0", "1.6.0"
+        return "1.6.1", "1.6.1"
 
 def create_spec_file(version_str, display_version):
     """Create PyInstaller spec file"""
@@ -127,13 +127,13 @@ VSVersionInfo(
            StringStruct('FileDescription', 'Wheather App.'),
            StringStruct('FileVersion', '{version_str}'),
            StringStruct('InternalName', 'Wheather'),
-           StringStruct('LegalCopyright', '© 2025 Nsfr750 - All Rights Reserved'),
+           StringStruct('LegalCopyright', '© 2024-2025 Nsfr750 - All Rights Reserved'),
            StringStruct('OriginalFilename', 'Wheather-{version_str}.exe'),
            StringStruct('ProductName', 'Wheather'),
            StringStruct('ProductVersion', '{display_version}')])
       ]
     ),
-    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+    VarFileInfo([VarStruct('Translation', [1040, 1200])])
   ]
 )
 """.format(version_tuple=version_tuple, 

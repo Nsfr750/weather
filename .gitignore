@@ -77,3 +77,7 @@ temp_map.html
 config/config.json
 config/providers.json
 
+clean_pycache.py
+clear_cache.py
+firma.bat
+pyinstaller_build_win.py

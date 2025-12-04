@@ -224,6 +224,8 @@
   "refresh": "Frissítés",
   "refresh_menu": "&Frissítés",
   "refresh_tip": "Aktuális oldal frissítése",
+  "minimize_to_tray": "Minimalizálás a tálcára",
+  "minimize_to_tray_tip": "Minimalizálás a tálcára az alkalmazás bezárása helyett",
   "remove_favorite": "Eltávolítás a kedvencekből",
   "remove_favorite_menu": "Eltávolítás a kedvencekből",
   "removed_from_favorites": "Eltávolítva a kedvencekből",

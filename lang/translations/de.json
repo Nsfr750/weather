@@ -218,6 +218,8 @@
   "refresh": "Aktualisieren",
   "refresh_menu": "&Aktualisieren",
   "refresh_tip": "Aktuelle Seite aktualisieren",
+  "minimize_to_tray": "In den Infobereich minimieren",
+  "minimize_to_tray_tip": "In den Infobereich minimieren anstatt die Anwendung zu schließen",
   "remove_favorite": "Aus Favoriten entfernen",
   "remove_favorite_menu": "Aus Favoriten entfernen",
   "removed_from_favorites": "Aus Favoriten entfernt",

@@ -226,6 +226,8 @@
   "refresh": "Odśwież",
   "refresh_menu": "&Odśwież",
   "refresh_tip": "Odśwież bieżącą stronę",
+  "minimize_to_tray": "Minimalizuj do zasobnika systemowego",
+  "minimize_to_tray_tip": "Minimalizuj do zasobnika zamiast zamykać aplikację",
   "remove_favorite": "Usuń z ulubionych",
   "remove_favorite_menu": "Usuń z ulubionych",
   "removed_from_favorites": "Usunięto z ulubionych",

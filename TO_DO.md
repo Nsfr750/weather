@@ -5,6 +5,16 @@
 - [ ] Add notification preferences dialog
 - [ ] Implement notification sounds for critical alerts
 
+## ✅ Completed (v1.6.1)
+
+- [x] Added minimize to system tray functionality
+- [x] Implemented system tray icon with quick access menu
+- [x] Added background updates when minimized
+- [x] Updated translations for all 16 supported languages
+- [x] Fixed translation issues in multiple language files
+- [x] Improved system tray icon visibility
+- [x] Fixed potential memory leaks in tray icon handling
+
 ## ✅ Completed (v1.6.0)
 
 - [x] Implemented new language management system with JSON-based translations

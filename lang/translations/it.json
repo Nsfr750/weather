@@ -225,6 +225,8 @@
   "refresh_menu": "&Aggiorna",
   "refresh_menu_item": "Aggiorna",
   "refresh_tip": "Aggiorna i dati meteo",
+  "minimize_to_tray": "Riduci a icona nell'area di notifica",
+  "minimize_to_tray_tip": "Riduci nell'area di notifica invece di chiudere l'applicazione",
   "remove_favorite": "★",
   "remove_from_favorites": "Rimuovi dai preferiti",
   "remove_from_favorites_menu": "Rimuovi dai preferiti",

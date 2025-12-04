@@ -218,6 +218,8 @@
   "refresh": "Actualizar",
   "refresh_menu": "&Actualizar",
   "refresh_tip": "Actualizar página actual",
+  "minimize_to_tray": "Minimizar a la bandeja del sistema",
+  "minimize_to_tray_tip": "Minimizar a la bandeja del sistema en lugar de cerrar la aplicación",
   "remove_favorite": "Eliminar de favoritos",
   "remove_favorite_menu": "Eliminar de favoritos",
   "removed_from_favorites": "Eliminado de favoritos",

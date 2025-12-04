@@ -84,6 +84,11 @@ A modern, feature-rich Python weather application (v1.6.0) with a beautiful, res
   - No API key required
   - Global coverage with high accuracy
   
+- **System Integration**
+  - Minimize to system tray functionality
+  - System tray notifications for weather alerts
+  - Background updates when minimized
+
 - **Comprehensive Weather Data**
   - Current conditions with detailed metrics
   - 7-day forecast with daily and hourly breakdowns

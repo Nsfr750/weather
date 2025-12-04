@@ -218,6 +218,8 @@
   "refresh": "Actualiser",
   "refresh_menu": "&Actualiser",
   "refresh_tip": "Actualiser la page actuelle",
+  "minimize_to_tray": "Réduire dans la zone de notification",
+  "minimize_to_tray_tip": "Réduire dans la zone de notification au lieu de fermer l'application",
   "remove_favorite": "Retirer des favoris",
   "remove_favorite_menu": "Retirer des favoris",
   "removed_from_favorites": "Retiré des favoris",

@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2025-12-04
+
+### Added
+- Added minimize to system tray functionality
+  - New option in settings to toggle minimize behavior
+  - System tray icon with quick access menu
+  - Background updates when minimized
+  - Support for all 16 languages
+
+### Fixed
+- Fixed translation issues in multiple language files
+- Improved system tray icon visibility
+- Fixed potential memory leaks in tray icon handling
+
+### Changed
+- Updated translations for all supported languages
+- Improved error handling for system tray operations
+- Enhanced documentation for new features
+
 ## [1.6.0] - 2025-08-03
 
 ### Added

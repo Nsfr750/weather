@@ -218,6 +218,8 @@
   "refresh": "Yenile",
   "refresh_menu": "&Yenile",
   "refresh_tip": "Geçerli sayfayı yenile",
+  "minimize_to_tray": "Sistem tepsisine küçült",
+  "minimize_to_tray_tip": "Uygulamayı kapatmak yerine sistem tepsisine küçült",
   "remove_favorite": "Favorilerden kaldır",
   "remove_favorite_menu": "Favorilerden kaldır",
   "removed_from_favorites": "Favorilerden kaldırıldı",

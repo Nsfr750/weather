@@ -231,6 +231,8 @@
   "refresh_menu": "&Refresh",
   "refresh_menu_item": "Refresh",
   "refresh_tip": "Refresh weather data",
+  "minimize_to_tray": "Minimize to system tray",
+  "minimize_to_tray_tip": "Minimize to system tray instead of closing the application",
   "remove_favorite": "★",
   "remove_favorite_icon": "★",
   "remove_from_favorites": "Rimuovi dai preferiti",

@@ -222,6 +222,8 @@
   "refresh": "רענון",
   "refresh_menu": "&רענון",
   "refresh_tip": "רענן את הדף הנוכחי",
+  "minimize_to_tray": "מזער לסרגל המשימות",
+  "minimize_to_tray_tip": "מזער לסרגל המשימות במקום לסגור את היישום",
   "remove_favorite": "הסר מהמועדפים",
   "remove_favorite_menu": "הסר מהמועדפים",
   "removed_from_favorites": "הוסר מהמועדפים",

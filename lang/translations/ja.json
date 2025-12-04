@@ -218,6 +218,8 @@
   "refresh": "更新",
   "refresh_menu": "更新 (&R)",
   "refresh_tip": "現在のページを更新",
+  "minimize_to_tray": "システムトレイに最小化",
+  "minimize_to_tray_tip": "アプリケーションを終了せずにシステムトレイに最小化",
   "remove_favorite": "お気に入りから削除",
   "remove_favorite_menu": "お気に入りから削除",
   "removed_from_favorites": "お気に入りから削除しました",

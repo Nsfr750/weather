@@ -76,14 +76,18 @@ class WeatherApp(QMainWindow):
         self.config_dir = Path.home() / '.weather_app'
         self.config_dir.mkdir(exist_ok=True)
         
-        # Initialize notification system
-        self.notification_manager = NotificationManager(self.config_dir)
-        
-        # Initialize config manager
+        # Initialize config manager first
         self.config_manager = ConfigManager()
         self.config = self.config_manager.get_config()
         self.units = self.config_manager.get('units', 'metric')
         self.language = self.config_manager.get('language', 'en')
+        
+        # Initialize notification system
+        self.notification_manager = NotificationManager(self.config_dir)
+        
+        # Initialize tray icon
+        self.tray_icon = None
+        self.minimize_to_tray = self.config_manager.get('minimize_to_tray', True)  # Default to True
         
         # Initialize online status
         self.online = True  # Default to online, will be updated by check_connection()
@@ -137,6 +141,80 @@ class WeatherApp(QMainWindow):
         # Initial weather update
         self.refresh_weather()
         
+        # Setup tray icon if enabled
+        if self.minimize_to_tray:
+            self.setup_tray_icon()
+        
+    def closeEvent(self, event):
+        """Handle the window close event."""
+        if self.minimize_to_tray and self.tray_icon and self.tray_icon.isVisible():
+            self.hide()
+            event.ignore()
+        else:
+            # Save window state
+            self.config_manager.set('window/geometry', self.saveGeometry().toHex().data().decode())
+            self.config_manager.set('window/state', self.saveState().toHex().data().decode())
+            self.config_manager.save_config()
+            event.accept()
+    
+    def changeEvent(self, event):
+        """Handle window state change events."""
+        if event.type() == QEvent.Type.WindowStateChange:
+            if self.minimize_to_tray and self.tray_icon and self.tray_icon.isVisible():
+                if self.windowState() & Qt.WindowState.WindowMinimized:
+                    self.hide()
+        super().changeEvent(event)
+    
+    def setup_tray_icon(self):
+        """Set up the system tray icon and menu."""
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            logger.warning("System tray is not available on this system")
+            return
+            
+        # Create tray icon
+        self.tray_icon = QSystemTrayIcon(self)
+        
+        # Set icon (using the same icon as the app)
+        app_icon = self.windowIcon()
+        if not app_icon.isNull():
+            self.tray_icon.setIcon(app_icon)
+        
+        # Create tray menu
+        tray_menu = QMenu()
+        
+        # Show/Hide action
+        self.show_action = QAction(self.tr("Show"), self)
+        self.show_action.triggered.connect(self.show_normal)
+        
+        # Exit action
+        exit_action = QAction(self.tr("Exit"), self)
+        exit_action.triggered.connect(QApplication.instance().quit)
+        
+        # Add actions to menu
+        tray_menu.addAction(self.show_action)
+        tray_menu.addAction(exit_action)
+        
+        # Set the tray menu
+        self.tray_icon.setContextMenu(tray_menu)
+        
+        # Connect signals
+        self.tray_icon.activated.connect(self.tray_icon_activated)
+        
+        # Show the tray icon
+        self.tray_icon.show()
+    
+    def show_normal(self):
+        """Restore the window from tray."""
+        if self.isMinimized() or not self.isVisible():
+            self.showNormal()
+        self.activateWindow()
+        self.raise_()
+    
+    def tray_icon_activated(self, reason):
+        """Handle tray icon activation (click/double-click)."""
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self.show_normal()
+    
     def update_status(self, message: str, timeout: int = 0) -> None:
         """Update the status bar with a message.
         
@@ -151,6 +229,10 @@ class WeatherApp(QMainWindow):
     def create_menu_bar(self):
         """Create and set up the menu bar."""
         from script.menu import MenuBar
+        
+        # Add tray icon toggle to settings menu if not already present
+        if not hasattr(self, 'minimize_to_tray'):
+            self.minimize_to_tray = self.config_manager.get('minimize_to_tray', True)
         
         # Create the menu bar with callbacks
         self.menu_bar = MenuBar(

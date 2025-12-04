@@ -315,26 +315,47 @@ class MenuBar(QMenuBar):
             self.favorites_submenu.addAction(action)
     
     def _create_settings_menu(self) -> None:
-        """Create the Settings menu with configuration options."""
+        """Create the Settings menu with application preferences."""
         settings_menu = self.addMenu(self._tr('settings_menu'))
-        settings_menu.setObjectName("settingsMenu")
+        
+        # Minimize to tray option
+        self.minimize_to_tray_action = QAction(
+            self._tr('minimize_to_tray'),
+            self,
+            checkable=True,
+            checked=self.parent().minimize_to_tray if hasattr(self.parent(), 'minimize_to_tray') else True,
+            statusTip=self._tr('minimize_to_tray_tip')
+        )
+        self.minimize_to_tray_action.triggered.connect(self._on_minimize_to_tray_changed)
+        settings_menu.addAction(self.minimize_to_tray_action)
+        
+        # Add separator
+        settings_menu.addSeparator()
         
         # Units submenu
         units_menu = settings_menu.addMenu(self._tr('units_menu'))
         self.unit_group = QActionGroup(self)
         
-        # Metric units
-        metric_action = QAction(self._tr('metric_units'), self, checkable=True)
-        metric_action.setStatusTip(self._tr('metric_units_tip'))
-        metric_action.setData('metric')
+        # Metric units action
+        metric_action = QAction(
+            self._tr('metric_units'),
+            self,
+            checkable=True,
+            checked=self.units == 'metric',
+            statusTip=self._tr('metric_units_tip')
+        )
         metric_action.triggered.connect(lambda: self._on_units_changed('metric'))
         self.unit_group.addAction(metric_action)
         units_menu.addAction(metric_action)
         
-        # Imperial units
-        imperial_action = QAction(self._tr('imperial_units'), self, checkable=True)
-        imperial_action.setStatusTip(self._tr('imperial_units_tip'))
-        imperial_action.setData('imperial')
+        # Imperial units action
+        imperial_action = QAction(
+            self._tr('imperial_units'),
+            self,
+            checkable=True,
+            checked=self.units == 'imperial',
+            statusTip=self._tr('imperial_units_tip')
+        )
         imperial_action.triggered.connect(lambda: self._on_units_changed('imperial'))
         self.unit_group.addAction(imperial_action)
         units_menu.addAction(imperial_action)
@@ -342,11 +363,6 @@ class MenuBar(QMenuBar):
         # Set the current units
         if self.units == 'metric':
             metric_action.setChecked(True)
-        else:
-            imperial_action.setChecked(True)
-                               
-        # Separator
-        settings_menu.addSeparator()
         
         # API Key Manager
         api_key_action = QAction(
@@ -1244,14 +1260,29 @@ class MenuBar(QMenuBar):
             self._tr(f'Weather provider changed to {provider}.')
         )
     
-    def _on_mode_changed(self, offline: bool) -> None:
-        """Handle online/offline mode change.
+    def _on_minimize_to_tray_changed(self, checked: bool) -> None:
+        """
+        Handle minimize to tray toggle.
+        
+        Args:
+            checked: Whether the minimize to tray option is checked
+        """
+        if hasattr(self, 'parent') and hasattr(self.parent(), 'minimize_to_tray'):
+            self.parent().minimize_to_tray = checked
+            if self.config_manager:
+                self.config_manager.set('minimize_to_tray', checked)
+                self.config_manager.save_config()
+            logger.info(f"Minimize to tray {'enabled' if checked else 'disabled'}")
+    
+    def _on_mode_changed(self, offline: bool):
+        """
+        Handle online/offline mode change.
         
         Args:
             offline: True if offline mode is enabled, False for online mode
         """
-        if self.offline_mode == offline:
-            return
+        self.offline_mode = offline
+        self.offline_mode_changed.emit(offline)
             
         self.offline_mode = offline
         logger.info(f"{'Offline' if offline else 'Online'} mode enabled")

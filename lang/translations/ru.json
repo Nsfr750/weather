@@ -217,6 +217,8 @@
   "refresh": "Обновить",
   "refresh_menu": "&Обновить",
   "refresh_tip": "Обновить текущую страницу",
+  "minimize_to_tray": "Свернуть в системный трей",
+  "minimize_to_tray_tip": "Свернуть в системный трей вместо закрытия приложения",
   "remove_favorite": "Удалить из избранного",
   "remove_favorite_menu": "Удалить из избранного",
   "removed_from_favorites": "Удалено из избранного",

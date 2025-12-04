@@ -218,6 +218,8 @@
   "refresh": "刷新",
   "refresh_menu": "刷新(&R)",
   "refresh_tip": "刷新当前页面",
+  "minimize_to_tray": "最小化到系统托盘",
+  "minimize_to_tray_tip": "最小化到系统托盘而不是关闭应用程序",
   "remove_favorite": "从收藏夹中移除",
   "remove_favorite_menu": "从收藏夹中移除",
   "removed_from_favorites": "已从收藏夹中移除",

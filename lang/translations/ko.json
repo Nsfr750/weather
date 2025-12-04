@@ -219,6 +219,8 @@
   "refresh": "새로 고침",
   "refresh_menu": "&새로 고침",
   "refresh_tip": "현재 페이지 새로 고침",
+  "minimize_to_tray": "시스템 트레이로 최소화",
+  "minimize_to_tray_tip": "시스템 트레이로 최소화 (종료하지 않음)",
   "remove_favorite": "즐겨찾기에서 제거",
   "remove_favorite_menu": "즐겨찾기에서 제거",
   "removed_from_favorites": "즐겨찾기에서 제거됨",

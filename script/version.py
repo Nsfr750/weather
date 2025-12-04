@@ -8,7 +8,7 @@ for the Weather project.
 # Version information follows Semantic Versioning 2.0.0 (https://semver.org/)
 VERSION_MAJOR = 1
 VERSION_MINOR = 6
-VERSION_PATCH = 0
+VERSION_PATCH = 1
 
 # Additional version qualifiers
 VERSION_QUALIFIER = ''  # Could be 'alpha', 'beta', 'rc', or ''

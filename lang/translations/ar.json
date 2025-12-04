@@ -218,6 +218,8 @@
   "refresh": "تحديث",
   "refresh_menu": "&تحديث",
   "refresh_tip": "تحديث الصفحة الحالية",
+  "minimize_to_tray": "تصغير إلى شريط المهام",
+  "minimize_to_tray_tip": "تصغير إلى شريط المهام بدلاً من إغلاق التطبيق",
   "remove_favorite": "إزالة من المفضلة",
   "remove_favorite_menu": "إزالة من المفضلة",
   "removed_from_favorites": "تمت الإزالة من المفضلة",

@@ -81,3 +81,4 @@ clean_pycache.py
 clear_cache.py
 firma.bat
 pyinstaller_build_win.py
+pyinstaller_build_win.py

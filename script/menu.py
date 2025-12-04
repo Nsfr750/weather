@@ -894,36 +894,10 @@ class MenuBar(QMenuBar):
                         break
         
     def _show_documentation(self) -> None:
-        """Show the documentation using docs.py."""
+        """Open the online documentation in the default web browser."""
         try:
-            # Get the current language from the application
-            current_lang = getattr(self, 'current_language', 'EN')
-            
-            # Start the documentation viewer in a separate process
-            import subprocess
-            import sys
-            import os
-            
-            # Get the path to the Python interpreter and the script
-            python = sys.executable
-            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'docs.py'))
-            
-            # Get the project root directory (one level up from script directory)
-            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            
-            # Create a command that sets up the Python path correctly
-            cmd = [
-                python,
-                script_path,
-                current_lang
-            ]
-            
-            # Set up the environment with the correct PYTHONPATH
-            env = os.environ.copy()
-            env['PYTHONPATH'] = project_root
-            
-            # Start the markdown viewer with the current language
-            subprocess.Popen(cmd, env=env)
+            import webbrowser
+            webbrowser.open('https://github.com/Nsfr750/weather/wiki')
             
         except Exception as e:
             # Log the error
@@ -934,7 +908,7 @@ class MenuBar(QMenuBar):
             QMessageBox.critical(
                 self,
                 self._tr("Error"),
-                self._tr("Failed to open documentation: {}".format(str(e)))
+                self._tr("Failed to open documentation in web browser. Please visit: https://github.com/Nsfr750/weather/wiki")
             )
     
     def _show_maps_dialog(self) -> None:
@@ -1048,57 +1022,22 @@ class MenuBar(QMenuBar):
                 self._tr("Failed to change language: {}").format(str(e))
             )
     
-    def _check_for_updates(self) -> None:
+    def _check_for_updates(self, force_check: bool = False) -> None:
         """Check for application updates."""
         try:
             # Import here to avoid circular imports
-            from script.update import check_for_updates
+            from script.updates import check_for_updates
+            from script.version import get_version
             
-            # Check for updates
-            update_available, version, download_url = check_for_updates()
+            # Get current version
+            current_version = get_version()
             
-            if update_available:
-                # Show update available dialog
-                from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox
-                
-                dialog = QDialog(self)
-                dialog.setWindowTitle(self._tr('Update Available'))
-                dialog.setMinimumWidth(400)
-                
-                layout = QVBoxLayout(dialog)
-                
-                # Add update message
-                message = self._tr(
-                    'A new version ({}) is available.\n\n'
-                    'Would you like to download it now?',
-                    version
-                )
-                layout.addWidget(QLabel(message))
-                
-                # Add buttons
-                button_box = QDialogButtonBox(
-                    QDialogButtonBox.StandardButton.Yes |
-                    QDialogButtonBox.StandardButton.No
-                )
-                button_box.accepted.connect(dialog.accept)
-                button_box.rejected.connect(dialog.reject)
-                layout.addWidget(button_box)
-                
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    # Open the download URL in the default browser
-                    import webbrowser
-                    webbrowser.open(download_url)
-            else:
-                QMessageBox.information(
-                    self,
-                    self._tr('No Updates'),
-                    self._tr('You are using the latest version.')
-                )
-                
+            # Check for updates asynchronously
+            check_for_updates(parent=self, current_version=current_version, force_check=force_check)
+            
         except Exception as e:
-            logger.error(f"Error checking for updates: {e}")
+            logger.error(f"Error checking for updates: {str(e)}")
             QMessageBox.critical(
-                self,
                 self._tr('Error'),
                 self._tr('Failed to check for updates: {}').format(str(e))
             )

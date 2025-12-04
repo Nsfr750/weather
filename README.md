@@ -134,7 +134,7 @@ A modern, feature-rich Python weather application (v1.6.1) with a beautiful, res
 ### Installation
 
 1. **Clone the repository**
-   
+
    ```bash
    git clone https://github.com/Nsfr750/weather.git
    cd weather
@@ -143,12 +143,14 @@ A modern, feature-rich Python weather application (v1.6.1) with a beautiful, res
 2. **Set up a virtual environment (recommended)**
 
    Windows:
+
    ```bash
    python -m venv venv
    .\venv\Scripts\activate
    ```
    
    Linux/macOS:
+   
    ```bash
    python3 -m venv venv
    source venv/bin/activate

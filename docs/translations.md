@@ -85,8 +85,6 @@ lang/
 
 ## Adding a New Language
 
-### Adding a New Language
-
 To add a new language:
 
 1. Add a new JSON file in `lang/translations/` with the language code (e.g., `fr.json` for French)
@@ -98,6 +96,7 @@ To add a new language:
    - `language_tip`: Tooltip text for the language menu (e.g., "Select application language")
 
 Example for French (`fr.json`):
+
 ```json
 {
   "language_menu": "&Langue",
@@ -189,5 +188,3 @@ For RTL languages like Arabic and Hebrew:
 ## Getting Help
 
 For translation issues, please open an issue on our [GitHub repository](https://github.com/yourusername/weather-app/issues).
-1. Join our [Discord](https://discord.gg/ryqNeuRYjD)
-2. Contact the maintainers

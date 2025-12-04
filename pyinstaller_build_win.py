@@ -36,7 +36,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('assets/*', 'assets'),
+        ('assets', 'assets'),  # Include assets directory
         ('config/*.json', 'config'),
         ('assets/version_info.txt', 'assets'),
         ('assets/weather_icons/*.png', 'assets/weather_icons'),

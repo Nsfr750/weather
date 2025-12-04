@@ -115,9 +115,27 @@ class AboutDialog(QDialog):
         
         # App icon
         icon_label = QLabel()
-        icon_label.setPixmap(QPixmap('assets/meteo.png').scaled(96, 96, 
-            Qt.AspectRatioMode.KeepAspectRatio, 
-            Qt.TransformationMode.SmoothTransformation))
+        # Try multiple possible paths for the logo
+        logo_paths = [
+            'assets/meteo.png',  # Development path
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'meteo.png'),  # Installed path
+            'meteo.png'  # Fallback if in same directory
+        ]
+        
+        pixmap = None
+        for path in logo_paths:
+            if os.path.exists(path):
+                try:
+                    pixmap = QPixmap(path)
+                    if not pixmap.isNull():
+                        break
+                except:
+                    continue
+        
+        if pixmap and not pixmap.isNull():
+            icon_label.setPixmap(pixmap.scaled(96, 96, 
+                Qt.AspectRatioMode.KeepAspectRatio, 
+                Qt.TransformationMode.SmoothTransformation))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(icon_label)
         
@@ -180,6 +198,13 @@ class AboutDialog(QDialog):
         links_layout.setSpacing(15)
         links_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
+        # Documentation button
+        docs_btn = QPushButton('Documentation')
+        docs_btn.setObjectName('linkButton')
+        docs_btn.clicked.connect(lambda: self.open_url('https://github.com/Nsfr750/weather/wiki'))
+        links_layout.addWidget(docs_btn)
+        
+        # GitHub button
         github_btn = QPushButton('GitHub Repository')
         github_btn.setObjectName('linkButton')
         github_btn.clicked.connect(lambda: self.open_url(self.app_info['GitHub']))
